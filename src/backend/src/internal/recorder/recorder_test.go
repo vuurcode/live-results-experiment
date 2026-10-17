@@ -259,3 +259,34 @@ func TestRepliesThatAreNotJSONAreNotStored(t *testing.T) {
 		t.Fatalf("got %+v", infos)
 	}
 }
+
+func TestThePeriodOfTheCompetitionIsKeptWithEachDay(t *testing.T) {
+	s, now := clockedStore(t, 0)
+	r := s.Open("m1")
+	r.SetPeriod("2026-03-08T09:00:00Z", "2026-03-09T17:00:00Z")
+	r.Add([]byte(`{"a":1}`))
+	*now = now.Add(24 * time.Hour)
+	r.Add([]byte(`{"a":1}`)) // the first reply of the next day is stored again, with its own meta file
+	want := `{"start":"2026-03-08T09:00:00Z","end":"2026-03-09T17:00:00Z"}`
+	for _, name := range []string{"m1_2026-03-08", "m1_2026-03-09"} {
+		var buf bytes.Buffer
+		if err := s.Write(&buf, name); err != nil {
+			t.Fatal(err)
+		}
+		files := readArchive(t, buf.Bytes())
+		if len(files) != 2 || files[name+"/"+metaName] != want {
+			t.Fatalf("%s holds %v, want snapshot and %s", name, files, want)
+		}
+	}
+	// a period that changes while the competition is followed is written at the next reply, even an unchanged one
+	r.SetPeriod("2026-03-08T09:00:00Z", "2026-03-10T17:00:00Z")
+	r.Add([]byte(`{"a":1}`))
+	b, err := os.ReadFile(filepath.Join(s.dir, "m1_2026-03-09", metaName))
+	if err != nil || !strings.Contains(string(b), "2026-03-10") {
+		t.Fatalf("meta file: %q (%v)", b, err)
+	}
+	// the meta file is not a snapshot
+	if infos, _ := s.List(); len(infos) != 2 || infos[0].Snapshots != 1 {
+		t.Fatalf("got %+v", infos)
+	}
+}

@@ -10,9 +10,11 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -37,7 +39,10 @@ var (
 
 const (
 	snapshotExt = ".json"
-	archiveExt  = ".tar.gz"
+	// metaName is the file next to the snapshots that says when the competition is held. It is not a snapshot, so it
+	// does not end in .json, and a replay of the folder leaves it alone.
+	metaName   = "competition.meta"
+	archiveExt = ".tar.gz"
 	// snapshotTime names a snapshot: fixed width, so that sorting the names sorts the snapshots in time.
 	snapshotTime = "20060102T150405.000Z"
 	settle       = time.Hour // how long a folder of snapshots is left alone before it is packed
@@ -83,6 +88,8 @@ type Recording struct {
 	dir     string
 	last    []byte // the latest snapshot, to leave out replies that did not change
 	skip    bool   // the day is not recorded: it has an archive already, or was deleted
+	period  []byte // the competition's start and end as they are written to the meta file; nil until they are known
+	written []byte // what the meta file of the open day holds
 	closed  atomic.Bool
 }
 
@@ -108,12 +115,30 @@ func (s *Store) archive(name string) string { return filepath.Join(s.dir, name+a
 func (r *Recording) begin(day string) {
 	r.name = r.id + "_" + day
 	r.day, r.dir = day, filepath.Join(r.store.dir, r.name)
-	r.started, r.skip, r.last = true, false, nil
+	r.started, r.skip, r.last, r.written = true, false, nil, nil
 	if _, err := os.Stat(r.store.archive(r.name)); err == nil {
 		r.skip = true
 		return
 	}
 	r.last = r.latestOnDisk()
+}
+
+// SetPeriod records when the competition is held (RFC 3339 start and end, the end may be empty). It is stored in the
+// folder of each day next to the snapshots, so a recording says how many days the competition lasts.
+func (r *Recording) SetPeriod(start, end string) {
+	if r == nil {
+		return
+	}
+	b, err := json.Marshal(struct {
+		Start string `json:"start"`
+		End   string `json:"end,omitempty"`
+	}{start, end})
+	if err != nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.period = b
 }
 
 // Add stores body, without the names of the competitors, when it differs from the snapshot before it. The first reply of a new day opens the next recording.
@@ -140,6 +165,7 @@ func (r *Recording) Add(body []byte) {
 		return
 	}
 	if bytes.Equal(body, r.last) {
+		r.writeMetaLocked()
 		return
 	}
 	if err := os.MkdirAll(r.dir, 0o750); err != nil {
@@ -153,6 +179,19 @@ func (r *Recording) Add(body []byte) {
 		return
 	}
 	r.last = append(r.last[:0], body...)
+	r.writeMetaLocked()
+}
+
+// writeMetaLocked writes the period to the meta file of the open day when that holds something else.
+func (r *Recording) writeMetaLocked() {
+	if r.period == nil || bytes.Equal(r.period, r.written) {
+		return
+	}
+	if err := writeFile(filepath.Join(r.dir, metaName), r.period); err != nil {
+		slog.Error("Recording failed", "competition", r.id, "err", err)
+		return
+	}
+	r.written = r.period
 }
 
 // packLocked packs the open day, if there is one, and leaves the recording without one.
@@ -238,6 +277,27 @@ func (s *Store) pack(name string) error {
 	return os.RemoveAll(dir)
 }
 
+// addMeta adds the meta file of the folder to the archive, when there is one.
+func addMeta(tw *tar.Writer, dirName, dir string) error {
+	path := filepath.Join(dir, metaName)
+	b, err := os.ReadFile(path) //nolint:gosec // the recording's own folder
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var mod time.Time
+	if fi, err := os.Stat(path); err == nil {
+		mod = fi.ModTime()
+	}
+	if err := tw.WriteHeader(&tar.Header{Name: dirName + "/" + metaName, Mode: 0o640, Size: int64(len(b)), ModTime: mod}); err != nil {
+		return err
+	}
+	_, err = tw.Write(b)
+	return err
+}
+
 // writeArchive writes the snapshots as a gzipped tar whose entries are <dirName>/<snapshot>.
 func writeArchive(w io.Writer, dirName, dir string, names []string) error {
 	gz, err := gzip.NewWriterLevel(w, gzip.BestCompression)
@@ -257,6 +317,9 @@ func writeArchive(w io.Writer, dirName, dir string, names []string) error {
 		if _, err := tw.Write(b); err != nil {
 			return err
 		}
+	}
+	if err := addMeta(tw, dirName, dir); err != nil {
+		return err
 	}
 	if err := tw.Close(); err != nil {
 		return err

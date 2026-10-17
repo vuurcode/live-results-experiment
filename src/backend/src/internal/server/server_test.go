@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -474,7 +476,8 @@ func TestIdleRoomLeavesNothingRunning(t *testing.T) {
 }
 
 func TestFollowedCompetitionIsPolledAndRecordedWithoutClients(t *testing.T) {
-	store, err := recorder.New(t.TempDir(), 0)
+	dir := t.TempDir()
+	store, err := recorder.New(dir, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -482,6 +485,7 @@ func TestFollowedCompetitionIsPolledAndRecordedWithoutClients(t *testing.T) {
 		c.DataSourceIntervals = config.Intervals{NotStarted: 0.02, MassStart: 0.02, Distance: 0.02}
 	})
 	tb.m.Recorder = store
+	tb.m.Period = func(string) (string, string, bool) { return "2026-03-08T09:00:00Z", "2026-03-09T17:00:00Z", true }
 
 	tb.m.Follow([]string{"A"})
 	time.Sleep(200 * time.Millisecond) // well past the idle grace
@@ -497,6 +501,10 @@ func TestFollowedCompetitionIsPolledAndRecordedWithoutClients(t *testing.T) {
 		t.Fatalf("recordings: %+v", infos)
 	}
 
+	infos, _ := store.List()
+	if meta, err := os.ReadFile(filepath.Join(dir, infos[0].ID, "competition.meta")); err != nil || !strings.Contains(string(meta), "2026-03-09T17:00:00Z") {
+		t.Fatalf("meta file: %q (%v)", meta, err)
+	}
 	tb.m.Follow(nil)
 	waitFor(t, "the room that is no longer followed to close", func() bool { return tb.m.RoomCount() == 0 })
 }

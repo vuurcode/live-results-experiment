@@ -431,6 +431,18 @@ func (c *Catalog) Today(ctx context.Context) ([]*competition, error) {
 	return out, nil
 }
 
+// Period returns the start and end of a known competition, as the list gives them; ok is false for an id the catalog
+// has not seen.
+func (c *Catalog) Period(id string) (start, end string, ok bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	m, found := c.known[id]
+	if !found {
+		return "", "", false
+	}
+	return m.Start, m.End, true
+}
+
 // TodayIDs lists the ids of the competitions of today, see Today.
 func (c *Catalog) TodayIDs(ctx context.Context) ([]string, error) {
 	list, err := c.Today(ctx)

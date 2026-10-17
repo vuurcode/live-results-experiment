@@ -45,6 +45,9 @@ type Hub struct {
 	// competitions of today open, so that every recording is complete. Set it before the hub is used.
 	Recorder *recorder.Store
 
+	// Period gives the start and end of a competition, which are kept with its recording; nil or false when unknown.
+	Period func(id string) (start, end string, ok bool)
+
 	// Now is the clock the connection allowance is counted by.
 	Now func() time.Time
 
@@ -121,12 +124,23 @@ func (m *Hub) openLocked(id string) (*room.Room, error) {
 	f := &fetch.Fetcher{URL: upstream, Sink: r, UA: m.ua, Client: m.client, Interval: r.Interval, Log: r.Log}
 	if !m.set.Extra(id) { // the competitions of an extra upstream are generated, so there is nothing to keep
 		if rec := m.Recorder.Open(id); rec != nil {
+			m.notePeriod(id, rec)
 			f.Record = rec.Add
 		}
 	}
 	go f.Run(ctx)
 	slog.Info("Competition opened", "competition", id, "open", len(m.rooms))
 	return r, nil
+}
+
+// notePeriod hands the recording the period of the competition, when it is known.
+func (m *Hub) notePeriod(id string, rec *recorder.Recording) {
+	if m.Period == nil {
+		return
+	}
+	if start, end, ok := m.Period(id); ok {
+		rec.SetPeriod(start, end)
+	}
 }
 
 // Follow opens a room for each of ids and keeps it open, with or without clients, until a later call leaves its id
@@ -152,6 +166,7 @@ func (m *Hub) Follow(ids []string) {
 			continue
 		}
 		r.Keep = true
+		m.notePeriod(id, m.Recorder.Open(id)) // a competition can be moved or lengthened while it is followed
 	}
 	for id, r := range m.rooms {
 		if r.Keep && !wanted[id] {

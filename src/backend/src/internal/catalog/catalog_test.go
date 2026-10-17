@@ -526,3 +526,16 @@ func TestListedBeforeOrdersByLiveThenStartThenName(t *testing.T) {
 		t.Fatalf("order = %v, want %s", got, want)
 	}
 }
+
+func TestPeriodOfAKnownCompetition(t *testing.T) {
+	e := newCatalogEnv(t, comp("m", "DEV", "SpeedSkating.LongTrack", "2026-10-24T15:30:00Z", "2026-10-25T19:00:00Z"))
+	if _, err := e.cat.Today(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if start, end, ok := e.cat.Period("m"); !ok || start != "2026-10-24T15:30:00Z" || end != "2026-10-25T19:00:00Z" {
+		t.Fatalf("period = %q, %q, %v", start, end, ok)
+	}
+	if _, _, ok := e.cat.Period("unknown"); ok {
+		t.Fatal("an unknown competition has a period")
+	}
+}
