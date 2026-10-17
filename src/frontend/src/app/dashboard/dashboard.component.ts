@@ -18,6 +18,7 @@ import {
   AlertModule,
   BadgeModule,
   ButtonModule,
+  FormModule,
   GridModule,
   SharedModule,
 } from '@coreui/angular';
@@ -46,8 +47,9 @@ import { raceListAnimation, raceListKey } from './dashboard.animations';
     AlertModule,
     BadgeModule,
     ButtonModule,
+    FormModule,
     GridModule,
-    SharedModule,
+      SharedModule,
     FormsModule,
     TranslatePipe,
     MassStartTimelineComponent,

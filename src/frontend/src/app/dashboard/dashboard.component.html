@@ -15,7 +15,7 @@
     @if (competitions.length > 0) {
       <div class="topbar-competitions d-flex align-items-center gap-2" [class.topbar-competitions-title]="picked || noCompetition">
         <label class="small text-nowrap mb-0 setting-label" [class.visually-hidden]="picked || noCompetition" for="competitionSelect">{{ 'todayCompetitionsLabel' | translate }}</label>
-        <select id="competitionSelect" class="form-select form-select-sm topbar-competition-select" [style.--competition-label-length]="selectedLabelLength(competitions)" [attr.aria-describedby]="noCompetition ? 'competitionHint' : null" (change)="openCompetition($event)">
+        <select id="competitionSelect" cSelect sizing="sm" class="topbar-competition-select" [style.--competition-label-length]="selectedLabelLength(competitions)" [attr.aria-describedby]="noCompetition ? 'competitionHint' : null" (change)="openCompetition($event)">
           @if (!picked) {
             <option value="" selected disabled>{{ 'noCompetitionOption' | translate }}</option>
           }
@@ -33,7 +33,7 @@
     <div class="topbar-settings ms-auto d-flex flex-wrap align-items-center gap-2">
       <!-- Display settings (collapsible) -->
       <div class="topbar-settings-group d-flex flex-wrap align-items-center">
-        <button class="btn btn-sm btn-outline-light topbar-group-btn" (click)="toggleSettings()" [attr.aria-expanded]="displaySettingsOpen" [attr.aria-label]="'displaySettings' | translate" [attr.title]="'displaySettings' | translate">
+        <button cButton color="light" variant="outline" size="sm" class="topbar-group-btn" (click)="toggleSettings()" [attr.aria-expanded]="displaySettingsOpen" [attr.aria-label]="'displaySettings' | translate" [attr.title]="'displaySettings' | translate">
           <span class="topbar-group-text">{{ 'displaySettings' | translate }}</span><svg class="topbar-group-cog" viewBox="0 0 16 16" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.86z"/></svg> <span class="topbar-group-arrow" [class.open]="displaySettingsOpen">▾</span>
         </button>
         @if (displaySettingsOpen) {
@@ -44,13 +44,7 @@
               <h2 id="settingsGeneralHeading" class="settings-heading">{{ 'generalSettings' | translate }}</h2>
               <div class="setting-group ms-2">
                 <label class="small text-nowrap mb-0 setting-label" for="followInput">{{ 'followLabel' | translate }}</label>
-                <div class="form-check form-switch"><input
-                  id="followInput"
-                  type="checkbox"
-                  class="form-check-input" role="switch"
-                  [checked]="settings.follow.value"
-                  (change)="setFollow($event)"
-                /></div>
+                <c-form-check [switch]="true"><input cFormCheckInput role="switch" id="followInput" type="checkbox" [checked]="settings.follow.value" (change)="setFollow($event)" /></c-form-check>
                 <div class="setting-popover">
                   <div class="setting-popover-title">{{ 'followPopoverTitle' | translate }}</div>
                   <div class="setting-popover-body" [innerHTML]="ts.html('followPopoverBody')"></div>
@@ -60,7 +54,7 @@
                 <label class="small text-nowrap mb-0 setting-label" for="colorSchemeInput">{{ 'colorSchemeLabel' | translate }}</label>
                 <select
                   id="colorSchemeInput"
-                  class="form-select form-select-sm scheme-select"
+                  cSelect sizing="sm" class="scheme-select"
                   (change)="setColorScheme($event)"
                 >
                   <option value="auto" [selected]="settings.colorScheme.value === 'auto'">{{ 'colorSchemeAuto' | translate }}</option>
@@ -74,13 +68,7 @@
               </div>
               <div class="setting-group ms-2">
                 <label class="small text-nowrap mb-0 setting-label" for="animationsInput">{{ 'animationsLabel' | translate }}</label>
-                <div class="form-check form-switch"><input
-                  id="animationsInput"
-                  type="checkbox"
-                  class="form-check-input" role="switch"
-                  [checked]="settings.animations.value"
-                  (change)="setAnimations($event)"
-                /></div>
+                <c-form-check [switch]="true"><input cFormCheckInput role="switch" id="animationsInput" type="checkbox" [checked]="settings.animations.value" (change)="setAnimations($event)" /></c-form-check>
                 <div class="setting-popover">
                   <div class="setting-popover-title">{{ 'animationsPopoverTitle' | translate }}</div>
                   <div class="setting-popover-body" [innerHTML]="ts.html('animationsPopoverBody')"></div>
@@ -88,15 +76,7 @@
               </div>
               <div class="setting-group ms-2">
                 <label class="small text-nowrap mb-0 setting-label" for="thousandthsInput">{{ (settings.showThousandths.value ? 'thousandthsLabel' : 'hundredthsLabel') | translate }}</label>
-                <div class="form-check form-switch">
-                  <input
-                    id="thousandthsInput"
-                    type="checkbox"
-                    class="form-check-input" role="switch"
-                    [checked]="settings.showThousandths.value"
-                    (change)="setShowThousandths($event)"
-                  />
-                </div>
+                <c-form-check [switch]="true"><input cFormCheckInput role="switch" id="thousandthsInput" type="checkbox" [checked]="settings.showThousandths.value" (change)="setShowThousandths($event)" /></c-form-check>
                 <div class="setting-popover">
                   <div class="setting-popover-title">{{ 'thousandthsPopoverTitle' | translate }}</div>
                   <div class="setting-popover-body" [innerHTML]="ts.html(settings.showThousandths.value ? 'thousandthsOnBody' : 'thousandthsOffBody')"></div>
@@ -107,15 +87,7 @@
               <h2 id="settingsIndividualHeading" class="settings-heading">{{ 'individualRaceSettings' | translate }}</h2>
               <div class="setting-group ms-2">
                 <label class="small text-nowrap mb-0 setting-label" for="compactColorsInput">{{ 'compactColorsLabel' | translate }}</label>
-                <div class="form-check form-switch">
-                  <input
-                    id="compactColorsInput"
-                    type="checkbox"
-                    class="form-check-input" role="switch"
-                    [checked]="settings.compactColors.value"
-                    (change)="setCompactColors($event)"
-                  />
-                </div>
+                <c-form-check [switch]="true"><input cFormCheckInput role="switch" id="compactColorsInput" type="checkbox" [checked]="settings.compactColors.value" (change)="setCompactColors($event)" /></c-form-check>
                 <div class="setting-popover">
                   <div class="setting-popover-title">{{ 'compactColorsPopoverTitle' | translate }}</div>
                   <div class="setting-popover-body" [innerHTML]="ts.html('compactColorsPopoverBody')"></div>
@@ -125,18 +97,18 @@
                 <div class="setting-collapse-inner">
                 <div class="setting-group ms-2">
                   <label class="small text-nowrap mb-0 setting-label" for="lapVarianceIndividualInput">{{ 'lapDeltaLabel' | translate }}</label>
-                  <div class="input-group input-group-sm threshold-group">
+                  <c-input-group sizing="sm" class="threshold-group">
                     <input
                       id="lapVarianceIndividualInput"
                       type="number"
                       min="0" max="50" step="0.1"
-                      class="form-control form-control-sm threshold-input"
+                      cFormControl sizing="sm" class="threshold-input"
                       [value]="settings.lapVarianceIndividual.value"
                       (change)="setLapVarianceIndividual($event)"
                       (input)="stepLapVariance($event, true)"
                     />
-                    <span class="input-group-text">%</span>
-                  </div>
+                    <span cInputGroupText>%</span>
+</c-input-group>
                   <div class="setting-popover">
                     <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
                     <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
@@ -151,23 +123,23 @@
                 <h2 id="settingsMassStartHeading" class="settings-heading">{{ 'massStartSettings' | translate }}</h2>
                 <div class="setting-group setting-group-pair ms-1">
                   <label class="small text-nowrap mb-0 setting-label" for="groupThresholdInput">{{ 'maxGapLabel' | translate }}</label>
-                  <div class="input-group input-group-sm threshold-group">
+                  <c-input-group sizing="sm" class="threshold-group">
                     <input
                       id="groupThresholdInput"
                       type="number"
                       min="0" max="10" step="0.5"
-                      class="form-control form-control-sm threshold-input"
+                      cFormControl sizing="sm" class="threshold-input"
                       [value]="settings.groupThreshold.value"
                       (change)="setGroupThreshold($event)"
                     />
-                    <span class="input-group-text">s</span>
-                  </div>
+                    <span cInputGroupText>s</span>
+</c-input-group>
                   <label class="small text-nowrap mb-0 setting-label" for="maxGroupsInput">{{ 'maxGroupsLabel' | translate }}</label>
                   <input
                     id="maxGroupsInput"
                     type="number"
                     min="0" step="1"
-                    class="form-control form-control-sm threshold-input"
+                    cFormControl sizing="sm" class="threshold-input"
                     [value]="settings.maxGroups.value"
                     (change)="setMaxGroups($event)"
                   />
@@ -178,18 +150,18 @@
                 </div>
                 <div class="setting-group ms-2">
                   <label class="small text-nowrap mb-0 setting-label" for="lapVarianceInput">{{ 'lapDeltaLabel' | translate }}</label>
-                  <div class="input-group input-group-sm threshold-group">
+                  <c-input-group sizing="sm" class="threshold-group">
                     <input
                       id="lapVarianceInput"
                       type="number"
                       min="0" max="50" step="1"
-                      class="form-control form-control-sm threshold-input"
+                      cFormControl sizing="sm" class="threshold-input"
                       [value]="settings.lapVariance.value"
                       (change)="setLapVariance($event)"
                       (input)="stepLapVariance($event, false)"
                     />
-                    <span class="input-group-text">%</span>
-                  </div>
+                    <span cInputGroupText>%</span>
+</c-input-group>
                   <div class="setting-popover">
                     <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
                     <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
