@@ -20,6 +20,7 @@ import {
   ButtonModule,
   FormModule,
   GridModule,
+  PlaceholderModule,
   SharedModule,
 } from '@coreui/angular';
 import { FormsModule } from '@angular/forms';
@@ -49,7 +50,8 @@ import { raceListAnimation, raceListKey } from './dashboard.animations';
     ButtonModule,
     FormModule,
     GridModule,
-      SharedModule,
+    PlaceholderModule,
+    SharedModule,
     FormsModule,
     TranslatePipe,
     MassStartTimelineComponent,

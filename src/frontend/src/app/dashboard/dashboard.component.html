@@ -10,7 +10,7 @@
     @if (eventName$ | async; as name) {
       <h1 class="fw-bold fs-5 m-0 topbar-title" [class.visually-hidden]="picked">{{ name }}</h1>
     } @else if (!picked && !noCompetition) {
-      <span class="skeleton-text skeleton-title topbar-title">&nbsp;</span>
+      <span cPlaceholderAnimation="glow" class="topbar-title"><span cPlaceholder class="skeleton-title"></span></span>
     }
     @if (competitions.length > 0) {
       <div class="topbar-competitions d-flex align-items-center gap-2" [class.topbar-competitions-title]="picked || noCompetition">
@@ -309,10 +309,10 @@
       } @else {
         <!-- Skeleton placeholder while connecting -->
       @for (i of [1,2,3]; track i) {
-        <div class="skeleton-accordion mb-2 rounded">
+        <div cPlaceholderAnimation="glow" class="skeleton-accordion mb-2 rounded">
           <div class="skeleton-accordion-header d-flex align-items-center gap-3 p-3 rounded">
-            <div class="skeleton-block skeleton-title-sm"></div>
-            <div class="skeleton-block skeleton-badge"></div>
+            <span cPlaceholder class="skeleton-title-sm"></span>
+            <span cPlaceholder class="skeleton-badge"></span>
           </div>
         </div>
       }
@@ -323,11 +323,11 @@
 
 <!-- One notice for every reason there is nothing (more) to show; the data source's own text is quoted -->
 <ng-template #noticeTpl let-notice>
-  <div class="empty-notice alert mt-2" role="status">
+  <c-alert color="info" class="empty-notice mt-2" role="status">
     <h2 class="h6 mb-1">{{ notice.titleKey | translate }}</h2>
     <p class="mb-0">{{ notice.bodyKey | translate }}</p>
     @if (notice.message) {
       <p class="mb-0 mt-2 small"><span class="text-body-secondary me-1">{{ 'feedSourceMessage' | translate }}</span> <q lang="nl">{{ notice.message }}</q></p>
     }
-  </div>
+  </c-alert>
 </ng-template>

@@ -148,25 +148,12 @@ html {
   }
 }
 
-// Skeleton styles moved from dashboard.component.scss for global use
-@keyframes shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position:  400px 0; }
-}
-%skeleton-base {
-  background: linear-gradient(90deg, var(--lr-skeleton-a) 25%, var(--lr-skeleton-b) 50%, var(--lr-skeleton-a) 75%);
-  background-size: 400px 100%;
-  animation: shimmer 1.4s infinite linear;
-  border-radius: 4px;
-}
-.skeleton-block {
-  @extend %skeleton-base;
-}
-.skeleton-title    { @extend %skeleton-base; width: 160px; height: 1.25rem; }
-.skeleton-title-sm { @extend %skeleton-base; width: 120px; height: 1rem; }
-.skeleton-badge    { @extend %skeleton-base; width: 56px;  height: 1.25rem; border-radius: 99px; }
-.skeleton-text     { @extend %skeleton-base; display: inline-block; }
+// Loading placeholders (CoreUI's cPlaceholder): only their size and colour are set here
+.skeleton-title    { display: inline-block; width: 160px; height: 1.25rem; vertical-align: middle; color: var(--lr-skeleton-b); }
+.skeleton-title-sm { width: 120px; height: 1rem; }
+.skeleton-badge    { width: 56px; height: 1.25rem; border-radius: 99px; }
 .skeleton-accordion {
+  color: var(--lr-skeleton-line);
   background: var(--lr-skeleton-panel);
   border: 1px solid var(--lr-skeleton-line);
 }
