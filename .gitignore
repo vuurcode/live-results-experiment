@@ -7,3 +7,5 @@ example.json
 /src/mockserver/data/*
 /session-export/
 /.env.prod
+/agents.local.md
+/CLAUDE.local.md
