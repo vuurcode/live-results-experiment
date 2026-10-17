@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, Input, afterEveryRender, inject } from '@angular/core';
-import { BadgeModule } from '@coreui/angular';
+import { BadgeModule, CardModule } from '@coreui/angular';
 import { CompetitorUpdate } from '../../results/data.models';
 import { TranslateService, TranslationKey } from '../../i18n/translate.service';
 import { parseSeconds, sameHundredths, formatDurationSeconds, truncateLapTime, splitFormattedTime, isRecentUpdate } from '../../results/time.util';
@@ -14,7 +14,7 @@ const DEFAULT_LANE_ORDER = ['white', 'red', 'yellow', 'blue'];
 @Component({
   selector: 'app-individual-heat-card',
   standalone: true,
-  imports: [BadgeModule],
+  imports: [BadgeModule, CardModule],
   templateUrl: './individual-heat-card.component.html',
   styleUrls: ['./individual-heat-card.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

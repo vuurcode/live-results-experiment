@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from '@angular/core';
-import { BadgeModule } from '@coreui/angular';
+import { BadgeModule, CardModule } from '@coreui/angular';
 import { CompetitorUpdate, ProcessedDistance } from '../../results/data.models';
 import { TranslateService } from '../../i18n/translate.service';
 import { TranslatePipe } from '../../i18n/translate.pipe';
@@ -10,7 +10,7 @@ import { massFinishGapFromLeader as massFinishGapFromLeaderUtil, pendingLapCount
 @Component({
   selector: 'app-mass-start-race-row',
   standalone: true,
-  imports: [BadgeModule, TranslatePipe],
+  imports: [BadgeModule, CardModule, TranslatePipe],
   templateUrl: './mass-start-race-row.component.html',
   styleUrls: ['./mass-start-race-row.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
