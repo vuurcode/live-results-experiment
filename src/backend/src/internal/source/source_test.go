@@ -40,6 +40,16 @@ func TestSetRoutesACompetitionToItsOwner(t *testing.T) {
 	}
 }
 
+func TestSetKnowsTheCompetitionsOfAnExtraUpstream(t *testing.T) {
+	s := NewSet(Upstream{DataSourceURL: "http://real/Competition"}, Upstream{DataSourceURL: "http://demo/Competition"})
+	s.SetOwners(map[string]int{"real-1": 0, "demo-1": 1})
+	for id, want := range map[string]bool{"real-1": false, "demo-1": true, "unlisted": false} {
+		if got := s.Extra(id); got != want {
+			t.Errorf("Extra(%s) = %v, want %v", id, got, want)
+		}
+	}
+}
+
 func TestSetPrepareLoadsOwnersOnce(t *testing.T) {
 	set := NewSet(Upstream{DataSourceURL: "http://real/Competition"}, Upstream{DataSourceURL: "http://demo/Competition"})
 	calls := 0

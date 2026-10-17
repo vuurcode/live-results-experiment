@@ -215,34 +215,6 @@ func TestANilStoreAndRecordingDoNothing(_ *testing.T) {
 	s.Finish("m1")
 }
 
-func TestFollowingWhileLiveRepliesComeIn(t *testing.T) {
-	s, now := clockedStore(t, 0)
-	if s.Following("m1") {
-		t.Fatal("following before anything came in")
-	}
-	r := s.Open("m1")
-	r.Add([]byte(`{"a":1}`))
-	if !s.Following("m1") {
-		t.Fatal("not following")
-	}
-	*now = now.Add(settle + time.Second)
-	if s.Following("m1") {
-		t.Fatal("following without live replies for an hour")
-	}
-	r.Add([]byte(`{"a":1}`)) // unchanged replies count too
-	if !s.Following("m1") {
-		t.Fatal("not following")
-	}
-	s.Finish("m1")
-	if s.Following("m1") {
-		t.Fatal("following a finished match")
-	}
-	var nilStore *Store
-	if nilStore.Following("m1") {
-		t.Fatal("nil store follows")
-	}
-}
-
 func TestCompetitorsAreAnonymized(t *testing.T) {
 	s, _ := clockedStore(t, 0)
 	r := s.Open("m1")

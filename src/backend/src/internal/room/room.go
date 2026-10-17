@@ -46,6 +46,7 @@ type Room struct {
 
 	Cancel   func()      // stops the polling loop
 	IdleTime *time.Timer // set while the room is empty and waiting to be closed; guarded by the hub
+	Keep     bool        // the hub keeps the room open without clients; guarded by the hub
 
 	mu      sync.Mutex
 	every   float64     // seconds between upstream fetches now; follows what the data says

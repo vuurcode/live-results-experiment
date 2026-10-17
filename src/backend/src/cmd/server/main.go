@@ -61,6 +61,7 @@ func main() {
 		today = cat.ServeToday
 		h.Ended = cat.Ended
 		go h.WatchEnded(ctx, time.Minute)
+		go h.WatchFollow(ctx, config.ListWatchInterval, cat.TodayIDs)
 		go cat.Watch(ctx, config.ListWatchInterval, h.ClientCount, func() {
 			h.Announce(wire.Wrap("competitions_changed", nil))
 		})

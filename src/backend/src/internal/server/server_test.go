@@ -473,7 +473,7 @@ func TestIdleRoomLeavesNothingRunning(t *testing.T) {
 	waitFor(t, "the goroutines to end", func() bool { return runtime.NumGoroutine() <= before+4 })
 }
 
-func TestRecordedRoomKeepsPollingWithoutClients(t *testing.T) {
+func TestFollowedCompetitionIsPolledAndRecordedWithoutClients(t *testing.T) {
 	store, err := recorder.New(t.TempDir(), 0)
 	if err != nil {
 		t.Fatal(err)
@@ -482,27 +482,30 @@ func TestRecordedRoomKeepsPollingWithoutClients(t *testing.T) {
 		c.DataSourceIntervals = config.Intervals{NotStarted: 0.02, MassStart: 0.02, Distance: 0.02}
 	})
 	tb.m.Recorder = store
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 
-	conn, _, err := tb.dial(ctx, t, "?competitionId=A", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	readUntilCompetitor(ctx, t, conn)
-	_ = conn.Close(websocket.StatusNormalClosure, "")
-
+	tb.m.Follow([]string{"A"})
 	time.Sleep(200 * time.Millisecond) // well past the idle grace
 	if tb.m.RoomCount() != 1 {
-		t.Fatal("the room of a recorded competition was closed for having no clients")
+		t.Fatal("the room of a followed competition was closed for having no clients")
 	}
 	hits := tb.hitCount("A")
 	time.Sleep(100 * time.Millisecond)
 	if tb.hitCount("A") == hits {
-		t.Fatal("the recorded competition is no longer polled")
+		t.Fatal("the followed competition is no longer polled")
 	}
 	if infos, _ := store.List(); len(infos) != 1 || !strings.HasPrefix(infos[0].ID, "A_") || infos[0].Snapshots != 1 {
 		t.Fatalf("recordings: %+v", infos)
+	}
+
+	tb.m.Follow(nil)
+	waitFor(t, "the room that is no longer followed to close", func() bool { return tb.m.RoomCount() == 0 })
+}
+
+func TestFollowDoesNothingWithoutRecorder(t *testing.T) {
+	tb := newTestBackend(t, nil)
+	tb.m.Follow([]string{"A"})
+	if tb.m.RoomCount() != 0 {
+		t.Fatal("a competition is followed while nothing is recorded")
 	}
 }
 

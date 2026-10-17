@@ -84,7 +84,6 @@ type Recording struct {
 	last    []byte // the latest snapshot, to leave out replies that did not change
 	skip    bool   // the day is not recorded: it has an archive already, or was deleted
 	closed  atomic.Bool
-	seen    atomic.Int64 // when the last reply came in (unix nanoseconds), whether or not it was stored
 }
 
 // Open returns the recording of a match, which carries on across restarts and days. It returns nil when recording is
@@ -127,7 +126,6 @@ func (r *Recording) Add(body []byte) {
 	if r.closed.Load() {
 		return
 	}
-	r.seen.Store(r.store.now().UnixNano())
 	if day := r.store.now().UTC().Format(time.DateOnly); !r.started || day != r.day {
 		r.started = false
 		r.begin(day)
@@ -421,18 +419,6 @@ func (s *Store) Sweep() {
 func (s *Store) idle(name string) bool {
 	i, err := s.Info(name)
 	return err == nil && i.State == "recording" && s.now().Sub(i.Modified) > settle
-}
-
-// Following reports whether a live reply of id came in within the settle time, which is what makes a competition
-// worth following without clients. It does not wait for a disk write.
-func (s *Store) Following(id string) bool {
-	if s == nil {
-		return false
-	}
-	s.mu.Lock()
-	r := s.active[id]
-	s.mu.Unlock()
-	return r != nil && !r.closed.Load() && s.now().Sub(time.Unix(0, r.seen.Load())) < settle
 }
 
 // recordings returns the recordings that are open, so that they can be worked on without holding the store's lock.

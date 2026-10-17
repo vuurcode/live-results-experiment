@@ -80,3 +80,10 @@ func (s *Set) FeedURL(id string) (string, error) {
 	s.mu.RUnlock()
 	return s.upstreams[i].FeedURL(id)
 }
+
+// Extra reports whether id is listed by an extra upstream (such as the demo mockserver) and not by the primary one.
+func (s *Set) Extra(id string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.owner[id] > 0
+}

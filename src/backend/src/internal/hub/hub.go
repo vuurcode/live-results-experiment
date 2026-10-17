@@ -41,9 +41,8 @@ type Hub struct {
 	// Ended says whether a competition is over for good; nil means no competition ever is. Set it before the hub is used.
 	Ended func(id string) bool
 
-	// Recorder keeps what the followed competitions reply; nil means nothing is recorded. With it, a competition that
-	// has been recording recently is followed until it is over, also when nobody is connected, so that the recording
-	// is complete. Set it before the hub is used.
+	// Recorder keeps what the followed competitions reply; nil means nothing is recorded. With it, Follow keeps the
+	// competitions of today open, so that every recording is complete. Set it before the hub is used.
 	Recorder *recorder.Store
 
 	// Now is the clock the connection allowance is counted by.
@@ -89,24 +88,9 @@ func (m *Hub) Join(id string, from *room.Resume) (*room.Room, *room.Client, erro
 	if m.clientTotalLocked() >= m.cfg.MaxClients {
 		return nil, nil, ErrServerFull
 	}
-	r, ok := m.rooms[id]
-	if !ok {
-		if len(m.rooms) >= m.cfg.MaxCompetitions {
-			return nil, nil, ErrTooManyRooms
-		}
-		upstream, err := m.set.FeedURL(id)
-		if err != nil {
-			return nil, nil, err
-		}
-		ctx, cancel := context.WithCancel(m.ctx)
-		r = room.New(id, upstream, m.cfg.DataSourceIntervals, cancel)
-		m.rooms[id] = r
-		f := &fetch.Fetcher{URL: upstream, Sink: r, UA: m.ua, Client: m.client, Interval: r.Interval, Log: r.Log}
-		if rec := m.Recorder.Open(id); rec != nil {
-			f.Record = rec.Add
-		}
-		go f.Run(ctx)
-		slog.Info("Competition opened", "competition", id, "open", len(m.rooms))
+	r, err := m.openLocked(id)
+	if err != nil {
+		return nil, nil, err
 	}
 	if r.ClientCount() >= m.cfg.MaxClientsPerRoom {
 		return nil, nil, ErrRoomFull
@@ -117,6 +101,84 @@ func (m *Hub) Join(id string, from *room.Resume) (*room.Room, *room.Client, erro
 	}
 	m.countConnectionLocked()
 	return r, r.Register(from), nil
+}
+
+// openLocked returns the room for id, creating it and its polling loop when needed.
+func (m *Hub) openLocked(id string) (*room.Room, error) {
+	if r, ok := m.rooms[id]; ok {
+		return r, nil
+	}
+	if len(m.rooms) >= m.cfg.MaxCompetitions {
+		return nil, ErrTooManyRooms
+	}
+	upstream, err := m.set.FeedURL(id)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithCancel(m.ctx)
+	r := room.New(id, upstream, m.cfg.DataSourceIntervals, cancel)
+	m.rooms[id] = r
+	f := &fetch.Fetcher{URL: upstream, Sink: r, UA: m.ua, Client: m.client, Interval: r.Interval, Log: r.Log}
+	if !m.set.Extra(id) { // the competitions of an extra upstream are generated, so there is nothing to keep
+		if rec := m.Recorder.Open(id); rec != nil {
+			f.Record = rec.Add
+		}
+	}
+	go f.Run(ctx)
+	slog.Info("Competition opened", "competition", id, "open", len(m.rooms))
+	return r, nil
+}
+
+// Follow opens a room for each of ids and keeps it open, with or without clients, until a later call leaves its id
+// out: the recording of a competition is complete whether or not anybody watches it. Rooms of extra upstreams, of
+// competitions that are over and beyond the room limit are skipped. Without a Recorder it does nothing.
+func (m *Hub) Follow(ids []string) {
+	if m.Recorder == nil {
+		return
+	}
+	wanted := map[string]bool{}
+	for _, id := range ids {
+		if m.set.Extra(id) || m.Ended != nil && m.Ended(id) {
+			continue
+		}
+		wanted[id] = true
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for id := range wanted {
+		r, err := m.openLocked(id)
+		if err != nil {
+			slog.Warn("Competition not followed", "competition", id, "err", err)
+			continue
+		}
+		r.Keep = true
+	}
+	for id, r := range m.rooms {
+		if r.Keep && !wanted[id] {
+			r.Keep = false
+			if r.ClientCount() == 0 {
+				m.armIdleLocked(r)
+			}
+		}
+	}
+}
+
+// WatchFollow follows the competitions that list returns, now and every `every`, until ctx ends.
+func (m *Hub) WatchFollow(ctx context.Context, every time.Duration, list func(context.Context) ([]string, error)) {
+	t := time.NewTicker(every)
+	defer t.Stop()
+	for {
+		if ids, err := list(ctx); err != nil {
+			slog.Warn("Listing the competitions to follow failed", "err", err)
+		} else {
+			m.Follow(ids)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+	}
 }
 
 // allowanceLeftLocked reports whether the rolling allowance of connections has room for one more. It keeps a
@@ -195,7 +257,7 @@ func (m *Hub) armIdleLocked(r *room.Room) {
 		if m.rooms[r.ID] != r || r.ClientCount() > 0 {
 			return
 		}
-		if m.Recorder.Following(r.ID) {
+		if r.Keep {
 			m.armIdleLocked(r)
 			return
 		}

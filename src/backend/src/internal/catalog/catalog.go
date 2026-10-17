@@ -431,6 +431,19 @@ func (c *Catalog) Today(ctx context.Context) ([]*competition, error) {
 	return out, nil
 }
 
+// TodayIDs lists the ids of the competitions of today, see Today.
+func (c *Catalog) TodayIDs(ctx context.Context) ([]string, error) {
+	list, err := c.Today(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(list))
+	for _, m := range list {
+		ids = append(ids, m.ID)
+	}
+	return ids, nil
+}
+
 // isLive asks the data source whether the competition is live: it answers and does not say otherwise. A failed
 // request counts as not live. The answer is reused for liveTTL, and callers that arrive while it is being asked share
 // that one request, so the data source sees one request per competition however many callers there are.
