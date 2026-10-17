@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -507,5 +508,21 @@ func TestGzipIsAskedForAndRead(t *testing.T) {
 	}
 	if asked.Load() != "gzip" || len(out) != 1 || out[0] != "a" {
 		t.Fatalf("Accept-Encoding %v, decoded %v", asked.Load(), out)
+	}
+}
+
+func TestListedBeforeOrdersByLiveThenStartThenName(t *testing.T) {
+	at := func(h int) time.Time { return time.Date(2026, 10, 24, h, 0, 0, 0, time.UTC) }
+	item := func(name string, live bool, h int) listed {
+		return listed{competition: &competition{Name: name, from: at(h)}, Live: live}
+	}
+	in := []listed{item("b", false, 9), item("late", true, 12), item("Z", false, 8), item("a", false, 8), item("early", true, 10)}
+	sort.Slice(in, func(i, j int) bool { return listedBefore(in[i], in[j]) })
+	var got []string
+	for _, m := range in {
+		got = append(got, m.Name)
+	}
+	if want := "early late a Z b"; strings.Join(got, " ") != want {
+		t.Fatalf("order = %v, want %s", got, want)
 	}
 }

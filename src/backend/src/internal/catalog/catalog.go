@@ -507,7 +507,18 @@ type listed struct {
 	Live bool `json:"live"`
 }
 
-// ServeToday answers with the competitions of today, each saying whether it is live.
+// listedBefore orders the list: live competitions first, then by start, then by name.
+func listedBefore(a, b listed) bool {
+	if a.Live != b.Live {
+		return a.Live
+	}
+	if !a.from.Equal(b.from) {
+		return a.from.Before(b.from)
+	}
+	return strings.ToLower(a.Name) < strings.ToLower(b.Name)
+}
+
+// ServeToday answers with the competitions of today, each saying whether it is live, live ones first.
 func (c *Catalog) ServeToday(w http.ResponseWriter, r *http.Request) {
 	list, err := c.Today(r.Context())
 	if err != nil {
@@ -526,6 +537,7 @@ func (c *Catalog) ServeToday(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 	wg.Wait()
+	sort.Slice(out, func(i, j int) bool { return listedBefore(out[i], out[j]) })
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "public, max-age=30")
 	_ = json.NewEncoder(w).Encode(out)
