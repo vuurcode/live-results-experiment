@@ -32,9 +32,6 @@ export interface Translations {
   feedNotLiveTitle: string;
   feedNotLiveBody: string;
   feedSourceMessage: string;
-  disclaimer: string;
-  disclaimerLabel: string;
-  disclaimerOwnership: string;
   feedUnavailableTitle: string;
   feedUnavailableBody: string;
   feedEmptyTitle: string;

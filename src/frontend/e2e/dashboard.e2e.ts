@@ -44,16 +44,6 @@ test.describe('competition selection', () => {
     expect(Math.abs(cog.height - select.height)).toBeLessThanOrEqual(1);
   });
 
-  test('the unofficial results notice shows only while a match with results is shown', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('.disclaimer-bar')).toHaveCount(0);
-    await page.goto('/?competitionId=e2e-notlive');
-    await expect(page.getByRole('status').filter({ hasText: 'not live yet' })).toBeVisible();
-    await expect(page.locator('.disclaimer-bar')).toHaveCount(0);
-    await page.goto('/?competitionId=e2e-individual');
-    await expect(page.locator('.disclaimer-bar')).toBeVisible();
-  });
-
   test('says so when there are no competitions to pick from', async ({ page }) => {
     await page.route('**/api/competitions/today', (route) => route.fulfill({ json: [] }));
     await page.goto('/');

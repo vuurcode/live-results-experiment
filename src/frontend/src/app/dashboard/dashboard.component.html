@@ -1,9 +1,4 @@
 <div class="d-flex flex-column min-vh-100">
-  <!-- ===== DISCLAIMER: only once results of a match in progress are shown ===== -->
-  @let feedState = dataService.feed$ | async;
-  @if ((sortedDistances$ | async)?.length && feedState?.state !== 'not_live') {
-    <section class="disclaimer-bar" [attr.aria-label]="'disclaimerLabel' | translate"><p class="mb-0">{{ 'disclaimer' | translate }} {{ 'disclaimerOwnership' | translate }}</p></section>
-  }
   <!-- ===== TOP BAR ===== -->
   <header class="topbar text-white px-2 px-md-4 py-2 d-flex flex-wrap align-items-center gap-2 gap-md-3">
     <img class="topbar-logo" src="icon.png" alt="" [attr.title]="'pageTitle' | translate" width="32" height="32" />

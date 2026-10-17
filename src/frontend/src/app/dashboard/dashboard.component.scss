@@ -514,16 +514,6 @@
 }
 @media (prefers-reduced-motion: reduce) { .setting-collapse, .setting-collapse.open { transition: none; } }
 
-// Unofficial-results notice above the top bar
-.disclaimer-bar {
-  background: var(--lr-notice-bg);
-  color: var(--lr-notice-fg); // 7.5:1
-  font-size: 0.8rem;
-  text-align: center;
-  padding: 0.25rem 1rem;
-  border-bottom: 1px solid var(--lr-notice-line);
-}
-
 // Notices shown instead of or above results: the shared callout colours keep them readable in both themes
 .empty-notice.alert {
   background: var(--lr-callout-bg);
