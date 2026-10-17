@@ -12,7 +12,7 @@ The limits and timings (`BACKEND_LIVE_RESULTS_INTERVAL_*`, `BACKEND_CATALOG_TTL_
 | `BACKEND_LIVE_RESULTS_INTERVAL_DISTANCE` | `1` | The same while any other distance is live |
 | `BACKEND_VENUE_COUNTRY_CODE` | `NED` | Only venues in this country are listed |
 | `BACKEND_VENUE_DISCIPLINE` | `SpeedSkating.LongTrack` | Only venues and competitions of this discipline are listed |
-| `BACKEND_CATALOG_TTL_SECONDS` | `900` | Cache time of the competitions list (capped at one hour; venues are refetched at most once a year). Rooms of competitions that ended more than a day ago are closed within a minute |
+| `BACKEND_CATALOG_TTL_SECONDS` | `300` | Cache time of the competitions list (capped at one hour; venues are refetched at most once a year). Rooms of competitions that ended more than a day ago are closed within a minute |
 | `BACKEND_RECORDINGS_DIR` | empty (the image sets `/data/recordings`) | Folder where the replies of the followed competitions are recorded, only while they are live. While it is set, the backend follows every competition of today by itself, also when nobody is connected. Empty: nothing is recorded |
 | `BACKEND_RECORDINGS_RETENTION_DAYS` | `30` (baked) | Recordings are removed this many days after their last snapshot |
 | `BACKEND_RECORDINGS_API_KEY` | none | Bearer token for the recordings API below. Without it the API is off. Generate one with `openssl rand -hex 32` and set it as a secret |
