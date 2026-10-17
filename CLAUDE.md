@@ -3,6 +3,7 @@
 - One short subject line per commit (imperative, under ~70 characters). No body, no bullet lists.
 - No Co-Authored-By or "Generated with" attribution lines in commits or PR descriptions.
 - Don't name protected paths (container-data, mockserver data, .env) in message text; the deny rules in `.claude/settings.json` match command text and will block the commit.
+- Pushes to main publish the image but only deploy when the newest commit's subject contains `[deploy]` (or the workflow is run by hand). Add it only when the user asks for a deploy.
 - Never mention the model name or version (e.g. in README, docs, commits or PRs).
 
 # Testing and committing

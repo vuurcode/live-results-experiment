@@ -1,13 +1,16 @@
 name: Publish and deploy
 
-# Pushes the production image (frontend and backend in one) to the GitHub Container Registry once CI has passed on main,
-# then rolls the existing DigitalOcean app out again, which pulls that image. The app, its settings and its image are
+# Pushes the production image (frontend and backend in one) to the GitHub Container Registry once CI has passed on main.
+# Deploying rolls the existing DigitalOcean app out again, which pulls the latest image. It happens only when asked for,
+# so it never interrupts live recordings by itself: by a manual run of this workflow, or when the newest commit of the
+# push has [deploy] in its message. The app, its settings and its image are
 # configured on DigitalOcean; the secrets DIGITALOCEAN_ACCESS_TOKEN and DIGITALOCEAN_APP_NAME name the account access and the app.
 on:
   workflow_run:
     workflows: [CI]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: publish
@@ -15,7 +18,7 @@ concurrency:
 
 jobs:
   publish:
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,6 +54,10 @@ jobs:
 
   deploy:
     needs: publish
+    # publish is skipped on a manual run, which deploys the image that is already there
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch' ||
+      (needs.publish.result == 'success' && contains(github.event.workflow_run.head_commit.message, '[deploy]')))
     runs-on: ubuntu-latest
     permissions: {}
     concurrency:
