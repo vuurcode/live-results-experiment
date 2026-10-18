@@ -1,4 +1,27 @@
-@use '@coreui/coreui/scss/coreui';
+@use "@coreui/coreui/scss/banner";
+// Only the CoreUI parts the app uses; the rest of the stylesheet would be shipped unused.
+@forward "@coreui/coreui/scss/variables";
+@forward "@coreui/coreui/scss/variables-dark";
+@forward "@coreui/coreui/scss/functions";
+@forward "@coreui/coreui/scss/mixins";
+@forward "@coreui/coreui/scss/root";
+@forward "@coreui/coreui/scss/reboot";
+@forward "@coreui/coreui/scss/type";
+@forward "@coreui/coreui/scss/images";
+@forward "@coreui/coreui/scss/containers";
+@forward "@coreui/coreui/scss/grid";
+@forward "@coreui/coreui/scss/tables";
+@forward "@coreui/coreui/scss/forms";
+@forward "@coreui/coreui/scss/buttons";
+@forward "@coreui/coreui/scss/transitions";
+@forward "@coreui/coreui/scss/card";
+@forward "@coreui/coreui/scss/badge";
+@forward "@coreui/coreui/scss/alert";
+@forward "@coreui/coreui/scss/close";
+@forward "@coreui/coreui/scss/offcanvas";
+@forward "@coreui/coreui/scss/placeholders";
+@forward "@coreui/coreui/scss/helpers";
+@forward "@coreui/coreui/scss/utilities/api";
 
 // Large screens: scale everything that is sized in rem (nearly all of the UI) with the viewport,
 // so a 4K display at 100% looks like 200% browser zoom (16px up to 1920px wide, 32px at 3840px).
