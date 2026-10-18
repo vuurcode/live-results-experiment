@@ -329,10 +329,11 @@ export class IndividualHeatCardComponent {
     return code === RaceCode.PersonalRecord ? this.ts.t('remarkShortPb') : code;
   }
 
-  /** CSS class for the remark badge (PR and the records → purple, else orange). */
+  /** CSS class for the remark badge (PR and the records → purple, the records also pulse, else orange). */
   protected remarkBadgeClass(remark: string): string {
     const v = remark.toUpperCase();
-    return (v === RaceCode.PersonalRecord || RECORD_CODES.has(v)) ? 'individual-badge-purple' : 'individual-badge-orange';
+    if (RECORD_CODES.has(v)) return 'individual-badge-purple individual-badge-record';
+    return v === RaceCode.PersonalRecord ? 'individual-badge-purple' : 'individual-badge-orange';
   }
 
   /** CSS class for the invalid_reason badge (DQ → red, else orange). */
