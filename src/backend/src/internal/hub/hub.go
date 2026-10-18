@@ -70,9 +70,6 @@ func New(ctx context.Context, cfg config.Config, set *source.Set, ua fetch.UserA
 // Join returns the room for id (creating it and its polling loop if needed)
 // with a client already registered in it; from says where a reconnecting client left off, or is nil.
 func (m *Hub) Join(id string, from *room.Resume) (*room.Room, *room.Client, error) {
-	if id == "" {
-		id = m.cfg.DefaultCompetitionID
-	}
 	if !catalog.ValidID(id) {
 		return nil, nil, ErrBadCompetitionID
 	}

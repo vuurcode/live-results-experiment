@@ -19,7 +19,6 @@ services:
     environment:
       # The mockserver serves every competition under data/ (one folder per competition, replay starts on
       # first request). Which competition the frontend shows: open http://localhost:4200/?competitionId=<folder>
-      # or set the default for pages without it: BACKEND_DEFAULT_COMPETITION_ID=2026-03-01 docker compose --profile dev up -d
       MOCKSERVER_DATA_SAMPLE_DIRECTORY: data
       MOCKSERVER_DATA_SAMPLE_INTERVAL: ${MOCKSERVER_DATA_SAMPLE_INTERVAL:-3}
       # seconds a finished replay is held before it restarts from the start; 0 never
@@ -30,7 +29,6 @@ services:
       BACKEND_LIVE_RESULTS_INTERVAL_NOT_STARTED: 1
       BACKEND_LIVE_RESULTS_INTERVAL_MASS_START: 1
       BACKEND_LIVE_RESULTS_INTERVAL_DISTANCE: 1
-      BACKEND_DEFAULT_COMPETITION_ID: ${BACKEND_DEFAULT_COMPETITION_ID:-dummy}
     volumes:
       - .:/app
       - /app/src/frontend/node_modules          # keep host node_modules out; installed in-container

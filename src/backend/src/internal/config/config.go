@@ -31,25 +31,24 @@ const DefaultPingInterval = 25 * time.Second
 
 // Config is everything the backend is configured with.
 type Config struct {
-	Upstreams            []source.Upstream // the primary upstream, then the extra one if BACKEND_EXTRA_BASE_URL is set
-	DataSourceIntervals  Intervals         // seconds between upstream fetches of a competition, by what it is doing
-	ListenAddr           string
-	RecordingsDir        string        // where the replies of the followed competitions are recorded; empty = nothing is recorded
-	RecordingsRetention  time.Duration // how long a recording is kept after its last snapshot
-	RecordingsAPIKey     string        // bearer token for the recordings API; empty = the API is off
-	DefaultCompetitionID string        // used when a client does not send competitionId; empty = required
-	MaxCompetitions      int           // distinct competitions followed at once
-	MaxClientsPerRoom    int           // clients following one competition at once
-	MaxClients           int           // clients following all competitions together
-	MaxClients30Days     int           // client connections accepted in any 30 days (see the hub's allowance check)
-	MaxClientsPerIP      int           // connections one client address may hold at once
-	ConnectsPerMinute    float64       // connection attempts per minute one client address may average
-	ConnectBurst         int           // connection attempts one client address may make back to back
-	ClientIPHeader       string        // request header naming the client address behind a proxy; empty = the connection's address
-	CORSAllowedOrigins   []string      // origins whose pages may call the HTTP API from a browser; "*" = all, empty = none
-	WebSocketOrigins     []string      // origins whose pages may open the websocket (the host of the request always may); "*" or empty = all
-	IdleGrace            time.Duration // how long an empty competition keeps polling before it is closed
-	PingInterval         time.Duration // how often idle websocket clients are pinged, so proxies do not close a quiet connection
+	Upstreams           []source.Upstream // the primary upstream, then the extra one if BACKEND_EXTRA_BASE_URL is set
+	DataSourceIntervals Intervals         // seconds between upstream fetches of a competition, by what it is doing
+	ListenAddr          string
+	RecordingsDir       string        // where the replies of the followed competitions are recorded; empty = nothing is recorded
+	RecordingsRetention time.Duration // how long a recording is kept after its last snapshot
+	RecordingsAPIKey    string        // bearer token for the recordings API; empty = the API is off
+	MaxCompetitions     int           // distinct competitions followed at once
+	MaxClientsPerRoom   int           // clients following one competition at once
+	MaxClients          int           // clients following all competitions together
+	MaxClients30Days    int           // client connections accepted in any 30 days (see the hub's allowance check)
+	MaxClientsPerIP     int           // connections one client address may hold at once
+	ConnectsPerMinute   float64       // connection attempts per minute one client address may average
+	ConnectBurst        int           // connection attempts one client address may make back to back
+	ClientIPHeader      string        // request header naming the client address behind a proxy; empty = the connection's address
+	CORSAllowedOrigins  []string      // origins whose pages may call the HTTP API from a browser; "*" = all, empty = none
+	WebSocketOrigins    []string      // origins whose pages may open the websocket (the host of the request always may); "*" or empty = all
+	IdleGrace           time.Duration // how long an empty competition keeps polling before it is closed
+	PingInterval        time.Duration // how often idle websocket clients are pinged, so proxies do not close a quiet connection
 
 	CatalogTTL      time.Duration // how long the competitions list is cached; venues are refetched at most once a year
 	DataRetention   time.Duration // how long after its start a competition's data is served; 0 = until the day after it ends
@@ -92,19 +91,18 @@ func Load() Config {
 		RecordingsAPIKey:    os.Getenv("BACKEND_RECORDINGS_API_KEY"),
 		RecordingsRetention: time.Duration(number("BACKEND_RECORDINGS_RETENTION_DAYS", positive) * float64(24*time.Hour)),
 
-		DefaultCompetitionID: os.Getenv("BACKEND_DEFAULT_COMPETITION_ID"),
-		MaxCompetitions:      int(number("BACKEND_MAX_COMPETITIONS", positive)),
-		MaxClientsPerRoom:    int(number("BACKEND_MAX_CLIENTS_PER_ROOM", positive)),
-		MaxClients:           int(number("BACKEND_MAX_CLIENTS", positive)),
-		MaxClients30Days:     int(number("BACKEND_MAX_CLIENTS_30_DAYS", positive)),
-		MaxClientsPerIP:      int(number("BACKEND_MAX_CLIENTS_PER_IP", positive)),
-		ConnectsPerMinute:    number("BACKEND_CONNECTS_PER_MINUTE", positive),
-		ConnectBurst:         int(number("BACKEND_CONNECT_BURST", positive)),
-		ClientIPHeader:       os.Getenv("BACKEND_CLIENT_IP_HEADER"),
-		CORSAllowedOrigins:   splitList(os.Getenv("BACKEND_CORS_ALLOWED_ORIGINS")),
-		WebSocketOrigins:     splitList(os.Getenv("BACKEND_WEBSOCKET_ALLOWED_ORIGINS")),
-		IdleGrace:            time.Duration(number("BACKEND_IDLE_GRACE_SECONDS", nonNegative) * float64(time.Second)),
-		PingInterval:         DefaultPingInterval,
+		MaxCompetitions:    int(number("BACKEND_MAX_COMPETITIONS", positive)),
+		MaxClientsPerRoom:  int(number("BACKEND_MAX_CLIENTS_PER_ROOM", positive)),
+		MaxClients:         int(number("BACKEND_MAX_CLIENTS", positive)),
+		MaxClients30Days:   int(number("BACKEND_MAX_CLIENTS_30_DAYS", positive)),
+		MaxClientsPerIP:    int(number("BACKEND_MAX_CLIENTS_PER_IP", positive)),
+		ConnectsPerMinute:  number("BACKEND_CONNECTS_PER_MINUTE", positive),
+		ConnectBurst:       int(number("BACKEND_CONNECT_BURST", positive)),
+		ClientIPHeader:     os.Getenv("BACKEND_CLIENT_IP_HEADER"),
+		CORSAllowedOrigins: splitList(os.Getenv("BACKEND_CORS_ALLOWED_ORIGINS")),
+		WebSocketOrigins:   splitList(os.Getenv("BACKEND_WEBSOCKET_ALLOWED_ORIGINS")),
+		IdleGrace:          time.Duration(number("BACKEND_IDLE_GRACE_SECONDS", nonNegative) * float64(time.Second)),
+		PingInterval:       DefaultPingInterval,
 
 		CatalogTTL:      time.Duration(number("BACKEND_CATALOG_TTL_SECONDS", positive) * float64(time.Second)),
 		DataRetention:   time.Duration(number("BACKEND_DATA_RETENTION_HOURS", nonNegative) * float64(time.Hour)),

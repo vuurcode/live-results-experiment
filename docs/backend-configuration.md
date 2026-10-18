@@ -17,7 +17,6 @@ The limits and timings (`BACKEND_LIVE_RESULTS_INTERVAL_*`, `BACKEND_CATALOG_TTL_
 | `BACKEND_RECORDINGS_RETENTION_DAYS` | `30` (baked) | Recordings are removed this many days after their last snapshot |
 | `BACKEND_RECORDINGS_API_KEY` | none | Bearer token for the recordings API below. Without it the API is off. Generate one with `openssl rand -hex 32` and set it as a secret |
 | `BACKEND_USER_AGENT` | mirrors the viewer's browser | User-Agent header sent on every request to the data source and catalog. When unset, the most recent inbound User-Agent is mirrored (some sources block Go's default one) |
-| `BACKEND_DEFAULT_COMPETITION_ID` | none | Competition followed when the page names none |
 | `BACKEND_MAX_COMPETITIONS` | `25` | Competitions the backend follows at the same time |
 | `BACKEND_MAX_CLIENTS` | `2000` | Viewers allowed at once over all competitions together; more are refused with 503. Sized for the memory and bandwidth of a small instance |
 | `BACKEND_MAX_CLIENTS_30_DAYS` | `50000` | Viewer connections accepted in any 30 days (a rolling window kept in memory, emptied by a restart); further ones are refused with 503. Sized for the outbound bandwidth of the hosting plan |

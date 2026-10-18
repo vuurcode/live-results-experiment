@@ -296,20 +296,6 @@ func TestRejectedCompetitionIDs(t *testing.T) {
 	}
 }
 
-func TestDefaultCompetitionID(t *testing.T) {
-	tb := newTestBackend(t, func(c *config.Config) { c.DefaultCompetitionID = "dflt" })
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	conn, _, err := tb.dial(ctx, t, "", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.CloseNow()
-	if _, name := readUntilCompetitor(ctx, t, conn); name != "Event dflt" {
-		t.Errorf("got %q", name)
-	}
-}
-
 // readFeedStatus reads messages until a feed_status arrives and returns it.
 func readFeedStatus(ctx context.Context, t *testing.T, conn *websocket.Conn) FeedStatus {
 	t.Helper()
