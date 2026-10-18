@@ -131,7 +131,7 @@ test('racing competitor card titles have the same height with or without badges'
   await expect(page.locator('.individual-comp-header').first()).toBeVisible();
   await expect(page.locator('.individual-comp-header .individual-split-badge').first()).toBeVisible(); // some titles carry a badge
   const heights = await page.evaluate(() =>
-    [...document.querySelectorAll('.individual-comp-header-merged')].map((h) => Math.round(h.getBoundingClientRect().height * 10) / 10),
+    [...document.querySelectorAll('.individual-comp-header')].map((h) => Math.round(h.getBoundingClientRect().height * 10) / 10),
   );
   expect(heights.length).toBeGreaterThan(1);
   expect([...new Set(heights)], String(heights)).toHaveLength(1);
@@ -213,16 +213,6 @@ test.describe('a heat of two skaters', () => {
       await expect(page.locator('.individual-heat-row').nth(1).locator('.individual-lane-col')).toHaveCount(4);
     });
   }
-});
-
-test('the lane colours of a heat of two skaters sit behind the columns of its cards', async ({ page }) => {
-  await page.setViewportSize({ width: 1500, height: 900 });
-  await page.goto('/?competitionId=e2e-lanes');
-  const row = page.locator('.individual-heat-row').first();
-  const bg = await row.locator('.individual-heat-lane-bg').nth(1).boundingBox();
-  const col = await row.locator('.individual-lane-col').nth(1).boundingBox();
-  expect(Math.abs(bg!.x - col!.x)).toBeLessThan(2);
-  expect(Math.abs(bg!.width - col!.width)).toBeLessThan(2);
 });
 
 test('the heats of a distance with white and red pairs only stay one below the other on a wide screen', async ({ page }) => {

@@ -231,7 +231,6 @@ test.describe('snake around the newest lap', () => {
   const snake = (page: Page) => live(page).locator('.individual-compact-latest').evaluate((b) => getComputedStyle(b, '::after').animationName);
 
   test('is drawn when the lap arrives, and not again when the distance is unfolded', async ({ page, request }) => {
-    await page.addInitScript(() => localStorage.setItem('compactColors', 'true')); // the ring belongs to the coloured badges
     await restartReplay(request, 'e2e-multi');
     await page.setViewportSize({ width: 1400, height: 1000 });
     await page.goto('/?competitionId=e2e-multi');
@@ -288,7 +287,6 @@ test.describe('dark mode setting', () => {
 
 test.describe('animations setting', () => {
   test('is on by default; switched off, it persists and no snake is drawn when a lap arrives', async ({ page, request }) => {
-    await page.addInitScript(() => localStorage.setItem('compactColors', 'true'));
     await restartReplay(request, 'e2e-multi');
     await page.setViewportSize({ width: 1400, height: 1000 });
     await page.goto('/?competitionId=e2e-multi');

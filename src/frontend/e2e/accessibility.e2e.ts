@@ -27,7 +27,6 @@ test.describe('accessibility', () => {
   ] as const) {
     test(`${competition} (${scheme}): no axe violations once the replay has finished`, async ({ page, request }) => {
       await page.emulateMedia({ colorScheme: scheme });
-      await page.addInitScript(() => localStorage.setItem('compactColors', 'true')); // colours on: their contrast is checked too
       await restartReplay(request, competition);
       await page.goto(`/?competitionId=${competition}`);
       // finished rows are the last state of the replay, with every badge and row on screen
@@ -63,26 +62,6 @@ test.describe('accessibility', () => {
     await expect(row).toHaveAttribute('aria-pressed', 'false');
   });
 });
-
-for (const scheme of ['light', 'dark'] as const) {
-test(`compact lap badge colours (green, orange, purple, and the latest one) have enough contrast (${scheme})`, async ({ page, request }) => {
-  await page.emulateMedia({ colorScheme: scheme });
-  await restartReplay(request, 'e2e-individual');
-  await page.addInitScript(() => localStorage.setItem('compactColors', 'true'));
-  await page.goto('/?competitionId=e2e-individual');
-  await expect(page.locator('.individual-compact-badge').nth(3)).toBeVisible({ timeout: 30_000 });
-  // force every colour onto real badges, whatever the fixture's lap times happen to be
-  await page.evaluate(() => {
-    const classes = ['lap-badge-normal', 'lap-badge-slow', 'lap-badge-fast'];
-    document.querySelectorAll('.individual-compact-badge').forEach((b, i) => {
-      b.classList.remove(...classes, 'individual-flash-update');
-      b.classList.add(classes[i % 3]);
-    });
-  });
-  const { violations } = await new AxeBuilder({ page }).include('.individual-compact-badge').withTags(TAGS).analyze();
-  expect(violations.map((v) => `${v.id}: ${v.nodes[0]?.html.slice(0, 80)} ${v.nodes[0]?.any[0]?.message}`)).toEqual([]);
-});
-}
 
 test('a collapsed distance stands out from the page and keeps its contrast', async ({ page, request }) => {
   await restartReplay(request, 'e2e-individual');

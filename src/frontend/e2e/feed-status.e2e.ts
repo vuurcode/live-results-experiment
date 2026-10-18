@@ -7,7 +7,7 @@ test.describe('when there is nothing to show', () => {
     const notice = page.getByRole('status').filter({ hasText: 'not live yet' });
     await expect(notice).toBeVisible();
     await expect(notice).toContainText('Deze wedstrijd is op (nog) niet live.');
-    await expect(page.locator('.skeleton-accordion')).toHaveCount(0);
+    await expect(page.locator('.skeleton-view')).toHaveCount(0);
   });
 
   test('the message follows the browser language', async ({ browser }) => {
@@ -82,7 +82,7 @@ test.describe('when there is nothing to show', () => {
     await page.clock.install();
     await page.routeWebSocket(/\/ws/, () => undefined); // accepts the connection and never answers
     await page.goto('/?competitionId=e2e-individual');
-    await expect(page.locator('.skeleton-accordion').first()).toBeVisible();
+    await expect(page.locator('.skeleton-view').first()).toBeVisible();
     await page.clock.fastForward(11_000);
     await expect(page.getByRole('status').filter({ hasText: 'Still waiting for data' })).toBeVisible();
   });
