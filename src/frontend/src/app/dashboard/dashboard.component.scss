@@ -206,6 +206,7 @@
   font-size: 1rem; // as large as the competition picker
   font-weight: 600;
   min-height: 2.5rem;
+  align-self: flex-start; // stays level with the picker when the hint wraps below it
   padding: 0.2em 0.9em;
   white-space: nowrap;
   cursor: pointer;
