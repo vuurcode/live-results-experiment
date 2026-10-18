@@ -1,4 +1,4 @@
-<div class="heat-slider" [class.dragging]="grown" [class.pressed]="dragging" [class.following]="position === null" [class.glide]="glide" [class.zoomed]="zoomed" [class.zoom-clip]="zoomAmount > 0" [class.mini]="miniShown" (wheel)="onWheel($event)">
+<div class="heat-slider" [class.dragging]="grown" [class.pressed]="dragging" [class.following]="position === null" [class.glide]="glide" [class.intro-start]="intro === 'start'" [class.intro-go]="intro === 'go'" [class.zoomed]="zoomed" [class.zoom-clip]="zoomAmount > 0" [class.mini]="miniShown" (wheel)="onWheel($event)">
   @if (preview; as step) {
     <div class="heat-preview" role="presentation" [style.left.%]="previewFraction * 100" [style.transform]="'translateX(-' + previewFraction * 100 + '%)'">
       <div class="heat-preview-title">{{ step.label || step.distanceName }}</div>
@@ -7,7 +7,7 @@
       }
       <ul class="heat-preview-racers">
         @for (racer of step.racers; track $index) {
-          <li><span class="lane-dot" [style.background]="racer.lane"></span>{{ racer.name }}@for (badge of racer.badges; track badge.code) {<span class="preview-badge" [class]="'preview-badge-' + badge.kind">{{ badgeText(badge.code) }}</span>}</li>
+          <li><span class="lane-dot" [style.background]="racer.lane"></span>{{ racer.name }}@for (badge of racer.badges; track badge.code) {<span class="preview-badge" [class]="'preview-badge-' + badge.kind" [class.preview-badge-record]="isRecord(badge.code)">{{ badgeText(badge.code) }}</span>}</li>
         }
         @if (step.more) {
           <li class="text-body-secondary">{{ moreText(step) }}</li>
@@ -47,14 +47,14 @@
         }
       }
     @if (steps.length > 1 && inWindow(liveIndex)) {
-      <button type="button" class="live-pill" [class.is-live]="live" [attr.aria-pressed]="live" [style.--at]="fraction(liveIndex)" (click)="goLive()">{{ 'badgeLive' | translate }}</button>
+      <button type="button" class="live-pill" [class.is-live]="live" [attr.aria-pressed]="live" [style.--at]="fraction(liveIndex)" (click)="goLive()">{{ liveText }}</button>
     }
     @if (steps.length > 1 && !live) {
       <span class="you-line" aria-hidden="true" [style.--at]="fraction(value)"></span>
       <span class="you-pill" aria-hidden="true" [style.--at]="fraction(value)">{{ 'sliderYou' | translate }}</span>
     }
     @if (miniShown) {
-      <span class="minimap" aria-hidden="true">
+      <span class="minimap" [class.minimap-drag]="miniDragging" aria-hidden="true" (pointerdown)="miniDown($event)" (pointermove)="miniMove($event)" (pointerup)="miniUp()" (pointercancel)="miniUp()">
         @if (zoomed) {
           <span class="minimap-window" [style.left.%]="windowLeft * 100" [style.width.%]="(windowRight - windowLeft) * 100"></span>
         }
@@ -63,7 +63,7 @@
         }
         @let lean = miniLean;
         <span class="minimap-dot minimap-live" [style.left.%]="miniLive * 100"></span>
-        <span class="minimap-label minimap-label-live" [class]="lean.live" [style.left.%]="miniLive * 100">{{ 'badgeLive' | translate }}</span>
+        <span class="minimap-label minimap-label-live" [class]="lean.live" [style.left.%]="miniLive * 100">{{ liveText }}</span>
         <span class="minimap-text minimap-text-start">{{ miniStartText }}</span>
         <span class="minimap-text minimap-text-end">{{ 'sliderEnd' | translate }}</span>
         @if (!live) {

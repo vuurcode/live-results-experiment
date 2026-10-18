@@ -37,6 +37,7 @@ $live: #b02a37;
   color: #fff;
   &.preview-badge-purple { background: #6f42c1; }
   &.preview-badge-red { background: #c93434; }
+  &.preview-badge-record { background: linear-gradient(90deg, #c0262d, #8a5a00, #1a7f37, #0a58ca, #8e24aa, #c0262d); animation: recordRainbow 4s linear infinite, recordGlow 1.5s infinite; }
   &.preview-badge-orange { background: #fd7e14; color: #212529; }
 }
 .lane-dot {
@@ -70,7 +71,7 @@ $live: #b02a37;
   transition: top 0.25s;
   &.is-live { background: $live; color: #fff; }
 }
-.dragging .live-pill { top: calc((var(--thumb) + var(--bar)) / 2 + var(--grow) - var(--gap)); transition: top 0.25s; }
+@media (max-width: 767.98px) { .dragging .live-pill { top: calc((var(--thumb) + var(--bar)) / 2 + var(--grow) - var(--gap)); transition: top 0.25s; } }
 @media (prefers-reduced-motion: reduce) { .live-pill { animation: none; } }
 :host-context([data-animations='off']) .live-pill { animation: none; }
 
@@ -203,7 +204,15 @@ $live: #b02a37;
   height: 1.2rem;
   transition: height 0.25s, top 0.25s;
 }
-.dragging .mark-record { height: calc(0.1rem + var(--grow) - var(--gap)); }
+@media (max-width: 767.98px) { .dragging .mark-record { height: calc(0.1rem + var(--grow) - var(--gap)); } }
+@keyframes recordRainbow { to { filter: hue-rotate(360deg); } }
+@keyframes recordGlow {
+  0%   { box-shadow: 0 0 0 0   rgba(142, 36, 170, 0.7); }
+  70%  { box-shadow: 0 0 0 6px rgba(142, 36, 170, 0); }
+  100% { box-shadow: 0 0 0 0   rgba(142, 36, 170, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .preview-badge-record { animation: none; } }
+:host-context([data-animations='off']) .preview-badge-record { animation: none; }
 @keyframes markRainbow { to { filter: hue-rotate(360deg); } } // the colours fade into one another
 @media (prefers-reduced-motion: reduce) { .mark-record { animation: none; } }
 :host-context([data-animations='off']) .mark-record { animation: none; }
@@ -215,9 +224,11 @@ $live: #b02a37;
   animation: glowRed 1.5s infinite; // the pulse of the Live badge
   transition: height 0.25s, top 0.25s;
 }
-.dragging .mark-live {
-  top: -0.9rem;
-  height: calc(0.9rem + (var(--thumb) + var(--bar)) / 2 + var(--grow) - var(--gap));
+@media (max-width: 767.98px) {
+  .dragging .mark-live {
+    top: -0.9rem;
+    height: calc(0.9rem + (var(--thumb) + var(--bar)) / 2 + var(--grow) - var(--gap));
+  }
 }
 @keyframes glowRed {
   0%   { box-shadow: 0 0 0 0   rgba(176, 42, 55, 0.7); }
@@ -226,7 +237,7 @@ $live: #b02a37;
 }
 @media (prefers-reduced-motion: reduce) { .mark-live { animation: none; } }
 :host-context([data-animations='off']) .mark-live { animation: none; }
-.dragging .mark { z-index: 2; }
+@media (max-width: 767.98px) { .dragging .mark { z-index: 2; } }
 // A data update while the thumb is held moves the live line and dot without animation.
 .dragging .mark-live { transition: height 0.25s, top 0.25s; }
 .dragging .live-dot { transition: none; }
@@ -243,7 +254,7 @@ $live: #b02a37;
   left: round(down, calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--at)), 1px);
   top: -0.6rem; height: calc(1.6rem + var(--grow) - var(--gap));
 }
-.dragging .mark-tick { top: -0.6rem; height: calc(1.6rem + var(--grow) - var(--gap)); }
+@media (max-width: 767.98px) { .dragging .mark-tick { top: -0.6rem; height: calc(1.6rem + var(--grow) - var(--gap)); } }
 .mark-distance.mark-future { opacity: 1; background: rgba(0, 0, 0, 0.4); } // only the line fades, the text stays readable
 .mark-pb { background: #6f42c1; animation: none; }
 
@@ -318,6 +329,10 @@ $live: #b02a37;
 @media (prefers-reduced-motion: reduce) { .thumb-dot.at-live { animation: none; } .glide .thumb-dot { transition: none; } }
 :host-context([data-animations='off']) .thumb-dot { animation: none; transition: none; }
 
+// On page load the live markers begin at the start of the bar and slide to the live heat.
+.intro-start :is(.live-pill, .mark-live, .live-dot, .thumb-dot.at-live) { left: calc(var(--thumb) / 2); transition: none; }
+.intro-go :is(.live-pill, .mark-live, .live-dot, .thumb-dot.at-live) { transition: left 1.2s ease-in-out; }
+
 // Held on a narrow screen the bar shows a window of heats; what falls outside it is clipped at the ends of the track.
 .zoom-clip .track { clip-path: inset(-8rem -1.25rem -4rem -1.25rem); } // tall enough for the mini-map above the bar
 // The whole event under the zoomed bar, with the window, the distance boundaries, the live heat and the thumb on it.
@@ -331,11 +346,15 @@ $live: #b02a37;
   border-radius: 0.25rem;
   background: var(--cui-secondary-bg, #e9ecef);
   border: 1px solid var(--cui-border-color, #dee2e6);
-  pointer-events: none;
+  touch-action: none; // a drag on the mini-map moves the thumb instead of scrolling the page
+  &::before { content: ''; position: absolute; inset: -0.9rem 0; } // a taller area to grab than the thin bar
+  > * { pointer-events: none; }
 }
+.minimap-drag .minimap-dot { width: 1.1rem; height: 1.1rem; }
 .minimap-window { position: absolute; top: -1px; bottom: -1px; background: var(--cui-body-color, #000); opacity: 0.35; border-radius: 0.25rem; }
 .minimap-boundary { position: absolute; top: -0.2rem; bottom: -0.2rem; width: 1px; background: var(--cui-body-color, #000); opacity: 0.6; }
 .minimap-dot {
+  transition: width 0.15s, height 0.15s;
   position: absolute;
   top: 50%;
   width: 0.6rem;

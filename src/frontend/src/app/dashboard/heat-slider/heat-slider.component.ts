@@ -49,6 +49,9 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   @Input() position: number | null = null;
   /** Whether the live markers glide: the live heat advanced among the same heats, rather than heats coming or going. */
   protected glide = false;
+  /** On page load the live markers start at the beginning of the bar ('start') and then slide to the live heat ('go'). */
+  protected intro: 'start' | 'go' | null = null;
+  private introDone = false;
   private seenLive = 0;
   private seenCount = 0;
   @Output() positionChange = new EventEmitter<number | null>();
@@ -76,10 +79,24 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   }
 
   ngOnChanges(): void {
+    this.startIntro();
     if (this.liveIndex === this.seenLive && this.steps.length === this.seenCount) return; // another input changing must not cut a glide short
     this.glide = this.liveIndex > this.seenLive && this.steps.length === this.seenCount;
     this.seenLive = this.liveIndex;
     this.seenCount = this.steps.length;
+  }
+
+  private startIntro(): void {
+    if (this.introDone || this.steps.length < 2) return;
+    this.introDone = true;
+    const calm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (this.liveIndex === 0 || calm || document.documentElement.dataset['animations'] === 'off') return;
+    this.intro = 'start';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      this.intro = 'go';
+      this.cdr.markForCheck();
+      setTimeout(() => { this.intro = null; this.cdr.markForCheck(); }, 1400);
+    }));
   }
 
   /** The step under the pointer or being dragged to; null while the preview is hidden. */
@@ -323,6 +340,12 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     return this.steps[index]?.label.match(/\d+/g) ?? [];
   }
 
+  /** The text of the live marker: Live, with the number of the live heat, or both numbers of a quartet. */
+  protected get liveText(): string {
+    const numbers = this.heatNumbers(this.liveIndex);
+    return [this.ts.t('badgeLive'), numbers.map((n) => `#${n}`).join('/')].filter(Boolean).join(' ');
+  }
+
   /** The most numbers any heat has, which the distance names under the ticks make room for. */
   protected get numberLines(): number {
     return Math.max(1, ...this.steps.map((_, i) => this.heatNumbers(i).length));
@@ -390,6 +413,43 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   private anchorX = 0;
   private anchorValue = 0;
 
+  /** A finger is on the mini-map, moving the thumb over the whole event. */
+  protected miniDragging = false;
+
+  protected miniDown(event: PointerEvent): void {
+    if (this.steps.length < 2 || event.button > 0) return;
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    this.miniDragging = true;
+    if (this.lingerTimer !== null) clearTimeout(this.lingerTimer);
+    this.lingerTimer = null;
+    this.miniMove(event);
+  }
+
+  protected miniMove(event: PointerEvent): void {
+    if (!this.miniDragging) return;
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    if (rect.width === 0) return;
+    const value = Math.round(Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)) * this.last);
+    if (value === this.value) return;
+    this.wantsLive = value === this.liveIndex;
+    this.positionChange.emit(value);
+    this.cdr.markForCheck();
+  }
+
+  protected miniUp(): void {
+    if (!this.miniDragging) return;
+    this.miniDragging = false;
+    this.positionChange.emit(this.wantsLive ? null : this.value);
+    if (this.zoomHeld) {
+      this.lingerTimer = setTimeout(() => {
+        this.zoomHeld = false;
+        this.lingerTimer = null;
+        this.animateZoom();
+      }, ZOOM_LINGER_MS);
+    }
+    this.cdr.markForCheck();
+  }
+
   protected startDrag(event: PointerEvent): void {
     this.dragging = true;
     this.lastX = event.clientX;
@@ -455,10 +515,26 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
 
   private wheelSum = 0;
 
+  /** Wheeling zooms a narrow screen's bar like holding it does, and lets go of the zoom after the same linger. */
+  private lingerZoom(): void {
+    if (!this.zoomable || this.miniDragging) return;
+    if (this.lingerTimer !== null) clearTimeout(this.lingerTimer);
+    if (!this.zoomHeld) {
+      this.zoomHeld = true;
+      this.animateZoom();
+    }
+    this.lingerTimer = setTimeout(() => {
+      this.zoomHeld = false;
+      this.lingerTimer = null;
+      this.animateZoom();
+    }, ZOOM_LINGER_MS);
+  }
+
   /** Scrolling over the slider moves the thumb: down and right go to later heats. Small trackpad deltas add up to a step; one step per event, however far it scrolled. */
   protected onWheel(event: WheelEvent): void {
     if (this.steps.length < 2 || this.dragging) return;
     event.preventDefault();
+    this.lingerZoom();
     const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
     if (Math.sign(delta) !== Math.sign(this.wheelSum)) this.wheelSum = 0;
     this.wheelSum += delta * (event.deltaMode === 1 ? 16 : 1);
