@@ -1,4 +1,4 @@
-<div class="heat-slider" [class.dragging]="expanded || zoomed" [class.pressed]="dragging" [class.following]="position === null" [class.glide]="glide" [class.zoomed]="zoomed" [class.zoom-clip]="zoomAmount > 0" [class.mini]="miniShown" (wheel)="onWheel($event)">
+<div class="heat-slider" [class.dragging]="grown" [class.pressed]="dragging" [class.following]="position === null" [class.glide]="glide" [class.zoomed]="zoomed" [class.zoom-clip]="zoomAmount > 0" [class.mini]="miniShown" (wheel)="onWheel($event)">
   @if (preview; as step) {
     <div class="heat-preview" role="presentation" [style.left.%]="previewFraction * 100" [style.transform]="'translateX(-' + previewFraction * 100 + '%)'">
       <div class="heat-preview-title">{{ step.label || step.distanceName }}</div>
@@ -19,14 +19,11 @@
     <div class="track flex-grow-1" [style.--lines]="numberLines">
       <span class="bar" aria-hidden="true"></span>
       @for (index of ticks; track index) {
-        @if (inWindow(index)) {
+        @if (ticksShown && inWindow(index)) {
         <span class="mark mark-tick" [class.mark-future]="index > liveIndex" aria-hidden="true" [style.--at]="fraction(index)">@if (zoomed) {<span class="tick-number">@for (number of heatNumbers(index); track $index) {<span>{{ number }}</span>}</span>}</span>
         }
       }
       @let layout = textLayout;
-      @if (layout.current) {
-        <span class="current-distance" aria-hidden="true">{{ layout.current }}</span>
-      }
       @for (mark of distanceStarts; track mark.index) {
         @if (inWindow(mark.index) || inWindow(mark.index - 1)) {
         <span class="mark mark-distance" [class.mark-first]="mark.index === 0" [class.mark-future]="mark.index > liveIndex" aria-hidden="true" [style.--at]="boundaryFraction(mark.index)" [attr.title]="mark.name">@if (mark.text && layout.shown.has(mark.index)) {<span class="mark-text">{{ mark.text }}</span>}</span>

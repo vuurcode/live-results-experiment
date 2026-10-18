@@ -58,6 +58,9 @@ $live: #b02a37;
   border: 1px solid $live;
   border-radius: 1rem;
   padding: 0 0.5rem;
+  min-height: 24px; // WCAG 2.5.8 target size
+  display: inline-flex;
+  align-items: center;
   background: var(--cui-body-bg, #fff);
   color: var(--lr-live-text, #{$live});
   font-size: 0.7rem;
@@ -369,6 +372,11 @@ $live: #b02a37;
   top: calc((var(--thumb) + var(--grow)) / 2);
   height: calc((var(--bar) + var(--grow)) / 2 + 0.6rem);
 }
+.zoomed .mark.mark-distance { // taller than the heat lines: it reaches further above the bar, the bottom stays level
+  top: calc((var(--thumb) + var(--grow)) / 2 - 1rem);
+  height: calc((var(--bar) + var(--grow)) / 2 + 1.6rem);
+  width: 4px;
+}
 .zoomed .tick-number,
 .zoomed .mark-distance .mark-text { bottom: auto; top: 100%; margin-bottom: 0; margin-top: 0.1rem; }
 .zoomed .mark-distance .mark-text { margin-top: calc(0.2rem + var(--lines, 1) * 0.7rem); } // under the stacked heat numbers
@@ -379,21 +387,6 @@ $live: #b02a37;
 }
 .zoomed .you-line { top: -0.9rem; height: calc(0.9rem + (var(--thumb) + var(--grow)) / 2); }
 .zoomed .live-pill, .zoomed .you-pill { top: -2.2rem; }
-// The name of the distance the thumb is on, when there is no room for the names along the bar.
-.current-distance {
-  position: absolute;
-  top: -2.3rem; // above the long lines of the distances, with a gap
-  left: 50%;
-  transform: translateX(-50%);
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.7rem;
-  line-height: 1;
-  color: var(--cui-secondary-color, #6c757d);
-  pointer-events: none;
-}
 .mini .track { margin-top: 6.4rem; } // room for the mini-map above the bar
 .minimap-text {
   position: absolute;

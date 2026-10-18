@@ -15,7 +15,7 @@ const WHEEL_STEP = 40;
 /** How long the thumb is held before the bar grows. */
 const HOLD_MS = 250;
 /** How long the thumb is held before a narrow screen's bar zooms in. */
-const ZOOM_HOLD_MS = 1000;
+const ZOOM_HOLD_MS = 500;
 // The zoom stays this long after a release, so the thumb can be grabbed again to slide further.
 const ZOOM_LINGER_MS = 1500;
 /** The heats the bar shows while it is held on a narrow screen: a window around the thumb that scrolls as it is dragged. */
@@ -145,9 +145,19 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     this.zoomFrame = requestAnimationFrame(step);
   }
 
-  /** The mini-map of the whole event shows as soon as the bar grows on a narrow screen, ahead of the zoom, and while the zoom lingers. */
+  /** The mini-map of the whole event shows with the zoom of a narrow screen, until the zoom has lingered out. */
   protected get miniShown(): boolean {
-    return (this.expanded || this.zoomHeld) && (this.narrow?.matches ?? false) && this.last >= ZOOM_STEPS;
+    return this.zoomHeld && this.zoomable;
+  }
+
+  /** Whether the heat ticks are drawn: on a narrow screen the whole event is too dense for them, so they come with the zoom. */
+  protected get ticksShown(): boolean {
+    return !this.zoomable || this.zoomed || this.zoomAmount > 0;
+  }
+
+  /** The bar grows while held, except on a narrow screen with a zoom, where it goes straight to the zoom. */
+  protected get grown(): boolean {
+    return this.zoomable ? this.zoomed : this.expanded;
   }
 
   /** The first heat of the zoom window, which follows the thumb and stops at the ends of the event. */
@@ -225,31 +235,51 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     return this.steps
       .map((step, index) => ({ step, index }))
       .filter(({ step, index }) => index === 0 || step.distanceId !== this.steps[index - 1].distanceId)
-      .map(({ step, index }) => ({ index, name: step.distanceName, text: step.distanceMeters ? `${step.distanceMeters}m` : step.isMassStart ? this.ts.t('massStartSettings') : '' }));
+      .map(({ step, index }) => ({ index, name: step.distanceName, text: step.distanceMeters ? `${step.distanceMeters}m` : step.isMassStart ? this.ts.t('massStartSettings') : step.distanceName }));
   }
 
   /**
-   * The distance texts shown. When they all fit they all show; when some would run into the one before or into the end
-   * text, only the thumb's distance is named, in full, centred above the bar, and the end text goes. The lines always stay.
+   * The distance texts shown. When they all fit they all show; otherwise they are placed by priority, each only where it
+   * runs into no text already placed: the distance under the thumb first, then the next one to come, then the rest by
+   * their distance from the thumb, and the end text last. The lines always stay.
    */
-  protected get textLayout(): { shown: Set<number>; end: boolean; current: string | null } {
+  protected get textLayout(): { shown: Set<number>; end: boolean } {
     const width = this.trackWidth;
     const candidates = this.distanceStarts.filter(({ text, index }) => text && (this.inWindow(index) || this.inWindow(index - 1)));
-    const all = { shown: new Set(candidates.map(({ index }) => index)), end: true, current: null };
+    const all = { shown: new Set(candidates.map(({ index }) => index)), end: true };
     if (width === 0) return all;
     const size = (text: string) => text.length * TEXT_CHAR_PX;
-    let right = -Infinity;
-    const endLeft = this.inWindow(this.last) ? width - size(this.ts.t('sliderEnd')) - TEXT_GAP_PX : Infinity;
-    for (const { index, text } of candidates) {
+    const spans = (index: number, text: string): [number, number] => {
       const w = size(text);
-      const x = index === 0 ? 0 : THUMB_PX / 2 + (width - THUMB_PX) * this.fraction(index - 0.5);
-      const [left, end] = index === 0 ? [0, w] : [x - w / 2, x + w / 2];
-      if (left < right + TEXT_GAP_PX || end > endLeft) {
-        return { shown: new Set<number>(), end: false, current: this.steps[this.value]?.distanceName ?? null };
-      }
-      right = end;
+      const x = THUMB_PX / 2 + (width - THUMB_PX) * this.fraction(index - 0.5);
+      return index === 0 ? [0, w] : [x - w / 2, x + w / 2];
+    };
+    const endText = this.ts.t('sliderEnd');
+    const end: [number, number] = this.inWindow(this.last) ? [width - size(endText), width] : [Infinity, Infinity];
+    const placed: [number, number][] = [];
+    const fits = ([left, right]: [number, number]) => placed.every(([l, r]) => right + TEXT_GAP_PX <= l || left >= r + TEXT_GAP_PX);
+    const here = this.distanceIndexOf(this.value);
+    const rank = (index: number) => {
+      const own = this.distanceIndexOf(index);
+      return own === here ? -2 : own === here + 1 ? -1 : Math.abs(own - here);
+    };
+    const shown = new Set<number>();
+    for (const { index, text } of [...candidates].sort((a, b) => rank(a.index) - rank(b.index) || a.index - b.index)) {
+      const span = spans(index, text);
+      if (!fits(span) || (span[1] + TEXT_GAP_PX > end[0] && rank(index) > -1)) continue;
+      placed.push(span);
+      shown.add(index);
     }
-    return all;
+    const showEnd = fits(end);
+    return { shown, end: showEnd };
+  }
+
+  /** The position, among the distances, of the distance a step belongs to. */
+  private distanceIndexOf(step: number): number {
+    const starts = this.distanceStarts;
+    let own = 0;
+    starts.forEach(({ index }, i) => { if (index <= step) own = i; });
+    return own;
   }
 
   /** A line for each racer with a record, side by side on their step; the line of a step that has a long line too goes beside it. */
