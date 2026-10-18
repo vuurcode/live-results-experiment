@@ -14,6 +14,10 @@ html {
 :root {
   color-scheme: light;
   --lr-surface: #fff;
+  --lr-control-border: #868e96;  // 3.3:1 on white, the border of fields, switches and outline buttons
+  --lr-live-text: #b02a37;      // red text on the page surface
+  --lr-you-text: #0f6b4f;
+  --lr-link-text: #3a38b8;
   --lr-text: #212529;
   --lr-text-muted: #565e64;    // on the surface: 6.4:1
   --lr-text-small: #454c52;    // the small grey labels: 9:1
@@ -57,6 +61,9 @@ html {
   --lr-callout-bg: #cfe2ff;
   --lr-callout-fg: #052c65;    // 11.7:1
   --lr-callout-line: #9ec5fe;
+  --lr-warn-bg: #fff3cd;
+  --lr-warn-fg: #664d03;       // 8.5:1
+  --lr-warn-line: #ffe69c;
   --lr-popover-bg: #fff;
   --lr-popover-fg: #212529;
   --lr-popover-line: rgba(0, 0, 0, 0.15);
@@ -74,6 +81,10 @@ html {
 [data-coreui-theme='dark'] {
   color-scheme: dark;
   --lr-surface: var(--cui-body-bg);
+  --lr-control-border: #8a94a6;  // 4.9:1 on the dark surface
+  --lr-live-text: #ff8d97;
+  --lr-you-text: #5fd3a6;
+  --lr-link-text: #a5a4ff;
   --lr-text: #e9ecef;
   --lr-text-muted: #c3cad1;
   --lr-text-small: #dee2e6;
@@ -117,6 +128,9 @@ html {
   --lr-callout-bg: #052c65;
   --lr-callout-fg: #9ec5fe;
   --lr-callout-line: #084298;
+  --lr-warn-bg: #332701;
+  --lr-warn-fg: #ffda6a;
+  --lr-warn-line: #997404;
   --lr-popover-bg: #2c333d;
   --lr-popover-fg: #e9ecef;
   --lr-popover-line: rgba(255, 255, 255, 0.25);
@@ -174,4 +188,20 @@ html { overflow-anchor: none; }
   syntax: '<angle>';
   inherits: false;
   initial-value: 0deg;
+}
+
+// Fields, switches and outline buttons keep a 3:1 border against the page in both themes, and a field has the page's own background.
+.form-control,
+.form-select,
+.form-check-input,
+.btn-outline-secondary {
+  --cui-border-color: var(--lr-control-border);
+}
+.form-control,
+.form-select {
+  background-color: var(--cui-body-bg);
+}
+.form-control::placeholder {
+  color: var(--cui-secondary-color);
+  opacity: 1;
 }
