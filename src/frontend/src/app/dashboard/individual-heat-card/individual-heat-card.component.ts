@@ -30,6 +30,9 @@ export class IndividualHeatCardComponent {
   @Input() distanceId = '';
   @Input() distanceName = '';
   @Input() active = false;
+  /** The heading of a quartet, over the heats of both pairs: the first card shows it, and the second, which has none, leaves its heading out. A pair has its own label as heading. */
+  @Input() headingLabel: string | null | undefined;
+  @Input() headingActive = false;
   /** Always show thousandths; otherwise hundredths, with thousandths only where a PB needs them. */
   @Input() showThousandths = false;
 

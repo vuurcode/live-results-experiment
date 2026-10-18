@@ -2,12 +2,14 @@
      [attr.data-live]="active ? '' : null"
      [attr.data-heat-label]="label"
      [attr.data-distance-id]="distanceId">
-  <div class="individual-heat-label">
-    <span class="individual-heat-label-text">{{ label }}@if (distanceMeters) { · {{ distanceMeters }}m } ({{ distanceName }})</span>
-    @if (active) {
-      <c-badge color="danger" class="glowing-badge individual-heat-live">{{ ts.t('badgeLive') }}</c-badge>
-    }
-  </div>
+  @if (headingLabel !== null) {
+    <div class="individual-heat-label">
+      <span class="individual-heat-label-text">{{ headingLabel ?? label }}@if (distanceMeters) { · {{ distanceMeters }}m } ({{ distanceName }})</span>
+      @if (headingLabel === undefined ? active : headingActive) {
+        <c-badge color="danger" class="glowing-badge individual-heat-live">{{ ts.t('badgeLive') }}</c-badge>
+      }
+    </div>
+  }
   <div class="individual-competitors-row" [style.--lane-count]="laneCount">
     @for (race of races.slice(0, maxLanes); track $index) {
       <div class="individual-lane-col" [style.--lane-color]="laneColor(race, $index)" [style.--cells]="cells">

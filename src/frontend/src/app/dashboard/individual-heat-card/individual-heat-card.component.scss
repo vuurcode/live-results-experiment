@@ -44,7 +44,7 @@
   grid-template-rows: subgrid;
   grid-template-columns: minmax(0, 1fr); // long names wrap or cut off inside the column
   min-width: 0;
-  padding: 0.4rem 0.25rem 1rem;
+  padding: 0.4rem 0.25rem;
   // light theme: the lane colour tints a band across the whole row behind the card; the dark theme has the name badge only
   background: color-mix(in srgb, var(--lane-color, transparent) 5%, transparent);
   :host-context([data-coreui-theme='dark']) & { background: none; }

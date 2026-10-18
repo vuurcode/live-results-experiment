@@ -96,11 +96,13 @@
                 @let maxLanes = distanceMaxLaneCount(heatGroups);
                 <app-heat-peeks [prev]="neighbour(v, step, -1)" [next]="neighbour(v, step, 1)" [prevLive]="neighbour(v, step, -1) === v.steps[v.live]" [nextLive]="neighbour(v, step, 1) === v.steps[v.live]">
                 <div class="heat-rows">
-                  @for (heatIdx of step.heatIndexes; track heatIdx) {
+                  @for (heatIdx of step.heatIndexes; track heatIdx; let first = $first) {
                     @let displayGroup = heatGroups[heatIdx];
                     @if (displayGroup) {
                       <app-individual-heat-card
                         [label]="displayGroup.label"
+                        [headingLabel]="first ? step.label : null"
+                        [headingActive]="first && isActiveStep(distance.id, step, heatGroups)"
                         [distanceName]="distance.name"
                         [races]="displayGroup.races"
                         [maxLanes]="maxLanes"

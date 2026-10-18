@@ -336,6 +336,11 @@ export class DashboardComponent implements OnInit {
     return this.activeHeatKey?.distanceId === distanceId && this.activeHeatKey?.label === label;
   }
 
+  /** Whether any heat of a step, the two of a quartet, is the live one. */
+  protected isActiveStep(distanceId: string, step: HeatStep, groups: { label: string }[]): boolean {
+    return step.heatIndexes.some((i) => !!groups[i] && this.isActiveHeatRow(distanceId, groups[i].label));
+  }
+
   protected badgeTextClass(lane: string): string {
     const light = ['white', 'yellow', 'orange', 'pink', 'lime'];
     return light.includes((lane || '').toLowerCase()) ? 'text-dark' : 'text-white';
