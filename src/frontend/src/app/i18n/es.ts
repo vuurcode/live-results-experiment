@@ -67,7 +67,7 @@ export const es: Translations = {
   tooltipTotalTime: 'Tiempo total',
   sliderLabel: 'Control de series: al final a la derecha para directo',
   sliderMore: '+{n} más',
-  sliderYou: 'estás aquí',
+  sliderYou: 'Estás aquí',
   sliderEnd: 'Fin',
   peekStart: 'Inicio de la distancia',
   peekEnd: 'Fin de la distancia',

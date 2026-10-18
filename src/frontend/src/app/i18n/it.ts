@@ -67,7 +67,7 @@ export const it: Translations = {
   tooltipTotalTime: 'Tempo totale',
   sliderLabel: 'Cursore delle batterie: tutto a destra per il live',
   sliderMore: '+{n} altri',
-  sliderYou: 'sei qui',
+  sliderYou: 'Sei qui',
   sliderEnd: 'Fine',
   peekStart: 'Inizio della distanza',
   peekEnd: 'Fine della distanza',

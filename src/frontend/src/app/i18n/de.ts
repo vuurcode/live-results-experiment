@@ -67,7 +67,7 @@ export const de: Translations = {
   tooltipTotalTime: 'Gesamtzeit',
   sliderLabel: 'Lauf-Schieberegler: ganz nach rechts für live',
   sliderMore: '+{n} weitere',
-  sliderYou: 'du bist hier',
+  sliderYou: 'Du bist hier',
   sliderEnd: 'Ende',
   peekStart: 'Start der Distanz',
   peekEnd: 'Ende der Distanz',

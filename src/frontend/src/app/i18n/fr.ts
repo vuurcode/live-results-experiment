@@ -67,7 +67,7 @@ export const fr: Translations = {
   tooltipTotalTime: 'Temps total',
   sliderLabel: 'Curseur des séries : tout à droite pour le direct',
   sliderMore: '+{n} de plus',
-  sliderYou: 'tu es ici',
+  sliderYou: 'Tu es ici',
   sliderEnd: 'Fin',
   peekStart: 'Début de la distance',
   peekEnd: 'Fin de la distance',

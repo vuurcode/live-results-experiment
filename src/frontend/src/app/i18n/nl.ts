@@ -67,7 +67,7 @@ export const nl: Translations = {
   tooltipTotalTime: 'Totaaltijd',
   sliderLabel: 'Ritten: schuif naar rechts voor live',
   sliderMore: '+{n} meer',
-  sliderYou: 'jij bent hier',
+  sliderYou: 'Jij bent hier',
   sliderEnd: 'Einde',
   peekStart: 'Begin afstand',
   peekEnd: 'Einde afstand',

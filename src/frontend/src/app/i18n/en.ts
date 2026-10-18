@@ -67,7 +67,7 @@ export const en: Translations = {
   tooltipTotalTime: 'Total time',
   sliderLabel: 'Heat slider: slide right for live',
   sliderMore: '+{n} more',
-  sliderYou: "you're here",
+  sliderYou: 'You are here',
   sliderEnd: 'End',
   peekStart: 'Start of distance',
   peekEnd: 'End of distance',
