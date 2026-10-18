@@ -24,5 +24,6 @@ All components:
 
 ### Data (unit specs: `main_test.go`)
 - [x] A replay serves the `.json` samples in filename order, `MOCKSERVER_DATA_SAMPLE_INTERVAL` seconds apart (default 5), skips unparseable ones and holds the last
+- [x] A replay of recorded samples lists the whole start list from its first sample: the distances and races that only later samples have are added as not started (status 0, no time, laps or rank), like the feed of a match that is yet to start
 - [x] A competition whose last sample has been held for `MOCKSERVER_DATA_EXPIRE_AFTER` seconds (default 300, `0` never) restarts from the first on the next request
 - [x] `competitionId` is required and competitions `[A-Za-z0-9_-]{1,64}` (else 400); an unknown competition or one without valid samples is 404

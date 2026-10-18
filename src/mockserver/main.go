@@ -33,6 +33,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -127,8 +128,9 @@ type server struct {
 	generated map[string]*genMatch // by competition id; empty unless cfg.generate
 	genOrder  []*genMatch
 
-	mu      sync.Mutex
-	replays map[string]*replay
+	mu         sync.Mutex
+	replays    map[string]*replay
+	startLists sync.Map // competition id -> *cachedStartList, so a restart of a replay does not read every sample again
 }
 
 // withGenerated adds the first cfg.matches generated matches to the server.
@@ -182,9 +184,16 @@ func (s *server) samples(id string) ([]sample, error) {
 	if err != nil {
 		return nil, err
 	}
+	list := s.startList(id, files)
 	out := make([]sample, len(files))
 	for i, f := range files {
-		out[i] = sample{name: filepath.Base(f), load: func() []byte { return readSample(f) }}
+		out[i] = sample{name: filepath.Base(f), load: func() []byte {
+			data := readSample(f)
+			if data == nil {
+				return nil
+			}
+			return list.complete(i, data)
+		}}
 	}
 	return out, nil
 }
@@ -483,4 +492,21 @@ func main() {
 		slog.Error("Server failed", "err", err)
 		os.Exit(1)
 	}
+}
+
+// cachedStartList is a start list with the files it was built from.
+type cachedStartList struct {
+	files string
+	list  *startList
+}
+
+// startList returns the start list of a recording, built once for as long as its files stay the same.
+func (s *server) startList(id string, files []string) *startList {
+	signature := strings.Join(files, "\n")
+	if c, ok := s.startLists.Load(id); ok && c.(*cachedStartList).files == signature {
+		return c.(*cachedStartList).list
+	}
+	list := newStartList(len(files), func(i int) []byte { return readSample(files[i]) })
+	s.startLists.Store(id, &cachedStartList{files: signature, list: list})
+	return list
 }

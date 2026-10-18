@@ -23,7 +23,7 @@ RUN go build -trimpath -ldflags="-s -w" -o /backend ./cmd/server
 FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS mockserver
 WORKDIR /src
 ENV CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
-COPY src/mockserver/go.mod src/mockserver/main.go src/mockserver/generate.go ./
+COPY src/mockserver/go.mod src/mockserver/main.go src/mockserver/generate.go src/mockserver/startlist.go ./
 RUN go build -trimpath -ldflags="-s -w" -o /mockserver .
 
 # s6-overlay release archives, verified against the published checksums (one stage per architecture)

@@ -5,7 +5,7 @@ WORKDIR /src
 ENV CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
 
 COPY go.mod ./
-COPY main.go generate.go ./
+COPY main.go generate.go startlist.go ./
 RUN go build -trimpath -ldflags="-s -w" -o /mockserver .
 
 FROM scratch
