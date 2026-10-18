@@ -11,11 +11,20 @@ async function restartReplay(request: import('@playwright/test').APIRequestConte
   await new Promise((resolve) => setTimeout(resolve, 800));
 }
 
-// Badges ease between colours for over a second; axe must not measure a colour half way between two.
+// Badges ease between colours for over a second, and a replay that is still arriving starts new transitions; axe must
+// not measure a colour half way between two. Wait until no finite animation has run for a few frames.
 async function settleTransitions(page: import('@playwright/test').Page) {
-  await page.evaluate(() =>
-    Promise.all(document.getAnimations().filter((a) => a instanceof CSSTransition).map((a) => a.finished.catch(() => undefined))),
-  );
+  await page.evaluate(async () => {
+    const finite = () => document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity);
+    for (let quiet = 0; quiet < 5; ) {
+      const running = finite();
+      if (running.length) {
+        quiet = 0;
+        await Promise.all(running.map((a) => a.finished.catch(() => undefined)));
+      } else quiet++;
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+    }
+  });
 }
 
 test.describe('accessibility', () => {

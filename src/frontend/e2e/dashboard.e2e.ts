@@ -256,13 +256,15 @@ test.describe('snake around the newest lap', () => {
       await page.keyboard.press('ArrowRight');
       await expect(slider(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
       await page.keyboard.press('ArrowLeft');
-      await expect(card(page).locator('.individual-compact-latest')).toBeVisible();
+      await expect(card(page).locator('.individual-compact-ringed').last()).toBeVisible();
       if ((await laps()) === before) break;
       expect(attempt, 'a quiet moment to return in').toBeLessThan(5);
     }
-    expect(await snake(page)).toBe('none');
+    // the newest lap's badge carries no snake: either the finished race has no newest lap any more, or it has no animation left
+    const newest = card(page).locator('.individual-compact-ringed').last();
+    expect(await newest.evaluate((b) => getComputedStyle(b, '::after').animationName)).toBe('none');
     // the ring itself is still there, in its finished state
-    expect(await card(page).locator('.individual-compact-latest').evaluate((b) => getComputedStyle(b, '::after').content)).toBe('""');
+    expect(await newest.evaluate((b) => getComputedStyle(b, '::after').content)).toBe('""');
   });
 });
 
