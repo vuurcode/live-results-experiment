@@ -130,9 +130,12 @@ function quartets(groups: MergedHeatGroup<CompetitorUpdate>[]): { group: MergedH
 
 function racer(race: CompetitorUpdate): StepRacer {
   const remarks = race.remark?.trim().split(/\s+/).filter(Boolean) ?? [];
-  const badges = [
-    ...(race.invalid_reason ? [{ code: race.invalid_reason, kind: race.invalid_reason.toUpperCase() === RaceCode.Disqualified ? ('red' as const) : ('orange' as const) }] : []),
-    ...remarks.map((code) => ({ code, kind: code.toUpperCase() === RaceCode.PersonalRecord || RECORD_CODES.has(code.toUpperCase()) ? ('purple' as const) : ('orange' as const) })),
-  ];
+  const kindOf = (code: string) => {
+    const upper = code.toUpperCase();
+    if (upper === RaceCode.Disqualified) return 'red' as const;
+    return upper === RaceCode.PersonalRecord || RECORD_CODES.has(upper) ? ('purple' as const) : ('orange' as const);
+  };
+  const codes = [...(race.invalid_reason ? [race.invalid_reason] : []), ...remarks];
+  const badges = codes.filter((code, i) => codes.indexOf(code) === i).map((code) => ({ code, kind: kindOf(code) }));
   return { name: race.name, lane: race.lane || null, badges };
 }

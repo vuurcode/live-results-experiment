@@ -108,6 +108,7 @@ export interface Translations {
   lapCompleted: string;
   finished: string;
   finishLabel: string;
+  finishedUnofficial: string;
   // Individual personal best label and remarks
   pbCurrentLabel: string;
   pbPreviousLabel: string;

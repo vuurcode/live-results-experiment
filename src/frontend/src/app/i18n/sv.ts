@@ -104,6 +104,7 @@ export const sv: Translations = {
   lapCompleted: 'Varv avklarat',
   finished: 'I mål',
   finishLabel: 'Mål',
+  finishedUnofficial: 'Fullbordat (inofficiellt resultat)',
   pbCurrentLabel: 'Nuvarande PB',
   pbPreviousLabel: 'Tidigare PB',
   remarkNewPb: 'Nytt personbästa',

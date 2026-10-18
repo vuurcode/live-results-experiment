@@ -62,14 +62,14 @@
               @let totalTime = compactTotalTime(race);
               @if (totalTime) {
                 <span class="individual-compact-final" [class.individual-compact-done]="compactDone(race)">
-                  <!-- distance reached so far: small and subtle; 'Finish (distance)' once the final lap is done -->
-                  <span class="compact-reached">{{ compactDone(race) ? ts.t('finishLabel') + ' (' : '' }}{{ lapSchedule[totalLaps(race) - 1] }}m{{ compactDone(race) ? ')' : '' }}</span>
+                  <!-- distance reached so far: small and subtle; 'Finished (unofficial result)' once the final lap is done -->
+                  <span class="compact-reached">{{ compactDone(race) ? ts.t('finishedUnofficial') : lapSchedule[totalLaps(race) - 1] + 'm' }}</span>
                   <span class="individual-lap-time"><span class="race-time">{{ splitFormattedTime(truncateLapTime(totalTime, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(totalTime, decimals(race)))[1] }}</small></span></span>
                 </span>
               }
               @if (race.lap_times.length === 0 && lapSchedule.length > 0) {
                 <span class="individual-compact-final individual-ghost-final" [class.individual-ghost-hidden]="ghostsHidden(race)" aria-hidden="true">
-                  <span class="compact-reached">{{ ts.t('finishLabel') }} ({{ lapSchedule[lapSchedule.length - 1] }}m)</span>
+                  <span class="compact-reached">{{ ts.t('finishedUnofficial') }}</span>
                   <c-badge class="individual-split-badge individual-ghost-badge individual-ghost-total">&nbsp;</c-badge>
                 </span>
               }
@@ -81,7 +81,7 @@
           @for (lap of race.lap_times; track $index; let last = $last) {
             <span class="individual-compact-lap">
               <span class="compact-dist">{{ lapSchedule[$index] }}m</span>
-              <c-badge class="individual-split-badge individual-compact-badge" [style.--lap-fraction]="lapFraction($index)" [style.--ring-from]="ringFinish" [attr.title]="compactBadgeTitle(race, $index)" [class.individual-compact-latest]="last" [class.individual-compact-ringed]="true" [class.individual-snake-fresh]="last && snakeFresh(race)">{{ splitFormattedTime(truncateLapTime(lap, 1))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(lap, 1))[1] }}</small></c-badge>
+              <c-badge class="individual-split-badge individual-compact-badge" [style.--lap-fraction]="lapFraction($index)" [style.--ring-from]="ringFinish" [attr.title]="compactBadgeTitle(race, $index)" [class.individual-compact-latest]="last && !compactDone(race)" [class.individual-compact-ringed]="true" [class.individual-snake-fresh]="last && snakeFresh(race)">{{ splitFormattedTime(truncateLapTime(lap, 1))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(lap, 1))[1] }}</small></c-badge>
             </span>
           } @empty {
             @if (lapSchedule.length > 0) {

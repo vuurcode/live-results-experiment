@@ -104,6 +104,7 @@ export const nb: Translations = {
   lapCompleted: 'Runde fullført',
   finished: 'I mål',
   finishLabel: 'Mål',
+  finishedUnofficial: 'Fullført (uoffisielt resultat)',
   pbCurrentLabel: 'Nåværende PB',
   pbPreviousLabel: 'Forrige PB',
   remarkNewPb: 'Ny personlig rekord',

@@ -104,6 +104,7 @@ export const es: Translations = {
   lapCompleted: 'Vuelta completada',
   finished: 'En meta',
   finishLabel: 'Meta',
+  finishedUnofficial: 'Finalizado (resultado no oficial)',
   pbCurrentLabel: 'MP actual',
   pbPreviousLabel: 'MP anterior',
   remarkNewPb: 'Nueva marca personal',

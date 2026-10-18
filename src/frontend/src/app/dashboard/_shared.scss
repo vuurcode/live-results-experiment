@@ -6,32 +6,18 @@
   0%   { background-color: var(--lr-flash-yellow); }
   100% { background-color: transparent; }
 }
-@keyframes recordRainbowText {
-  0%   { color: rgba(224, 64, 251, 0.50); }
-  17%  { color: rgba(63, 81, 181, 0.50); }
-  33%  { color: rgba(0, 188, 212, 0.50); }
-  50%  { color: rgba(76, 175, 80, 0.50); }
-  67%  { color: rgba(255, 235, 59, 0.50); }
-  83%  { color: rgba(255, 87, 34, 0.50); }
-  100% { color: rgba(224, 64, 251, 0.50); }
-}
-@keyframes recordRainbow {
-  0%   { border-color: #e040fb; }
-  17%  { border-color: #3f51b5; }
-  33%  { border-color: #00bcd4; }
-  50%  { border-color: #4caf50; }
-  67%  { border-color: #ffeb3b; }
-  83%  { border-color: #ff5722; }
-  100% { border-color: #e040fb; }
-}
-@keyframes recordRainbowOutline {
-  0%   { outline-color: #e040fb; }
-  17%  { outline-color: #3f51b5; }
-  33%  { outline-color: #00bcd4; }
-  50%  { outline-color: #4caf50; }
-  67%  { outline-color: #ffeb3b; }
-  83%  { outline-color: #ff5722; }
-  100% { outline-color: #e040fb; }
+@keyframes recordGlow { // a pulse around the badge, in the next colour of the rainbow each time
+  0%   { box-shadow: 0 0 0 0   rgba(255,59,48, 0.8); }
+  14% { box-shadow: 0 0 0 6px rgba(255,59,48, 0); }
+  20%   { box-shadow: 0 0 0 0   rgba(255,204,0, 0.8); }
+  34% { box-shadow: 0 0 0 6px rgba(255,204,0, 0); }
+  40%   { box-shadow: 0 0 0 0   rgba(52,199,89, 0.8); }
+  54% { box-shadow: 0 0 0 6px rgba(52,199,89, 0); }
+  60%   { box-shadow: 0 0 0 0   rgba(10,132,255, 0.8); }
+  74% { box-shadow: 0 0 0 6px rgba(10,132,255, 0); }
+  80%   { box-shadow: 0 0 0 0   rgba(224,64,251, 0.8); }
+  94% { box-shadow: 0 0 0 6px rgba(224,64,251, 0); }
+  100% { box-shadow: 0 0 0 0   rgba(224, 64, 251, 0); }
 }
 @keyframes snakeAround {
   from { --snake-angle: 0deg; }
@@ -275,13 +261,13 @@
     }
   }
   // The result's note stamps in once the snake around the final lap has finished and the total has counted up: it grows
-  // from larger and transparent to its place and colour. `scale` is a property of its own, so the placement transforms stay.
+  // from smaller and transparent to its place and colour. `scale` is a property of its own, so the placement transforms stay.
   .individual-watermark, .individual-comp-title[data-watermark]::before {
-    transition: opacity 0.9s ease-out, scale 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    transition: opacity 0.9s ease-out, scale 0.9s cubic-bezier(0.2, 0.9, 0.3, 1);
     @media (prefers-reduced-motion: reduce) { transition: none; }
   }
   &.individual-card-settling {
-    .individual-watermark, .individual-comp-title[data-watermark]::before { opacity: 0; scale: 1.8; }
+    .individual-watermark, .individual-comp-title[data-watermark]::before { opacity: 0; scale: 0.5; }
   }
   // a card of the live heat that is still racing: a thick red border; the inner outline thickens it without changing the card height
   &.individual-card-live { border-color: var(--lr-live); outline: 2px solid var(--lr-live); outline-offset: -3px; }
@@ -291,8 +277,7 @@
   }
   &.individual-card-record {
     border: 4px solid var(--lr-accent);
-    animation: recordRainbow 2s linear infinite;
-    .individual-comp-title::before { animation: recordRainbowText 2s linear infinite; }
+    animation: recordGlow 7.5s infinite; // the border stays purple; the rainbow pulses outwards around the card
   }
   // DQ / DNF / Fall etc. are marked by the border, watermark and badge, not by fading the card:
   // the old card-wide opacity 0.7 made every badge and grey label on these cards fail contrast.

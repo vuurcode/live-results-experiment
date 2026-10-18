@@ -104,6 +104,7 @@ export const it: Translations = {
   lapCompleted: 'Giro completato',
   finished: 'Arrivato',
   finishLabel: 'Traguardo',
+  finishedUnofficial: 'Concluso (risultato non ufficiale)',
   pbCurrentLabel: 'PB attuale',
   pbPreviousLabel: 'PB precedente',
   remarkNewPb: 'Nuovo record personale',

@@ -104,6 +104,7 @@ export const en: Translations = {
   lapCompleted: 'Lap completed',
   finished: 'Finished',
   finishLabel: 'Finish',
+  finishedUnofficial: 'Finished (unofficial result)',
   pbCurrentLabel: 'Current PB',
   pbPreviousLabel: 'Previous PB',
   remarkNewPb: 'New personal best',

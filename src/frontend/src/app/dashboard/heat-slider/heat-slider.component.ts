@@ -1,3 +1,4 @@
+import { RECORD_CODES } from '../../results/race-codes';
 import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, OnDestroy, EventEmitter, HostListener, Input, OnChanges, Output, inject } from '@angular/core';
 import { TranslateService } from '../../i18n/translate.service';
 import { TranslatePipe } from '../../i18n/translate.pipe';
@@ -322,7 +323,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   }
 
   protected isRecord(code: string): boolean {
-    return code !== 'PR';
+    return RECORD_CODES.has(code.toUpperCase());
   }
 
   /** Where the boundary before a distance's first step sits: halfway between it and the step before. */

@@ -104,6 +104,7 @@ export const nl: Translations = {
   lapCompleted: 'Ronde voltooid',
   finished: 'Gefinisht',
   finishLabel: 'Finish',
+  finishedUnofficial: 'Gefinisht (onofficieel resultaat)',
   pbCurrentLabel: 'Huidig PR',
   pbPreviousLabel: 'Vorig PR',
   remarkNewPb: 'Nieuw persoonlijk record',
