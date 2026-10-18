@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { MOCK_URL } from './env';
 import { heatUrl, slider } from './slider';
 
 test.describe('heat slider', () => {
@@ -40,5 +41,24 @@ test.describe('heat slider', () => {
       const { sw, cw } = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
       expect(sw).toBeLessThanOrEqual(cw);
     }
+  });
+});
+
+test.describe('heats to come', () => {
+  test('a card of a heat that has not started shows an empty grey badge for every lap, with its distance', async ({ page, request }) => {
+    await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-pairs' } });
+    await page.goto(heatUrl('e2e-pairs', 'dist-500', 3));
+    await expect(slider(page)).toHaveAttribute('aria-valuetext', /Heat 3$/, { timeout: 15_000 });
+    const card = page.locator('.individual-competitor-card:not(.individual-lane-placeholder)').first();
+    // the heat is skated while the test runs, so the laps still to come are read in one go: each has a distance above its badge
+    await expect(async () => {
+      const badges = await card.locator('.individual-ghost-badge').count();
+      expect(badges).toBeGreaterThan(0);
+      const distances = await card.locator('.individual-compact-lap[aria-hidden] .compact-dist').allInnerTexts();
+      expect(distances).toHaveLength(badges);
+      for (const text of distances) expect(text).toMatch(/^\d+m$/);
+    }).toPass({ timeout: 10_000 });
+    await expect(card.locator('.individual-ghost-badge').first()).toBeVisible();
+    await expect(card.locator('.individual-ghost-hidden')).toHaveCount(0);
   });
 });

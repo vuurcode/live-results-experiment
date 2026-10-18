@@ -106,7 +106,7 @@ test.describe('top bar icon', () => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/?competitionId=e2e-pairs');
       const icon = page.locator('.topbar-logo');
-      await expect(icon).toHaveAttribute('title', 'Live Results Experiment - Proof of Concept');
+      await expect(page.locator('.topbar-logo-link')).toHaveAttribute('title', 'Live Results Experiment - Proof of Concept');
       await (shown ? expect(icon).toBeVisible() : expect(icon).toBeHidden());
     });
   }

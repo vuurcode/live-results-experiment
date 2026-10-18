@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 import { MOCK_URL } from './env';
-import { heatUrl, slider } from './slider';
+import { heatUrl, settingsUrl, slider } from './slider';
 
 // A two-lane (pairs) competition: a DNF and a personal best in one pair, a skater without an opponent, a normal pair.
 const COMPETITION = 'e2e-pairs';
@@ -34,9 +34,9 @@ test.describe('two-lane competition', () => {
     await expect(cardA.getByText('PB', { exact: true })).toBeVisible();
     // times are in hundredths by default, thousandths on request
     await expect(cardA.locator('.individual-compact-final .race-time')).toHaveText(/^\d+:?\d*\.\d{2}$/);
-    await page.getByRole('button', { name: 'Menu', exact: true }).click();
+    await page.goto(settingsUrl(COMPETITION));
     await page.locator('#thousandthsInput').check();
-    await page.keyboard.press('Escape');
+    await page.goto(heatUrl(COMPETITION, 'dist-500', 1));
     await expect(cardA.locator('.individual-compact-final .race-time')).toHaveText(/\.\d{3}$/);
     // the old personal best on the card title is struck through (a line drawn across it) once it has been beaten
     await expect(cardA.locator('.individual-pb-beaten')).toBeVisible();
