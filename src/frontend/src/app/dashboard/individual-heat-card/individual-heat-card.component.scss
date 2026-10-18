@@ -1,9 +1,6 @@
 @use '../tokens' as *;
 @use '../shared';
 
-.individual-flash-update {
-  animation: flashGreen 2s ease-in-out forwards; // keep in sync with SPLIT_FLASH_MS in individual-heat-card.component.ts
-}
 // ===== TIMED DISTANCES =====
 // Plain heat row — no border/background, just a label + cards below
 .individual-heat-row {
@@ -180,7 +177,7 @@
   padding: 0.18em 0.4em; /* slightly tighter than lap-time-badge */
   border-radius: 0.25rem;
   background-color: var(--lr-chip-bg); /* soft gray */
-  color: var(--lr-text-small); /* 5.9:1 on the soft gray, also while the green update flash is showing */
+  color: var(--lr-text-small); /* 5.9:1 on the soft gray */
   flex-shrink: 0;
   height: auto;
   min-height: 1.6rem;
@@ -210,8 +207,6 @@
 .individual-split-badge.individual-compact-latest {
   background-color: var(--lr-strong-bg); // the newest lap stands out (8.7:1)
   color: var(--lr-strong-fg);
-  // the green update flash would put white text on pale green: flash a dark green instead
-  &.individual-flash-update { animation: flashLatestGreen 2s ease-in-out forwards; }
 }
 // Placeholder badges for the laps (and the finish) of a card that has not started: the distance stays readable, the badge itself is a plain light grey shape
 .individual-split-badge.individual-ghost-badge {

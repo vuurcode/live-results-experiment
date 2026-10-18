@@ -127,9 +127,6 @@ export class IndividualHeatCardComponent {
 
   protected isRecentUpdate = isRecentUpdate;
 
-  /** How long a new split keeps its green flash; must competition the `flashGreen` duration in dashboard.component.scss. */
-  private readonly SPLIT_FLASH_MS = 2000;
-  protected isSplitFlashing = (lastUpdated: number | undefined): boolean => isRecentUpdate(lastUpdated, Date.now(), this.SPLIT_FLASH_MS);
   protected splitFormattedTime = splitFormattedTime;
   protected truncateLapTime = truncateLapTime;
   protected isIndividualFinished = isIndividualFinished;

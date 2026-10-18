@@ -37,10 +37,6 @@
   from { --snake-angle: 0deg; }
   to   { --snake-angle: var(--arc, 360deg); }
 }
-@keyframes flashGreen {
-  0%   { background-color: var(--lr-flash-green); }
-  100% { background-color: transparent; }
-}
 // ===== POSITION-CHANGE SWAP ANIMATION =====
 // Both rows translate simultaneously: the row moving up slides from below its
 // new position, and the row moving down slides from above its new position.
@@ -56,13 +52,9 @@
   100% { transform: translateY(0); }
 }
 @keyframes glowRed {
-  0%   { box-shadow: 0 0 0 0   rgba(220,53,69,0.7); }
-  70%  { box-shadow: 0 0 0 6px rgba(220,53,69,0);   }
-  100% { box-shadow: 0 0 0 0   rgba(220,53,69,0);   }
-}
-@keyframes flashLatestGreen {
-  0%   { background-color: var(--lr-strong-flash); }
-  100% { background-color: var(--lr-strong-bg); }
+  0%   { box-shadow: 0 0 0 0   rgba(176,42,55,0.7); }
+  70%  { box-shadow: 0 0 0 6px rgba(176,42,55,0);   }
+  100% { box-shadow: 0 0 0 0   rgba(176,42,55,0);   }
 }
 
 [title]:not(button):not(input):not(select) { cursor: help; }
@@ -79,7 +71,7 @@
   z-index: 1;
   animation: swapDown 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
-.glowing-badge { animation: glowRed 1.5s infinite; }
+.glowing-badge { animation: glowRed 1.5s infinite; background-color: #b02a37 !important; } // the live red of the slider; white on it: 6.5:1
 // Pulsing badge while connecting
 // ===== START NUMBER BADGES =====
 .start-num-badge,
@@ -319,7 +311,6 @@
   &.individual-compact-ringed {
     @include lap-ring;
   }
-  &.individual-flash-update { animation: none; }
 }
 // once the race is finished the rings of its laps fade away after the last snake has been drawn, so a done heat shows no ring
 // (a card rendered finished never has it); the ring itself fades, not the card, which keeps its contrast

@@ -195,7 +195,7 @@ test.describe('live heat', () => {
     await expect(page.locator('.individual-card-live').first()).toBeVisible({ timeout: 20_000 });
     await expect(live).toHaveCSS('border-top-width', '0px'); // the row itself carries no border
     for (const card of await page.locator('.individual-card-live').all()) {
-      await expect(card).toHaveCSS('border-top-color', 'rgb(220, 53, 69)'); // the colour fades in
+      await expect(card).toHaveCSS('border-top-color', 'rgb(176, 42, 55)'); // the colour fades in
     }
     const states = await cards.evaluateAll((els) => els.map((c) => ({
       live: c.classList.contains('individual-card-live'),
@@ -205,7 +205,7 @@ test.describe('live heat', () => {
     expect(states.some((s) => s.live)).toBe(true);
     for (const s of states) {
       expect(s.live, JSON.stringify(s)).toBe(!s.other);
-      if (s.live) expect(s.border).toBe('rgb(220, 53, 69)');
+      if (s.live) expect(s.border).toBe('rgb(176, 42, 55)');
     }
     expect(await page.locator('.individual-card-live').evaluateAll((els) => els.every((c) => c.closest('[data-live]')))).toBe(true);
   });

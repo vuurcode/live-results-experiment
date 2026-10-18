@@ -5,11 +5,11 @@ $live: #b02a37;
 
 .heat-preview {
   position: absolute;
-  top: 100%;
+  bottom: 100%; // above the bar, which sits at the bottom of the screen
   z-index: 20;
   min-width: 11rem;
   max-width: min(18rem, 100%);
-  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
   padding: 0.5rem 0.75rem;
   border-radius: var(--cui-border-radius, 0.375rem);
   border: 1px solid var(--cui-border-color, #dee2e6);
@@ -37,7 +37,7 @@ $live: #b02a37;
   color: #fff;
   &.preview-badge-purple { background: #6f42c1; }
   &.preview-badge-red { background: #c93434; }
-  &.preview-badge-record { background: linear-gradient(90deg, #c0262d, #8a5a00, #1a7f37, #0a58ca, #8e24aa, #c0262d); animation: recordRainbow 4s linear infinite, recordGlow 1.5s infinite; }
+  &.preview-badge-record { background: #6f42c1; animation: recordGlow 7.5s infinite; } // keeps the purple, with the rainbow pulse around it
   &.preview-badge-orange { background: #fd7e14; color: #212529; }
 }
 .lane-dot {
@@ -81,6 +81,7 @@ $live: #b02a37;
   --bar: 0.5rem;
   --grow: 0rem;
   --reach: 0.9rem;
+  @media (min-width: 768px) { --reach: 2.5rem; } // on a wide screen, hovering anywhere above the bar previews the heat there
   --rest: 1.7rem;
   --gap: 0rem;
   --below: 0rem; // how far the input reaches below the grown bar, over the numbers and texts there
@@ -205,11 +206,18 @@ $live: #b02a37;
   transition: height 0.25s, top 0.25s;
 }
 @media (max-width: 767.98px) { .dragging .mark-record { height: calc(0.1rem + var(--grow) - var(--gap)); } }
-@keyframes recordRainbow { to { filter: hue-rotate(360deg); } }
-@keyframes recordGlow {
-  0%   { box-shadow: 0 0 0 0   rgba(142, 36, 170, 0.7); }
-  70%  { box-shadow: 0 0 0 6px rgba(142, 36, 170, 0); }
-  100% { box-shadow: 0 0 0 0   rgba(142, 36, 170, 0); }
+@keyframes recordGlow { // a pulse around the badge, in the next colour of the rainbow each time
+  0%   { box-shadow: 0 0 0 0   rgba(255,59,48, 0.8); }
+  14% { box-shadow: 0 0 0 6px rgba(255,59,48, 0); }
+  20%   { box-shadow: 0 0 0 0   rgba(255,204,0, 0.8); }
+  34% { box-shadow: 0 0 0 6px rgba(255,204,0, 0); }
+  40%   { box-shadow: 0 0 0 0   rgba(52,199,89, 0.8); }
+  54% { box-shadow: 0 0 0 6px rgba(52,199,89, 0); }
+  60%   { box-shadow: 0 0 0 0   rgba(10,132,255, 0.8); }
+  74% { box-shadow: 0 0 0 6px rgba(10,132,255, 0); }
+  80%   { box-shadow: 0 0 0 0   rgba(224,64,251, 0.8); }
+  94% { box-shadow: 0 0 0 6px rgba(224,64,251, 0); }
+  100% { box-shadow: 0 0 0 0   rgba(224, 64, 251, 0); }
 }
 @media (prefers-reduced-motion: reduce) { .preview-badge-record { animation: none; } }
 :host-context([data-animations='off']) .preview-badge-record { animation: none; }

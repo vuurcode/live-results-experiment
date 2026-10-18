@@ -393,7 +393,8 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     if (this.zoomed) return; // the preview follows the thumb, not the pointer
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     if (rect.width === 0) return;
-    const fraction = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    // the heats sit between the centres of the thumb at both ends, as the ticks do
+    const fraction = Math.min(1, Math.max(0, (event.clientX - rect.left - THUMB_PX / 2) / Math.max(1, rect.width - THUMB_PX)));
     this.previewIndex = Math.round(fraction * this.last);
   }
 
