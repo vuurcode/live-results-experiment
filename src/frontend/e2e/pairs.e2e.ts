@@ -12,6 +12,20 @@ async function restartReplay(request: APIRequestContext): Promise<void> {
 }
 
 test.describe('two-lane competition', () => {
+  test('the empty lane of a lone skater keeps its colour, on the card and in the peeks', async ({ page, request }) => {
+    await restartReplay(request);
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await page.goto(heatUrl(COMPETITION, 'dist-500', 2));
+    await expect(slider(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
+    const lanes = page.locator('.individual-lane-col');
+    await expect(lanes).toHaveCount(2);
+    const colors = await lanes.evaluateAll((els) => els.map((el) => (el as HTMLElement).style.getPropertyValue('--lane-color')));
+    expect(colors.every((c) => c !== '')).toBe(true);
+    expect(new Set(colors).size).toBe(2);
+    // the peeks hint at the lanes of the heats beside it
+    await expect(page.locator('.peek-before .peek-name[data-lane]')).not.toHaveCount(0);
+  });
+
   test('shows pairs, a lone skater, a DNF and a personal best', async ({ page, request }) => {
     await restartReplay(request);
     // one heat per slider step, with at most the two lanes
