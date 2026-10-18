@@ -1,0 +1,39 @@
+@let distances = (distances$ | async);
+<main class="ranking">
+  <header class="ranking-head">
+    <a cButton color="secondary" variant="outline" size="sm" class="back-link" routerLink="/" queryParamsHandling="preserve">← {{ 'rankingBack' | translate }}</a>
+    <h1 class="ranking-title">{{ (eventName$ | async) || ('rankingTitle' | translate) }}</h1>
+  </header>
+  @if (distances?.length) {
+    <c-alert color="warning" class="disclaimer" role="note">{{ 'disclaimer' | translate }} {{ 'disclaimerOwnership' | translate }}</c-alert>
+  }
+  @for (item of distances; track item.distance.id) {
+    <section class="ranking-distance" [attr.aria-labelledby]="'rank-' + item.distance.id">
+      <h2 class="ranking-distance-name" [id]="'rank-' + item.distance.id">{{ item.distance.name }}</h2>
+      @if (item.rows.length === 0) {
+        <p class="ranking-none">{{ 'rankingNone' | translate }}</p>
+      } @else {
+        <table cTable small class="ranking-table">
+          <thead>
+            <tr>
+              <th scope="col" class="rank-col"><span class="visually-hidden">{{ 'rankingRank' | translate }}</span></th>
+              <th scope="col">{{ 'rankingName' | translate }}</th>
+              <th scope="col" class="num-col">{{ 'rankingTime' | translate }}</th>
+              <th scope="col" class="num-col">{{ 'rankingGap' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of item.rows; track row.race.id) {
+              <tr [class.unranked]="row.unranked">
+                <td class="rank-col">@if (row.rank !== null) { {{ ordinalSuffix(row.rank)[0] }}<sup>{{ ordinalSuffix(row.rank)[1] }}</sup> } @else if (row.live) { <c-badge color="danger">{{ 'rankingLive' | translate }}</c-badge> }</td>
+                <td><a class="row-link" routerLink="/" [queryParams]="{ heat: stepKey(item.distance, row.race.id) }" queryParamsHandling="merge">{{ row.race.name }}</a></td>
+                <td class="num-col">{{ row.reason ?? time(row.time) }}</td>
+                <td class="num-col gap-col">{{ gap(row.gap) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+  }
+</main>

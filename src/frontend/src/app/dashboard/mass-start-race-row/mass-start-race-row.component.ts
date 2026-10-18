@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { BadgeModule, CardModule } from '@coreui/angular';
 import { CompetitorUpdate, ProcessedDistance } from '../../results/data.models';
+import { ordinalSuffix } from '../../results/ordinal.util';
 import { TranslateService } from '../../i18n/translate.service';
 import { TranslatePipe } from '../../i18n/translate.pipe';
 import { lapBadgeColor } from '../../results/lap-color.util';
@@ -29,12 +30,7 @@ export class MassStartRaceRowComponent {
   protected splitLapTime = splitLapTime;
   protected splitFormattedTime = splitFormattedTime;
 
-  /** Returns [base, superscript] for ordinal, e.g. ordinalSuffix(1) → ['1','st'] */
-  protected ordinalSuffix(n: number): [string, string] {
-    const s = ['th', 'st', 'nd', 'rd'];
-    const v = n % 100;
-    return [String(n), s[(v - 20) % 10] ?? s[v] ?? s[0]];
-  }
+  protected ordinalSuffix = ordinalSuffix;
 
   /**
    * Returns true when the competitor is the leader of the head group

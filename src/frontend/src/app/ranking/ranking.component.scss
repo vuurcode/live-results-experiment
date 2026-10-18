@@ -1,0 +1,102 @@
+.disclaimer.alert {
+  background: var(--lr-warn-bg);
+  color: var(--lr-warn-fg);
+  border-color: var(--lr-warn-line);
+  font-size: 0.85rem;
+}
+
+.ranking {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.ranking-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ranking-title {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.ranking-distance-name {
+  font-size: 1.1rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.ranking-none {
+  color: var(--cui-secondary-color);
+}
+
+.rank-col {
+  width: 3.5rem;
+  text-align: right;
+}
+
+.num-col {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ranking-table {
+  table-layout: fixed;
+}
+
+.num-col {
+  width: 6.5rem;
+}
+
+.unranked > td {
+  --cui-table-color-state: var(--cui-secondary-color);
+  --cui-table-color-type: var(--cui-secondary-color);
+  color: var(--cui-secondary-color);
+}
+
+.back-link {
+  --cui-btn-color: var(--cui-body-color);
+  --cui-btn-border-color: var(--lr-control-border);
+  --cui-btn-hover-color: var(--cui-body-color);
+  --cui-btn-active-color: var(--cui-body-color);
+}
+
+td.gap-col {
+  font-size: 0.8em;
+}
+
+.ranking-table td {
+  vertical-align: baseline;
+}
+
+/* The link on the name stretches over the whole row. */
+.ranking-table tbody tr {
+  position: relative;
+
+  &:hover {
+    background: var(--cui-tertiary-bg);
+  }
+}
+
+.row-link {
+  color: inherit;
+  text-decoration: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  &:focus-visible {
+    outline: none;
+
+    &::after {
+      outline: 2px solid var(--cui-primary);
+      outline-offset: -2px;
+    }
+  }
+}
