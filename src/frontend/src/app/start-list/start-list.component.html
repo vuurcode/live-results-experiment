@@ -1,0 +1,73 @@
+<main class="start-list">
+  <header class="start-list-head">
+    <a cButton color="secondary" variant="outline" size="sm" class="back-link" routerLink="/" queryParamsHandling="preserve">← {{ 'rankingBack' | translate }}</a>
+    <h1 class="start-list-title">{{ (eventName$ | async) || ('startListTitle' | translate) }}</h1>
+  </header>
+  @let view = (view$ | async);
+  @if (view) {
+    <div class="start-list-choose">
+      <label cLabel for="competitorSearch">{{ 'startListSearch' | translate }}</label>
+      <div class="start-list-field">
+        <input #searchInput cFormControl sizing="sm" id="competitorSearch" type="search" [placeholder]="'startListPlaceholder' | translate" list="competitorNames" autocomplete="off" [value]="view.query" (input)="search($event)" />
+        @if (view.query) {
+          <button type="button" class="start-list-clear" [attr.aria-label]="'startListClear' | translate" (click)="clear(searchInput)">×</button>
+        }
+      </div>
+      <datalist id="competitorNames">
+        @for (name of view.names; track name) { <option [value]="name"></option> }
+      </datalist>
+      @if (view.competitor) {
+        <p class="start-list-next" role="status">
+          @if (view.next; as next) {
+            <strong>{{ 'startListNext' | translate }}:</strong> {{ next.heat.distanceName }} {{ next.heat.label }} ·
+            @if (next.ahead === 0) { {{ 'startListThisHeat' | translate }} } @else { {{ 'startListAhead' | translate }}: {{ next.ahead }} }
+          } @else {
+            {{ 'startListAllDone' | translate }}
+          }
+        </p>
+      }
+    </div>
+    @if (view.distances.length === 0) {
+      <p class="start-list-none">
+        {{ (view.query.trim() ? 'startListNoMatch' : 'startListNone') | translate }}
+        @if (view.query) { <button type="button" class="clear-link" (click)="clear(searchInput)">{{ 'startListClear' | translate }}</button> }
+      </p>
+    }
+    <ng-template #filterHint>
+      @if (view.query.trim() && view.distances.length > 0) {
+        <p class="start-list-filtered">
+          {{ 'startListFiltered' | translate }}
+          <button type="button" class="clear-link" (click)="clear(searchInput)">{{ 'startListClear' | translate }}</button>
+        </p>
+      }
+    </ng-template>
+    <ng-container [ngTemplateOutlet]="filterHint" />
+    @for (distance of view.distances; track distance.id) {
+      <section class="start-list-distance" [attr.aria-labelledby]="'sl-' + distance.id">
+        <h2 class="start-list-distance-name" [id]="'sl-' + distance.id">{{ distance.name }}</h2>
+        <ol class="start-list-heats">
+          @for (heat of distance.heats; track heat.key) {
+            <li class="start-list-heat" [class.done]="heat.done" [class.joined]="$index > 0 && heat.joins === distance.heats[$index - 1].key">
+              <div class="start-list-heat-head">
+                <a class="heat-link" routerLink="/" [queryParams]="{ heat: heat.stepKey }" queryParamsHandling="merge" [attr.aria-label]="heat.label || distance.name" [attr.title]="heat.label">
+                  @if (heat.label) { <c-badge color="secondary" class="start-list-heat-label">{{ heatNumber(heat.label) }}</c-badge> }
+                </a>
+                @if (heat.done) { <span class="start-list-status status-done" role="img" [attr.aria-label]="'startListDone' | translate">✓</span> }
+                @else if (heat.live) { <span class="start-list-status status-live" role="img" [attr.aria-label]="'badgeLive' | translate"></span> }
+              </div>
+              <ul class="start-list-racers">
+                @for (racer of heat.racers; track $index) {
+                  <li class="start-list-racer" [class.chosen]="view.matches(racer.name)">
+                    @if (racer.lane) { <span class="lane-dot" [attr.data-lane]="racer.lane" [attr.title]="racer.lane"></span> }
+                    {{ racer.name }}
+                  </li>
+                }
+              </ul>
+            </li>
+          }
+        </ol>
+      </section>
+    }
+    <ng-container [ngTemplateOutlet]="filterHint" />
+  }
+</main>
