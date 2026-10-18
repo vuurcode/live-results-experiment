@@ -119,9 +119,10 @@ func loadZone(competition, name string) *time.Location {
 }
 
 // expired reports whether the competition started longer than retention ago, so its data is no longer served. A
-// competition of several days counts from the start of its last day. A zero retention never expires.
+// competition of several days counts from the start of its last day. A competition that has not ended yet and a zero
+// retention never expire.
 func (m *competition) expired(now time.Time, retention time.Duration) bool {
-	if retention <= 0 || m.from.IsZero() {
+	if retention <= 0 || m.from.IsZero() || m.to.After(now) {
 		return false
 	}
 	begin := m.from
@@ -167,6 +168,10 @@ func localDay(t time.Time, loc *time.Location) time.Time {
 	y, mo, d := t.In(loc).Date()
 	return time.Date(y, mo, d, 0, 0, 0, 0, time.UTC)
 }
+
+// liveLookahead is how far ahead of its start a competition is still asked whether it is live, for a competition that
+// goes live on another day than the list says.
+const liveLookahead = 7 * 24 * time.Hour
 
 // maxCacheAge caps how long competitions are kept before they are fetched again, whatever the TTL says.
 const maxCacheAge = time.Hour
@@ -411,23 +416,50 @@ func (c *Catalog) Ended(id string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	m, ok := c.known[id]
-	return ok && (m.window(c.now()) == windowPast || m.expired(c.now(), c.retention))
+	if !ok || (m.window(c.now()) != windowPast && !m.expired(c.now(), c.retention)) {
+		return false
+	}
+	c.liveMu.Lock()
+	defer c.liveMu.Unlock()
+	return !c.live[id].live // a competition the data source says is live is not over, whatever the list says
 }
 
-// today lists the competitions whose local days include today, including those that have not started yet.
+// Today lists the competitions whose local days include today, including those that have not started yet, plus every
+// competition of the list the data source says is live, also when the list places it on another day.
 func (c *Catalog) Today(ctx context.Context) ([]*competition, error) {
 	if err := c.refresh(ctx); err != nil {
 		return nil, err
 	}
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	now := c.now()
 	out := []*competition{}
+	var others []*competition
 	for _, m := range c.competitions {
-		if m.window(now) == windowToday && !m.expired(now, c.retention) {
+		switch w := m.window(now); {
+		case w == windowToday && !m.expired(now, c.retention):
+			out = append(out, m)
+		case w != windowFuture || m.from.Sub(now) <= liveLookahead:
+			others = append(others, m)
+		}
+	}
+	c.mu.Unlock()
+
+	live := make([]bool, len(others))
+	var wg sync.WaitGroup
+	for i, m := range others {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			live[i] = c.isLive(ctx, m.ID)
+		}()
+	}
+	wg.Wait()
+	for i, m := range others {
+		if live[i] {
 			out = append(out, m)
 		}
 	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].from.Before(out[j].from) })
 	return out, nil
 }
 
@@ -538,7 +570,9 @@ func (c *Catalog) ServeToday(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := make([]listed, len(list))
-	c.forgetLiveExcept(list)
+	c.mu.Lock()
+	c.forgetLiveExcept(c.competitions) // the competitions asked about but not listed keep their answers too
+	c.mu.Unlock()
 	var wg sync.WaitGroup
 	for i, m := range list {
 		out[i].competition = m

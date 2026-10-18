@@ -28,7 +28,7 @@ The limits and timings (`BACKEND_LIVE_RESULTS_INTERVAL_*`, `BACKEND_CATALOG_TTL_
 | `BACKEND_WEBSOCKET_ALLOWED_ORIGINS` | _(empty)_ | Comma separated origins (`https://example.com`) whose pages may open the websocket, next to the host the connection is made to, which always may. Empty or `*` allows every origin, which suits a frontend that reaches the backend through a proxy that does not keep the host |
 | `BACKEND_CLIENT_IP_HEADER` | _(empty)_ | Request header carrying the client address when the backend runs behind a proxy (for example `X-Forwarded-For`, or `Do-Connecting-Ip` on DigitalOcean). Only its last entry is used. Empty uses the address of the connection, which behind a proxy is the proxy itself and would put every viewer in one bucket |
 | `BACKEND_IDLE_GRACE_SECONDS` | `30` | Seconds a competition keeps being followed after its last viewer left |
-| `BACKEND_DATA_RETENTION_HOURS` | `12` | Hours after a competition's start (after the start of its last day, for a multi-day competition) that its data is served; then its room is closed, its data dropped and the competition leaves the list. `0` keeps it until the day after it ends |
+| `BACKEND_DATA_RETENTION_HOURS` | `12` | Hours after a competition's start (after the start of its last day, for a multi-day competition) that its data is served (never before the competition has ended); then its room is closed, its data dropped and the competition leaves the list. `0` keeps it until the day after it ends |
 | `BACKEND_LISTEN_ADDR` | `:5000` | Address the backend listens on |
 
 Every response carries `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Content-Security-Policy` and `Permissions-Policy` headers that lock down a JSON-only service.

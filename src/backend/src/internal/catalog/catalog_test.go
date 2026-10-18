@@ -539,3 +539,53 @@ func TestPeriodOfAKnownCompetition(t *testing.T) {
 		t.Fatal("an unknown competition has a period")
 	}
 }
+
+func TestLiveCompetitionIsListedOnAnyDayAndNeverEnded(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/venues", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(testVenues)) })
+	mux.HandleFunc("/api/competitions", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("[" + comp("yesterday-live", "DEV", "SpeedSkating.LongTrack", "2026-10-23T10:00:00Z", "2026-10-23T12:00:00Z") + "," +
+			comp("yesterday-off", "DEV", "SpeedSkating.LongTrack", "2026-10-23T10:00:00Z", "2026-10-23T12:00:00Z") + "," +
+			comp("tomorrow-live", "DEV", "SpeedSkating.LongTrack", "2026-10-25T10:00:00Z", "2026-10-25T12:00:00Z") + "," +
+			comp("far-live", "DEV", "SpeedSkating.LongTrack", "2026-12-25T10:00:00Z", "2026-12-25T12:00:00Z") + "," +
+			comp("tomorrow-off", "DEV", "SpeedSkating.LongTrack", "2026-10-25T10:00:00Z", "2026-10-25T12:00:00Z") + "]"))
+	})
+	mux.HandleFunc("/feed", func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Query().Get("competitionId"), "-live") {
+			_, _ = w.Write([]byte(`{"success":true}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"success":false}`))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	cfg := config.Config{CatalogTTL: time.Hour, VenueCountry: "NED", VenueDiscipline: "SpeedSkating.LongTrack"}
+	cat, err := New(cfg, source.NewSet(source.Upstream{CatalogURL: srv.URL, DataSourceURL: srv.URL + "/feed"}), fakeUA{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat.now = func() time.Time { return time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC) }
+	got, err := cat.Today(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "yesterday-live,tomorrow-live"; strings.Join(ids(got), ",") != want {
+		t.Fatalf("today = %v, want %s: live ones on other days, none of the far future", ids(got), want)
+	}
+	if cat.Ended("yesterday-live") {
+		t.Fatal("a live competition is not over")
+	}
+}
+
+func TestCompetitionThatStartedEarlierAndEndsLaterNeverExpires(t *testing.T) {
+	e := newCatalogEnv(t, comp("long", "DEV", "SpeedSkating.LongTrack", "2026-10-22T08:00:00Z", "2026-10-24T20:00:00Z"))
+	e.cat.retention = 12 * time.Hour
+	e.now = time.Date(2026, 10, 24, 19, 0, 0, 0, time.UTC) // 21:00 local on the last day, before its end
+	got, err := e.cat.Today(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(ids(got), ",") != "long" || e.cat.Ended("long") {
+		t.Fatalf("a competition that has not ended is listed: list=%v ended=%v", ids(got), e.cat.Ended("long"))
+	}
+}
