@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { AsyncPipe, NgTemplateOutlet } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
+import { AsyncPipe, Location, NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { BadgeModule, ButtonModule, FormModule } from '@coreui/angular';
 import { BehaviorSubject, combineLatest, map, type Observable } from 'rxjs';
@@ -32,6 +32,19 @@ interface StartListView {
 export class StartListComponent {
   private dataService = inject(DataService);
   private ts = inject(TranslateService);
+  private location = inject(Location);
+
+  /** Whether the search added a history entry, so that the back gesture clears the search instead of leaving the page. */
+  private searchEntry = false;
+
+  constructor() {
+    const subscription = this.location.subscribe(() => {
+      if (!this.searchEntry) return;
+      this.searchEntry = false;
+      this.setQuery('');
+    });
+    inject(DestroyRef).onDestroy(() => subscription.unsubscribe());
+  }
 
   protected readonly eventName$ = this.dataService.eventName$;
   private readonly query$ = new BehaviorSubject<string>(this.storedQuery());
@@ -61,6 +74,17 @@ export class StartListComponent {
 
   protected search(event: Event): void {
     const query = (event.target as HTMLInputElement).value;
+    if (query && !this.searchEntry) {
+      this.location.go(this.location.path());
+      this.searchEntry = true;
+    } else if (!query && this.searchEntry) {
+      this.searchEntry = false;
+      this.location.back();
+    }
+    this.setQuery(query);
+  }
+
+  private setQuery(query: string): void {
     this.query$.next(query);
     try {
       if (query) localStorage.setItem(this.queryKey(), query);
