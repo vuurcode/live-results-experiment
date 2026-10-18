@@ -101,6 +101,8 @@ export const es: Translations = {
   groupLabel: 'Grupo {n}',
   heatLabel: 'Serie {n}',
   lapStepLabel: 'Vuelta {n}',
+  announceFinished: '{name} ha terminado en {time}',
+  announceFinishedMany: '{n} patinadores han terminado',
   lapCompleted: 'Vuelta completada',
   finished: 'En meta',
   finishLabel: 'Meta',

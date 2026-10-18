@@ -101,6 +101,8 @@ export const nl: Translations = {
   groupLabel: 'Groep {n}',
   heatLabel: 'Rit {n}',
   lapStepLabel: 'Ronde {n}',
+  announceFinished: '{name} is gefinisht in {time}',
+  announceFinishedMany: '{n} schaatsers zijn gefinisht',
   lapCompleted: 'Ronde voltooid',
   finished: 'Gefinisht',
   finishLabel: 'Finish',

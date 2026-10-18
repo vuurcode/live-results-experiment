@@ -9,6 +9,7 @@
     }
   </div>
   <!-- ===== MAIN CONTENT ===== -->
+  <div class="visually-hidden" aria-live="polite" aria-atomic="true">{{ announcement }}</div>
   <main class="flex-grow-1 px-2 pb-4 main-clip" (touchstart)="swipeStart($event)" (touchend)="swipeEnd($event)" (touchcancel)="swipeCancel()">
     @if ((sortedDistances$ | async)?.length) {
       @let liveFeed = dataService.feed$ | async;

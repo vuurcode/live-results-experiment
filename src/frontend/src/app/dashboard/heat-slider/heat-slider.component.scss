@@ -304,6 +304,9 @@ $pill-shift: translateX(calc(-1 * (clamp(0, (var(--at) - 0.15) / 0.7, 1) * (100%
   &::-moz-range-track { height: var(--bar, 0.5rem); background: transparent; }
 }
 
+// The input's own thumb is invisible, so the keyboard focus rings the drawn dot: two rings, a light and a dark one, which show on the bar and on the page in both themes.
+.track:has(.form-range:focus-visible) .thumb-dot { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 4px #212529; }
+
 // The thumb is drawn by .thumb-dot, so it can glide along when the live heat moves on; the input's own thumb stays as an invisible hit area.
 .form-range {
   &::-webkit-slider-thumb { opacity: 0; }

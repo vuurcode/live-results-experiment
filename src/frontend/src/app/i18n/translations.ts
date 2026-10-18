@@ -104,6 +104,8 @@ export interface Translations {
   groupLabel: string;  // contains {n}
   heatLabel: string;   // contains {n}
   lapStepLabel: string; // contains {n}
+  announceFinished: string; // contains {name} and {time}; read out by a screen reader when a skater finishes
+  announceFinishedMany: string; // contains {n}
   // Race events
   lapCompleted: string;
   finished: string;

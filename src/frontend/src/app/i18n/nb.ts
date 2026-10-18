@@ -101,6 +101,8 @@ export const nb: Translations = {
   groupLabel: 'Gruppe {n}',
   heatLabel: 'Heat {n}',
   lapStepLabel: 'Runde {n}',
+  announceFinished: '{name} er i mål på {time}',
+  announceFinishedMany: '{n} løpere er i mål',
   lapCompleted: 'Runde fullført',
   finished: 'I mål',
   finishLabel: 'Mål',

@@ -1,4 +1,5 @@
 import { findLiveHeat } from '../results/live-heat';
+import { newFinishers } from '../results/finish-announce.util';
 import { distanceCompleted, hideDisqualifications } from '../results/hide-dq.util';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostBinding, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -158,12 +159,36 @@ export class DashboardComponent implements OnInit {
       this.positionKey = this.storedPositionKey();
       this.pinned = this.positionKey !== null;
       this.liveKey = null;
+      this.previousDistances = null;
       this.cdr.markForCheck();
     });
     this.sortedDistances$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(distances => {
       this.activeHeatKey = this.findActiveHeat(distances);
+      this.queueFinishes(newFinishers(this.previousDistances, distances));
+      this.previousDistances = distances;
       this.cdr.markForCheck();
     });
+    const timer = setInterval(() => this.announceFinishes(), ANNOUNCE_EVERY_MS);
+    this.destroyRef.onDestroy(() => clearInterval(timer));
+  }
+
+  /** What a screen reader says, in a polite live region: finishes only, at most one message every few seconds, so the routine lap times stay silent. */
+  protected announcement = '';
+  private previousDistances: ProcessedDistance[] | null = null;
+  private finishQueue: CompetitorUpdate[] = [];
+
+  private queueFinishes(finishers: CompetitorUpdate[]): void {
+    this.finishQueue.push(...finishers);
+  }
+
+  private announceFinishes(): void {
+    const queue = this.finishQueue;
+    if (queue.length === 0) return;
+    this.finishQueue = [];
+    this.announcement = queue.length === 1
+      ? this.ts.t('announceFinished', { name: queue[0].name, time: queue[0].formatted_total_time })
+      : this.ts.t('announceFinishedMany', { n: queue.length });
+    this.cdr.markForCheck();
   }
 
   /** The heat whose lap times updated most recently (the later one when they changed together; the page follows by the same rule), ignoring mass starts; heats that were never timed here are never live. */
@@ -416,6 +441,8 @@ export class DashboardComponent implements OnInit {
 }
 
 const DISCONNECT_GRACE_MS = 3000;
+/** The least time between two messages of the live region. */
+const ANNOUNCE_EVERY_MS = 4000;
 
 interface EmptyNotice {
   titleKey: TranslationKey;

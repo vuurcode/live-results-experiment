@@ -101,6 +101,8 @@ export const de: Translations = {
   groupLabel: 'Gruppe {n}',
   heatLabel: 'Lauf {n}',
   lapStepLabel: 'Runde {n}',
+  announceFinished: '{name} ist in {time} im Ziel',
+  announceFinishedMany: '{n} Läufer sind im Ziel',
   lapCompleted: 'Runde beendet',
   finished: 'Im Ziel',
   finishLabel: 'Ziel',

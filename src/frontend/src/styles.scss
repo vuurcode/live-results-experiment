@@ -172,10 +172,18 @@ html {
 .text-muted { color: var(--lr-text-muted) !important; }
 
 // The animations setting off: every change shows at once. The stylesheet's animations end in the state they would reach anyway.
+// The same for a visitor whose system asks for less motion, so no component has to remember its own guard.
 [data-animations='off'] {
   *, *::before, *::after {
     animation: none !important;
     transition: none !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
 }
 

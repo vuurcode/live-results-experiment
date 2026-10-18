@@ -83,8 +83,10 @@ keeps it that way. Things that were fixed and are easy to reintroduce:
   strips it after each render.
 - The event name is the single `<h1>`.
 
-Not covered by axe (still open): reduced-motion handling, a throttled live region for finishes, and the
-manual checks in `references/checklist.md`.
+Not covered by axe but locked in by `e2e/accessibility.e2e.ts`: the page-wide `prefers-reduced-motion` rule, the throttled
+live region that announces finishes (one message every 4 s, lap times stay silent), the keyboard pass with visible focus
+(the slider rings its drawn dot), and text spacing. Still open: the manual checks in `references/checklist.md` that need eyes
+(screen reader wording, forced-colors, colour-blindness).
 
 ## Writing accessible changes — habits that avoid rework
 

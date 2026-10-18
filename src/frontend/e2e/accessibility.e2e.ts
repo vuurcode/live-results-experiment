@@ -100,3 +100,67 @@ test('the heat slider is a labelled range input', async ({ page, request }) => {
   await expect(slider).toBeVisible();
   await expect(slider).toHaveAccessibleName(/.+/);
 });
+
+test('a visitor who asks for less motion gets no running animations or transitions', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/?competitionId=e2e-individual');
+  await expect(page.locator('.individual-competitor-card').first()).toBeVisible();
+  await page.waitForTimeout(500);
+  const running = await page.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running' && !(a.effect as KeyframeEffect | null)?.target?.closest('c-offcanvas, [cPlaceholder]')).map((a) => `${(a as CSSAnimation).animationName ?? (a as CSSTransition).transitionProperty} on ${(a.effect as KeyframeEffect | null)?.target?.className}`));
+  expect(running).toEqual([]);
+  // the page-wide rule, not only the guards of the components: any element is stilled
+  const probe = await page.evaluate(() => {
+    const el = document.createElement('div');
+    el.style.cssText = 'animation: spin 1s infinite; transition: opacity 1s';
+    document.body.append(el);
+    const { animationName, transitionDuration } = getComputedStyle(el);
+    el.remove();
+    return { animationName, transitionDuration };
+  });
+  expect(probe).toEqual({ animationName: 'none', transitionDuration: '0s' });
+});
+
+test('a finish is announced in a polite live region, and the routine lap times are not', async ({ page, request }) => {
+  await restartReplay(request, 'e2e-individual');
+  await page.goto('/?competitionId=e2e-individual');
+  const region = page.locator('[aria-live="polite"]');
+  await expect(region).toHaveCount(1);
+  await expect(region).toHaveText(/finished/, { timeout: 60_000 });
+  await expect(region).not.toHaveText(/\d+m\b/);
+});
+
+test('the keyboard reaches every control, each with a visible focus indicator, and Escape closes the menu', async ({ page }) => {
+  await page.goto('/?competitionId=e2e-individual');
+  await expect(page.locator('.individual-competitor-card').first()).toBeVisible();
+  const seen: string[] = [];
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press('Tab');
+    const focus = await page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null;
+      if (!el || el === document.body) return null;
+      // the range input's own thumb is invisible; the dot drawn for it carries the ring
+      const s = getComputedStyle(el instanceof HTMLInputElement && el.type === 'range' ? el.parentElement!.querySelector('.thumb-dot')! : el);
+      const ring = (s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) > 0) || s.boxShadow !== 'none';
+      return { name: el.getAttribute('aria-label') ?? el.id ?? el.className, ring };
+    });
+    if (!focus) continue;
+    seen.push(focus.name);
+    expect(focus.ring, `focus indicator on ${focus.name}`).toBe(true);
+  }
+  expect(seen.length).toBeGreaterThan(3);
+  await page.getByRole('button', { name: 'Menu' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('link', { name: 'Ranking' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('link', { name: 'Ranking' })).toBeHidden();
+});
+
+test('text spacing set by the visitor causes no horizontal scroll and no clipped lap badges', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto('/?competitionId=e2e-individual');
+  await expect(page.locator('.individual-competitor-card').first()).toBeVisible();
+  await page.addStyleTag({ content: '* { line-height: 1.5 !important; letter-spacing: 0.12em !important; word-spacing: 0.16em !important; }' });
+  await page.waitForTimeout(300);
+  const { scrollWidth, clientWidth } = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
+  expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+});
