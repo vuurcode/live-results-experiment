@@ -79,6 +79,7 @@ $live: #b02a37;
   --reach: 0.9rem;
   --rest: 1.7rem;
   --gap: 0rem;
+  --below: 0rem; // how far the input reaches below the grown bar, over the numbers and texts there
   position: relative;
   margin-inline: 1.25rem; // room beside the bar for the thumb, the first distance text and the live pill
   margin-top: 2.5rem; // room for the distance text above the lines, and the name of the current distance above that
@@ -87,8 +88,8 @@ $live: #b02a37;
   transition: padding-bottom 0.25s ease, margin-top 1s ease;
   .form-range { position: relative; z-index: 3; }
 }
-.dragging .track { --grow: 2.5rem; --gap: 0.6rem; }
-@media (min-width: 768px) { .dragging .track { --grow: 0rem; --gap: 0rem; } } // on a wide screen the bar stays as it is: its lines do not run down below it
+.dragging .track { --grow: 2.5rem; --gap: 0.6rem; --below: calc(var(--rest) + var(--lines, 1) * 0.7rem); }
+@media (min-width: 768px) { .dragging .track { --grow: 0rem; --gap: 0rem; --below: 0rem; } } // on a wide screen the bar stays as it is: its lines do not run down below it
 .bar {
   position: absolute;
   z-index: 1;
@@ -249,8 +250,8 @@ $live: #b02a37;
   // the area above and below the bar is part of the input, so a press there grabs the slider too; the negative margin keeps the layout as it was
   display: block;
   box-sizing: content-box;
-  padding: var(--reach) 0 calc(var(--reach) + var(--grow));
-  margin: calc(-1 * var(--reach)) 0 calc(-1 * var(--reach) - var(--grow));
+  padding: var(--reach) 0 calc(var(--reach) + var(--grow) + var(--below));
+  margin: calc(-1 * var(--reach)) 0 calc(-1 * var(--reach) - var(--grow) - var(--below));
   &::-webkit-slider-thumb { width: var(--thumb); height: var(--thumb); margin-top: calc((var(--bar, 0.5rem) - var(--thumb)) / 2); }
   &::-moz-range-thumb { width: var(--thumb); height: var(--thumb); }
   &::-webkit-slider-runnable-track { height: var(--bar, 0.5rem); background: transparent; }
