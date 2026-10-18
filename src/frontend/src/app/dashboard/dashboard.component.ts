@@ -1,15 +1,16 @@
 import { findLiveHeat } from '../results/live-heat';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostBinding, OnInit, afterNextRender, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostBinding, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { DataService } from '../results/data.service';
 import { SettingsService } from '../settings/settings.service';
-import { FeedStatus, TodayCompetition, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../results/data.models';
-import { Observable, combineLatest, concat, filter, from, map, merge, of, shareReplay, startWith, switchMap, tap, timer } from 'rxjs';
+import { FeedStatus, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../results/data.models';
+import { Observable, combineLatest, concat, map, of, startWith, switchMap, tap, timer } from 'rxjs';
 import { TranslateService, TranslationKey } from '../i18n/translate.service';
 import { TranslatePipe } from '../i18n/translate.pipe';
+import { HeaderComponent } from '../header/header.component';
 import { swipeDirection, type SwipePoint } from './swipe.util';
 import { MassStartTimelineComponent } from './mass-start-timeline/mass-start-timeline.component';
 import { IndividualHeatCardComponent } from './individual-heat-card/individual-heat-card.component';
@@ -56,12 +57,12 @@ import { raceListAnimation, raceListKey } from './dashboard.animations';
     SharedModule,
     FormsModule,
     TranslatePipe,
-    RouterLink,
     MassStartTimelineComponent,
     IndividualHeatCardComponent,
     MassStartRaceRowComponent,
     HeatPeeksComponent,
     HeatSliderComponent,
+    HeaderComponent,
   ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
@@ -88,39 +89,12 @@ export class DashboardComponent implements OnInit {
   protected liveEventNumber: number | null = null;
   /** Mass start competitors the viewer follows; several can be selected at once. A new set on every change, for the OnPush rows. */
   protected selectedRaceIds: ReadonlySet<string> = new Set();
-  /** The menu drawer with the settings is open. */
-  protected menuOpen = false;
   protected activeHeatKey: { distanceId: string; label: string } | null = null;
-
-  private resizeObserver: ResizeObserver | null = null;
 
   /** The step the viewer slid to; null follows the live heat. */
   protected position: number | null = null;
   /** The distances with the steps of the slider and the index of the live one. */
   protected view$!: Observable<{ distances: ProcessedDistance[]; steps: HeatStep[]; live: number }>;
-
-  /** The competitions of today, asked again every few minutes so new competitions show up and finished ones drop off while the page stays open. */
-  protected readonly todayCompetitions$: Observable<TodayCompetition[]> = merge(timer(0, 5 * 60_000), this.dataService.competitionsChanged$.pipe(map(() => -1))).pipe(
-    filter(n => n === 0 || document.visibilityState !== 'hidden'), // nobody sees the list of a hidden page
-    switchMap(() => from(this.dataService.todayCompetitions())),
-    shareReplay({ bufferSize: 1, refCount: true }), // the list in the page and the venue preselection share one request
-  );
-
-  /** Length of the shown option text; on narrow screens a longer one gets a smaller font. */
-  protected selectedLabelLength(competitions: TodayCompetition[]): number {
-    const m = competitions.find(x => x.id === this.dataService.competitionId);
-    return m ? `⚪ 00:00 - 00:00 · ${m.name} (${m.venue.name})`.length : 20;
-  }
-
-  /** Open another competition; the page reads its competitionId on load. */
-  protected openCompetition(event: Event): void {
-    const id = (event.target as HTMLSelectElement).value;
-    if (id) window.location.search = `?competitionId=${encodeURIComponent(id)}`;
-  }
-
-  protected isTodayCompetition(competitions: TodayCompetition[], id: string): boolean {
-    return competitions.some((m) => m.id === id);
-  }
 
   protected selectRace(id: string): void {
     const next = new Set(this.selectedRaceIds);
@@ -132,16 +106,6 @@ export class DashboardComponent implements OnInit {
   @HostBinding('@.disabled') get animationsDisabled(): boolean { return !this.settings.animations.value; }
 
   constructor() {
-    // The top bar stays pinned; what sticks below it follows its height.
-    afterNextRender(() => {
-      const bar: HTMLElement | null = this.host.nativeElement.querySelector('.topbar');
-      if (!bar || typeof ResizeObserver === 'undefined') return;
-      const observer = new ResizeObserver(() => {
-        this.host.nativeElement.style.setProperty('--topbar-h', `${bar.offsetHeight}px`);
-      });
-      observer.observe(bar);
-      this.resizeObserver = observer;
-    });
     this.eventName$ = this.dataService.eventName$;
     this.errors$ = this.dataService.errors$;
     this.emptyNotice$ = combineLatest([
@@ -175,14 +139,13 @@ export class DashboardComponent implements OnInit {
   ngOnInit() {
     // The venue of the viewed competition is remembered; a page without a competition (or with one the backend does not know)
     // opens the live competition of the remembered venue, else its first.
-    combineLatest([this.todayCompetitions$, this.dataService.status$]).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(([competitions, { status }]) => {
+    combineLatest([this.dataService.todayCompetitions$, this.dataService.status$]).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(([competitions, { status }]) => {
       const current = competitions.find((c) => c.id === this.dataService.competitionId);
       if (current) rememberVenue(current.venue.code);
       if (status !== 'No competition') return;
       const target = preselectCompetition(competitions, lastViewedVenue());
       if (target && target.id !== this.dataService.competitionId) window.location.replace(`?competitionId=${encodeURIComponent(target.id)}`);
     });
-    this.destroyRef.onDestroy(() => this.resizeObserver?.disconnect());
     this.dataService.eventName$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(name => {
       const pageTitle = this.ts.t('pageTitle');
       this.titleService.setTitle(name ? `${name} | ${pageTitle}` : pageTitle);

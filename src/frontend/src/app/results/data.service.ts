@@ -4,8 +4,8 @@ import { randomJitter, reconnectDelay } from './backoff';
 import { HIDDEN_PAUSE_MS, needsReconnect } from './hidden';
 import { SettingsService } from '../settings/settings.service';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
-import { BehaviorSubject, Subject, Subscription, merge } from 'rxjs';
-import { skip } from 'rxjs/operators';
+import { BehaviorSubject, Observable, Subject, Subscription, from, merge, timer } from 'rxjs';
+import { filter, map, shareReplay, skip, switchMap } from 'rxjs/operators';
 import {
   BackendMessage,
   BackendWindow,
@@ -74,6 +74,12 @@ export class DataService {
   private competitionsChangedSubject = new Subject<void>();
   /** The backend hints that the competitions list changed, such as a competition going live. */
   competitionsChanged$ = this.competitionsChangedSubject.asObservable();
+  /** The competitions of today, asked again every few minutes so new competitions show up and finished ones drop off while the page stays open. */
+  readonly todayCompetitions$: Observable<TodayCompetition[]> = merge(timer(0, 5 * 60_000), this.competitionsChanged$.pipe(map(() => -1))).pipe(
+    filter(n => n === 0 || document.visibilityState !== 'hidden'), // nobody sees the list of a hidden page
+    switchMap(() => from(this.todayCompetitions())),
+    shareReplay({ bufferSize: 1, refCount: true }), // the picker and the venue preselection share one request
+  );
   private resetSubject = new Subject<void>();
   reset$ = this.resetSubject.asObservable();
   /** The page came back from suspension and the connection was renewed. */

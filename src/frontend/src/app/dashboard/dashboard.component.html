@@ -1,54 +1,5 @@
 <div class="d-flex flex-column min-vh-100">
-  <!-- ===== TOP BAR ===== -->
-  <header class="topbar text-white px-2 px-md-4 py-2 d-flex flex-wrap align-items-center gap-2 gap-md-3">
-    <button cButton color="light" variant="outline" size="sm" class="topbar-group-btn" (click)="menuOpen = true" aria-controls="mainMenu" [attr.aria-expanded]="menuOpen" [attr.aria-label]="'menuTitle' | translate" [attr.title]="'menuTitle' | translate">
-      <svg class="topbar-group-burger" viewBox="0 0 16 16" width="1.4em" height="1.4em" fill="currentColor" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3A.5.5 0 0 1 2.5 8zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>
-    </button>
-    @let competitions = (todayCompetitions$ | async) ?? [];
-    @let picked = !!dataService.competitionId && isTodayCompetition(competitions, dataService.competitionId);
-    @let noCompetition = (dataService.status$ | async)?.status === 'No competition';
-    <!-- When the followed competition is in today's list, the picker takes the place of the event name
-         (it shows the same name); the name stays in the page as a visually hidden heading. -->
-    @if (eventName$ | async; as name) {
-      <h1 class="fw-bold fs-5 m-0 topbar-title" [class.visually-hidden]="picked">{{ name }}</h1>
-    } @else if (!picked && !noCompetition) {
-      <span cPlaceholderAnimation="glow" class="topbar-title"><span cPlaceholder class="skeleton-title"></span></span>
-    }
-    @if (competitions.length > 0) {
-      <div class="topbar-competitions d-flex align-items-center gap-2" [class.topbar-competitions-title]="picked || noCompetition">
-        <label class="small text-nowrap mb-0 setting-label" [class.visually-hidden]="picked || noCompetition" for="competitionSelect">{{ 'todayCompetitionsLabel' | translate }}</label>
-        <select id="competitionSelect" cSelect sizing="sm" class="topbar-competition-select" [style.--competition-label-length]="selectedLabelLength(competitions)" [attr.aria-describedby]="noCompetition ? 'competitionHint' : null" (change)="openCompetition($event)">
-          @if (!picked) {
-            <option value="" selected disabled>{{ 'noCompetitionOption' | translate }}</option>
-          }
-          @for (m of competitions; track m.id) {
-            <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.live ? '🔴' : '⚪' }} {{ m.start | date: 'HH:mm' }}@if (m.end) { - {{ m.end | date: 'HH:mm' }}} · {{ m.name }} ({{ m.venue.name }})</option>
-          }
-        </select>
-        @if (noCompetition) {
-          <span id="competitionHint" class="competition-hint">{{ 'selectCompetitionHint' | translate }}</span>
-        }
-      </div>
-    } @else if (noCompetition) {
-      <span class="competition-hint competition-hint-alone">{{ 'noLiveCompetitionsHint' | translate }}</span>
-    }
-    <a class="topbar-logo-link" routerLink="/" queryParamsHandling="preserve" [attr.aria-label]="'menuMain' | translate" [attr.title]="'pageTitle' | translate"><img class="topbar-logo" src="apple-touch-icon.png" alt="" width="32" height="32" /></a>
-  </header>
-  <c-offcanvas id="mainMenu" placement="start" [visible]="menuOpen" (visibleChange)="menuOpen = $event" [attr.aria-label]="'pageTitle' | translate">
-    <c-offcanvas-header>
-      <h2 cOffcanvasTitle class="h5 m-0">{{ 'pageTitle' | translate }}</h2>
-      <button cButtonClose (click)="menuOpen = false" [attr.aria-label]="'menuClose' | translate"></button>
-    </c-offcanvas-header>
-    <c-offcanvas-body class="menu-panel">
-      <nav class="menu-nav" [attr.aria-label]="'menuTitle' | translate">
-        <a cButton color="secondary" variant="outline" class="w-100 menu-link" routerLink="/" queryParamsHandling="preserve" (click)="menuOpen = false"><svg class="menu-icon" viewBox="0 0 16 16" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 3.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zM8 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>{{ 'menuMain' | translate }}</a>
-        <a cButton color="secondary" variant="outline" class="w-100 menu-link" routerLink="/start-list" queryParamsHandling="preserve" (click)="menuOpen = false"><svg class="menu-icon" viewBox="0 0 16 16" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true" focusable="false"><path d="M2 3.5h1.5v1.5H2zm3 .25h9v1H5zM2 7.25h1.5v1.5H2zm3 .25h9v1H5zM2 11h1.5v1.5H2zm3 .25h9v1H5z"/></svg>{{ 'menuStartList' | translate }}</a>
-        <a cButton color="secondary" variant="outline" class="w-100 menu-link" routerLink="/ranking" queryParamsHandling="preserve" (click)="menuOpen = false"><svg class="menu-icon" viewBox="0 0 16 16" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6 2h4v12H6zM1 7h4v7H1zm10 3h4v4h-4z"/></svg>{{ 'menuRanking' | translate }}</a>
-        <a cButton color="secondary" variant="outline" class="w-100 menu-link" routerLink="/settings" queryParamsHandling="preserve" (click)="menuOpen = false"><svg class="menu-icon" viewBox="0 0 16 16" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true" focusable="false"><path d="M2 4h7v1.2H2zm9 0h3v1.2h-3zM9 2.6h1.6v4H9zM2 10.8h3v1.2H2zm5 0h7v1.2H7zM5 9.4h1.6v4H5z"/></svg>{{ 'menuSettings' | translate }}</a>
-      </nav>
-      <p class="menu-credit">{{ 'menuCreditBy' | translate }} <a href="https://vuurcode.dev" target="_blank" rel="noopener">vuurcode.dev</a> - {{ 'menuCreditFree' | translate }}</p>
-    </c-offcanvas-body>
-  </c-offcanvas>
+  <app-header [primary]="true" />
   <!-- ===== ERRORS ===== -->
   <div class="px-2 pt-2">
     @for (error of errors$ | async; track $index; let i = $index) {
@@ -143,7 +94,7 @@
                 @let heatGroups = mergedHeatGroups(distance);
                 @let laneColors = heatGroupLaneColors(heatGroups);
                 @let maxLanes = distanceMaxLaneCount(heatGroups);
-                <app-heat-peeks [prev]="neighbour(v, step, -1)" [next]="neighbour(v, step, 1)">
+                <app-heat-peeks [prev]="neighbour(v, step, -1)" [next]="neighbour(v, step, 1)" [prevLive]="neighbour(v, step, -1) === v.steps[v.live]" [nextLive]="neighbour(v, step, 1) === v.steps[v.live]">
                 <div class="heat-rows">
                   @for (heatIdx of step.heatIndexes; track heatIdx) {
                     @let displayGroup = heatGroups[heatIdx];

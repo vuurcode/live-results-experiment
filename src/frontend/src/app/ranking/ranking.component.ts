@@ -10,6 +10,7 @@ import { raceStepKey } from '../results/step-key.util';
 import { rankDistance, type RankingRow } from '../results/ranking.util';
 import { formatDurationSeconds, parseSeconds, truncateLapTime } from '../results/time.util';
 import { SettingsService } from '../settings/settings.service';
+import { HeaderComponent } from '../header/header.component';
 import { TranslatePipe } from '../i18n/translate.pipe';
 
 interface RankedDistance {
@@ -21,7 +22,7 @@ interface RankedDistance {
 @Component({
   selector: 'app-ranking',
   standalone: true,
-  imports: [AsyncPipe, RouterLink, AlertModule, BadgeModule, ButtonModule, TableModule, TranslatePipe],
+  imports: [HeaderComponent, AsyncPipe, RouterLink, AlertModule, BadgeModule, ButtonModule, TableModule, TranslatePipe],
   templateUrl: './ranking.component.html',
   styleUrls: ['./ranking.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

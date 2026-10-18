@@ -5,6 +5,7 @@ import { ButtonModule, FormModule } from '@coreui/angular';
 import { map } from 'rxjs';
 import type { ColorSchemeChoice } from '../color-scheme';
 import { DataService } from '../results/data.service';
+import { HeaderComponent } from '../header/header.component';
 import { TranslatePipe } from '../i18n/translate.pipe';
 import { TranslateService } from '../i18n/translate.service';
 import { parseInteger, parseNumber, SettingsService } from './settings.service';
@@ -13,7 +14,7 @@ import { parseInteger, parseNumber, SettingsService } from './settings.service';
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [AsyncPipe, RouterLink, ButtonModule, FormModule, TranslatePipe],
+  imports: [HeaderComponent, AsyncPipe, RouterLink, ButtonModule, FormModule, TranslatePipe],
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

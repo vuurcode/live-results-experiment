@@ -6,6 +6,7 @@ import { BehaviorSubject, combineLatest, map, type Observable } from 'rxjs';
 import { DataService } from '../results/data.service';
 import { heatsAhead, heatsOfMatches, nameMatches, startListHeats, startListNames, type StartListHeat } from '../results/startlist.util';
 import { TranslateService } from '../i18n/translate.service';
+import { HeaderComponent } from '../header/header.component';
 import { TranslatePipe } from '../i18n/translate.pipe';
 
 interface StartListView {
@@ -24,7 +25,7 @@ interface StartListView {
 @Component({
   selector: 'app-start-list',
   standalone: true,
-  imports: [AsyncPipe, NgTemplateOutlet, RouterLink, BadgeModule, ButtonModule, FormModule, TranslatePipe],
+  imports: [HeaderComponent, AsyncPipe, NgTemplateOutlet, RouterLink, BadgeModule, ButtonModule, FormModule, TranslatePipe],
   templateUrl: './start-list.component.html',
   styleUrls: ['./start-list.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | `results/` | Everything about the data: `DataService` (the socket, the message queue, the processed distances), wire and view types (`data.models.ts`), and the pure functions for times, heats, standings, race codes, lap colours, the live heat and reconnect backoff. The functions have no Angular. | unit specs next to them |
 | `dashboard/` | The dashboard page, with its individual race heat card, mass start row and mass start timeline in subfolders; following the live heat (`auto-follow.ts`, `scroll.util.ts`); the styles they share (`_shared.scss`, `_tokens.scss`) | unit specs for the logic, `src/frontend/e2e/*.e2e.ts` for the screen |
+| `header/` | The top bar shared by every page: the menu drawer, the competition picker and the app icon | `src/frontend/e2e/topbar.e2e.ts` |
 | `settings/` | `SettingsService`: the viewer's persisted settings | unit specs next to it |
 | `i18n/` | One file per language, and the `TranslateService`; `languages.spec.ts` checks they all carry the same keys | |
 
