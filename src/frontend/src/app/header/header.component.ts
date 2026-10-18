@@ -29,13 +29,14 @@ export class HeaderComponent {
   protected readonly eventName$ = this.dataService.eventName$;
 
   constructor() {
+    const destroyRef = inject(DestroyRef);
     // What sticks below the bar follows its height.
     afterNextRender(() => {
       const bar: HTMLElement | null = this.host.nativeElement.querySelector('.topbar');
       if (!bar || typeof ResizeObserver === 'undefined') return;
       const observer = new ResizeObserver(() => document.documentElement.style.setProperty('--topbar-h', `${bar.offsetHeight}px`));
       observer.observe(bar);
-      inject(DestroyRef).onDestroy(() => observer.disconnect());
+      destroyRef.onDestroy(() => observer.disconnect());
     });
   }
 
