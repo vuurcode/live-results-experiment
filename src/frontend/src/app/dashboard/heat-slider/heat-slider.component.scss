@@ -59,7 +59,7 @@ $live: #b02a37;
   border-radius: 1rem;
   padding: 0 0.5rem;
   background: var(--cui-body-bg, #fff);
-  color: $live;
+  color: var(--lr-live-text, #{$live});
   font-size: 0.7rem;
   font-weight: 600;
   line-height: 1.3;
@@ -84,7 +84,7 @@ $live: #b02a37;
   margin-top: 2.5rem; // room for the distance text above the lines, and the name of the current distance above that
   display: flow-root; // keeps the input's negative margins inside the track
   padding-bottom: calc(var(--rest) + var(--grow)); // room for the lines under the bar; the grown bar pushes what is below it down
-  transition: padding-bottom 0.25s ease;
+  transition: padding-bottom 0.25s ease, margin-top 1s ease;
   .form-range { position: relative; z-index: 3; }
 }
 .dragging .track { --grow: 2.5rem; --gap: 0.6rem; }
@@ -315,7 +315,7 @@ $live: #b02a37;
 :host-context([data-animations='off']) .thumb-dot { animation: none; transition: none; }
 
 // Held on a narrow screen the bar shows a window of heats; what falls outside it is clipped at the ends of the track.
-.zoomed .track { clip-path: inset(-4rem -1.25rem -4rem -1.25rem); }
+.zoom-clip .track { clip-path: inset(-8rem -1.25rem -4rem -1.25rem); } // tall enough for the mini-map above the bar
 // The whole event under the zoomed bar, with the window, the distance boundaries, the live heat and the thumb on it.
 .minimap {
   position: absolute;
@@ -350,11 +350,34 @@ $live: #b02a37;
   margin-bottom: 0.1rem;
   font-size: 0.65rem;
   line-height: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   white-space: nowrap;
   color: var(--cui-body-color, #000);
 }
 .zoomed .track { margin-top: 2.7rem; }
-.zoomed .mark-distance .mark-text { margin-bottom: 0.9rem; }
+// While the bar zooms, the lines and the thumb follow the zoom frame by frame instead of gliding after it.
+.heat-slider.zoom-clip.glide .live-pill { transition: top 0.25s; }
+.heat-slider.zoom-clip.glide .mark-live { transition: height 0.25s, top 0.25s; }
+.heat-slider.zoom-clip.glide .live-dot { transition: none; }
+.heat-slider.zoom-clip.glide:not(.pressed) .thumb-dot.at-live { transition: none; }
+// Zoomed, the bar is tall: the heat and distance lines hang from its middle with their numbers and names underneath, the record and live lines stand above it.
+.zoomed .mark.mark-tick,
+.zoomed .mark.mark-distance {
+  top: calc((var(--thumb) + var(--grow)) / 2);
+  height: calc((var(--bar) + var(--grow)) / 2 + 0.6rem);
+}
+.zoomed .tick-number,
+.zoomed .mark-distance .mark-text { bottom: auto; top: 100%; margin-bottom: 0; margin-top: 0.1rem; }
+.zoomed .mark-distance .mark-text { margin-top: calc(0.2rem + var(--lines, 1) * 0.7rem); } // under the stacked heat numbers
+.zoomed .mark.mark-record,
+.zoomed .mark.mark-live {
+  top: -0.9rem;
+  height: calc(0.9rem + (var(--thumb) + var(--grow)) / 2);
+}
+.zoomed .you-line { top: -0.9rem; height: calc(0.9rem + (var(--thumb) + var(--grow)) / 2); }
+.zoomed .live-pill, .zoomed .you-pill { top: -2.2rem; }
 // The name of the distance the thumb is on, when there is no room for the names along the bar.
 .current-distance {
   position: absolute;
@@ -393,8 +416,8 @@ $live: #b02a37;
   &.lean-left { transform: translateX(calc(-100% + 0.3rem)); }
   &.lean-right { transform: translateX(-0.3rem); }
 }
-.minimap-label-live { color: $live; }
-.minimap-label-you { color: #0f6b4f; }
+.minimap-label-live { color: var(--lr-live-text, #{$live}); }
+.minimap-label-you { color: var(--lr-you-text, #0f6b4f); }
 
 // At the bottom of a narrow screen the preview opens upwards.
 @media (max-width: 767.98px) {

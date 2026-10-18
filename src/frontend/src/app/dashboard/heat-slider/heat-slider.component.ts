@@ -20,6 +20,8 @@ const ZOOM_HOLD_MS = 1000;
 const ZOOM_LINGER_MS = 1500;
 /** The heats the bar shows while it is held on a narrow screen: a window around the thumb that scrolls as it is dragged. */
 const ZOOM_STEPS = 15;
+/** How long the bar takes to zoom in or out. */
+const ZOOM_ANIM_MS = 1000;
 /** The width of a character of the small distance texts, in px, and the room kept between two texts. */
 const TEXT_CHAR_PX = 5.4;
 const TEXT_GAP_PX = 6;
@@ -67,6 +69,8 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   }
 
   ngOnDestroy(): void {
+    cancelAnimationFrame(this.zoomFrame);
+    cancelAnimationFrame(this.slideFrame);
     this.resizeObserver?.disconnect();
     if (this.lingerTimer !== null) clearTimeout(this.lingerTimer);
   }
@@ -107,7 +111,38 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
    * land on; the whole event stays visible as a mini-map above it.
    */
   protected get zoomed(): boolean {
-    return this.zoomHeld && (this.narrow?.matches ?? false) && this.last >= ZOOM_STEPS;
+    return this.zoomHeld && this.zoomable;
+  }
+
+  private get zoomable(): boolean {
+    return (this.narrow?.matches ?? false) && this.last >= ZOOM_STEPS;
+  }
+
+  /** How far the bar has zoomed, 0 (the whole event) to 1 (the window); it glides there when the zoom starts or ends. */
+  protected zoomAmount = 0;
+  private zoomFrame = 0;
+
+  private animateZoom(): void {
+    const target = this.zoomed ? 1 : 0;
+    cancelAnimationFrame(this.zoomFrame);
+    if (target === 1 && this.zoomAmount === 0) {
+      this.shownStart = this.zoomStart;
+      this.slideWindow();
+    }
+    if (this.stillMotion() || this.zoomAmount === target) {
+      this.zoomAmount = target;
+      this.cdr.markForCheck();
+      return;
+    }
+    const from = this.zoomAmount;
+    const begin = performance.now();
+    const step = (now: number): void => {
+      const k = Math.min(1, (now - begin) / ZOOM_ANIM_MS);
+      this.zoomAmount = from + (target - from) * (1 - (1 - k) ** 3);
+      this.cdr.markForCheck();
+      if (k < 1) this.zoomFrame = requestAnimationFrame(step);
+    };
+    this.zoomFrame = requestAnimationFrame(step);
   }
 
   /** The mini-map of the whole event shows as soon as the bar grows on a narrow screen, ahead of the zoom, and while the zoom lingers. */
@@ -121,18 +156,42 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     return Math.min(this.last - span, Math.max(0, this.value - Math.floor(span / 2)));
   }
 
-  /** Whether a heat is on the bar: always, but while zoomed only inside the window. */
+  /** Where the window is drawn: it slides after the thumb to the first heat it should show, instead of jumping a heat at a time. */
+  protected get windowFrom(): number {
+    return this.zoomAmount > 0 ? this.shownStart : this.zoomStart;
+  }
+
+  private shownStart = 0;
+  private slideFrame = 0;
+
+  private slideWindow(): void {
+    cancelAnimationFrame(this.slideFrame);
+    const step = (): void => {
+      const gap = this.zoomStart - this.shownStart;
+      this.shownStart = Math.abs(gap) < 0.01 || this.stillMotion() ? this.zoomStart : this.shownStart + gap * 0.3;
+      this.cdr.markForCheck();
+      if (this.zoomHeld || this.zoomAmount > 0) this.slideFrame = requestAnimationFrame(step);
+    };
+    this.slideFrame = requestAnimationFrame(step);
+  }
+
+  /** Animations are off in the settings or the system asks for reduced motion. */
+  private stillMotion(): boolean {
+    return document.documentElement.getAttribute('data-animations') === 'off' || (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+  }
+
+  /** Whether a heat is on the bar: always, but once zoomed only inside the window. */
   protected inWindow(index: number): boolean {
-    return !this.zoomed || (index >= this.zoomStart && index <= this.zoomStart + ZOOM_STEPS - 1);
+    return !this.zoomed || this.zoomAmount < 1 || (index >= Math.floor(this.windowFrom) && index <= Math.ceil(this.windowFrom) + ZOOM_STEPS - 1);
   }
 
   /** The window as fractions of the whole event, for the mini-map. */
   protected get windowLeft(): number {
-    return this.zoomStart / this.last;
+    return this.windowFrom / this.last;
   }
 
   protected get windowRight(): number {
-    return (this.zoomStart + ZOOM_STEPS - 1) / this.last;
+    return (this.windowFrom + ZOOM_STEPS - 1) / this.last;
   }
 
   /** The boundaries between distances, as fractions of the whole event, for the mini-map. */
@@ -224,13 +283,19 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
 
   /** Where a step sits along the track, as a fraction. */
   protected fraction(index: number): number {
-    if (this.zoomed) return (index - this.zoomStart) / (ZOOM_STEPS - 1);
-    return this.last === 0 ? 0 : index / this.last;
+    const whole = this.last === 0 ? 0 : index / this.last;
+    if (!this.zoomable || this.zoomAmount === 0) return whole;
+    return whole + ((index - this.windowFrom) / (ZOOM_STEPS - 1) - whole) * this.zoomAmount;
   }
 
-  /** The number of a heat for above its tick: "2", or "1&2" for a quartet; none for a mass start. */
-  protected heatNumber(index: number): string {
-    return this.steps[index]?.label.match(/\d+/g)?.join('&') ?? '';
+  /** The numbers of a heat for under its tick: one, or several for a quartet, which stack; none for a mass start. */
+  protected heatNumbers(index: number): string[] {
+    return this.steps[index]?.label.match(/\d+/g) ?? [];
+  }
+
+  /** The most numbers any heat has, which the distance names under the ticks make room for. */
+  protected get numberLines(): number {
+    return Math.max(1, ...this.steps.map((_, i) => this.heatNumbers(i).length));
   }
 
   protected stepText(step: HeatStep): string {
@@ -312,7 +377,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
         this.anchorX = this.lastX;
         this.anchorValue = this.value;
         this.zoomHeld = true;
-        this.cdr.markForCheck();
+        this.animateZoom();
       }, ZOOM_HOLD_MS);
     }
     this.wantsLive = this.value === this.liveIndex;
@@ -337,7 +402,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
       this.lingerTimer = setTimeout(() => {
         this.zoomHeld = false;
         this.lingerTimer = null;
-        this.cdr.markForCheck();
+        this.animateZoom();
       }, ZOOM_LINGER_MS);
     }
     this.positionChange.emit(this.wantsLive ? null : held);

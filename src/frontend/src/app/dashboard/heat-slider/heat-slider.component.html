@@ -1,4 +1,4 @@
-<div class="heat-slider" [class.dragging]="expanded" [class.pressed]="dragging" [class.following]="position === null" [class.glide]="glide" [class.zoomed]="zoomed" [class.mini]="miniShown" (wheel)="onWheel($event)">
+<div class="heat-slider" [class.dragging]="expanded || zoomed" [class.pressed]="dragging" [class.following]="position === null" [class.glide]="glide" [class.zoomed]="zoomed" [class.zoom-clip]="zoomAmount > 0" [class.mini]="miniShown" (wheel)="onWheel($event)">
   @if (preview; as step) {
     <div class="heat-preview" role="presentation" [style.left.%]="previewFraction * 100" [style.transform]="'translateX(-' + previewFraction * 100 + '%)'">
       <div class="heat-preview-title">{{ step.label || step.distanceName }}</div>
@@ -16,11 +16,11 @@
     </div>
   }
   <div class="d-flex align-items-center gap-3">
-    <div class="track flex-grow-1">
+    <div class="track flex-grow-1" [style.--lines]="numberLines">
       <span class="bar" aria-hidden="true"></span>
       @for (index of ticks; track index) {
         @if (inWindow(index)) {
-        <span class="mark mark-tick" [class.mark-future]="index > liveIndex" aria-hidden="true" [style.--at]="fraction(index)">@if (zoomed) {<span class="tick-number">{{ heatNumber(index) }}</span>}</span>
+        <span class="mark mark-tick" [class.mark-future]="index > liveIndex" aria-hidden="true" [style.--at]="fraction(index)">@if (zoomed) {<span class="tick-number">@for (number of heatNumbers(index); track $index) {<span>{{ number }}</span>}</span>}</span>
         }
       }
       @let layout = textLayout;
