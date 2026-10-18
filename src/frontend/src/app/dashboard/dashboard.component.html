@@ -32,7 +32,7 @@
     } @else if (noCompetition) {
       <span class="competition-hint competition-hint-alone">{{ 'noLiveCompetitionsHint' | translate }}</span>
     }
-    <img class="topbar-logo" src="icon.png" alt="" [attr.title]="'pageTitle' | translate" width="32" height="32" />
+    <img class="topbar-logo" src="apple-touch-icon.png" alt="" [attr.title]="'pageTitle' | translate" width="32" height="32" />
   </header>
   <c-offcanvas id="mainMenu" placement="start" [visible]="menuOpen" (visibleChange)="menuOpen = $event" [attr.aria-label]="'menuTitle' | translate">
     <c-offcanvas-header>
