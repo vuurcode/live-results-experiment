@@ -21,6 +21,32 @@ test.describe('heat slider', () => {
     await expect(pill).toHaveAttribute('aria-pressed', 'true');
   });
 
+  test('the live pill stays inside the bar and the live line touches it, at the start, the middle and the end', async ({ page }) => {
+    await page.goto(heatUrl('e2e-pairs', 'dist-500', 1));
+    const pill = page.locator('.live-pill');
+    await expect(pill).toBeVisible({ timeout: 15_000 });
+    for (const at of [0, 0.5, 1]) {
+      const box = await page.evaluate((fraction) => {
+        const pillEl = document.querySelector<HTMLElement>('.live-pill')!;
+        const line = document.querySelector<HTMLElement>('.mark-live')!;
+        const bar = document.querySelector<HTMLElement>('.heat-slider')!;
+        pillEl.style.transition = 'none';
+        line.style.transition = 'none';
+        pillEl.style.setProperty('--at', String(fraction));
+        line.style.setProperty('--at', String(fraction));
+        const p = pillEl.getBoundingClientRect();
+        const l = line.getBoundingClientRect();
+        const b = bar.getBoundingClientRect();
+        return { pillLeft: p.left, pillRight: p.right, line: l.left + l.width / 2, barLeft: b.left, barRight: b.right, height: p.height };
+      }, at);
+      expect(box.pillLeft, `at ${at}`).toBeGreaterThanOrEqual(box.barLeft - 1);
+      expect(box.pillRight, `at ${at}`).toBeLessThanOrEqual(box.barRight + 1);
+      expect(box.line, `at ${at}`).toBeGreaterThanOrEqual(box.pillLeft + 8);
+      expect(box.line, `at ${at}`).toBeLessThanOrEqual(box.pillRight - 8);
+      expect(box.height, `at ${at}: one line`).toBeLessThan(40);
+    }
+  });
+
   test('the position is announced as the heat label of the step', async ({ page }) => {
     await page.goto(heatUrl('e2e-pairs', 'dist-500', 3));
     await expect(slider(page)).toHaveAttribute('aria-valuetext', /Heat 3$/, { timeout: 15_000 });

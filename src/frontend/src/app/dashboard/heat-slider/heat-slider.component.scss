@@ -1,6 +1,9 @@
 // The one red of everything live: line, dot, pill, thumb on the live heat and the pulse; dark enough for white text and red text on white.
 $live: #b02a37;
 
+// A pill is centred under its marker, and leans to hang from it: its text runs to the left at the end of the track and to the right at the start, so it never leaves the bar or wraps. The marker stays 0.6rem inside the pill's edge, clear of the rounded corner, so its line always touches the pill.
+$pill-shift: translateX(calc(-1 * (clamp(0, (var(--at) - 0.15) / 0.7, 1) * (100% - 1.2rem) + 0.6rem)));
+
 .heat-slider { position: relative; }
 
 .heat-preview {
@@ -59,7 +62,8 @@ $live: #b02a37;
   z-index: 4;
   top: calc((var(--thumb) + var(--bar)) / 2 + 1.1rem);
   left: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--at));
-  transform: translateX(-50%);
+  transform: $pill-shift;
+  white-space: nowrap;
   border: 1px solid $live;
   border-radius: 1rem;
   padding: 0 0.5rem;
@@ -326,6 +330,7 @@ $live: #b02a37;
   transform: translateX(-50%);
   pointer-events: none;
 }
+.you-pill { transform: $pill-shift; white-space: nowrap; }
 .you-line {
   z-index: 2;
   top: calc((var(--thumb) + var(--bar)) / 2 - 0.1rem);
