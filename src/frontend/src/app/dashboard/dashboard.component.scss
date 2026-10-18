@@ -396,23 +396,6 @@
   letter-spacing: 0.02em;
 }
 
-// The threshold setting slides open and shut when the colours are switched on or off
-.setting-collapse {
-  display: grid;
-  grid-template-rows: 0fr;
-  opacity: 0;
-  visibility: hidden;
-  transition: grid-template-rows 0.2s ease, opacity 0.2s ease, visibility 0s linear 0.2s;
-  &.open {
-    grid-template-rows: 1fr;
-    opacity: 1;
-    visibility: visible;
-    transition: grid-template-rows 0.2s ease, opacity 0.2s ease, visibility 0s;
-  }
-  > .setting-collapse-inner { overflow: hidden; min-height: 0; display: flex; flex-direction: column; > .setting-group { flex: 1; } }
-}
-@media (prefers-reduced-motion: reduce) { .setting-collapse, .setting-collapse.open { transition: none; } }
-
 // Notices shown instead of or above results: the shared callout colours keep them readable in both themes
 .empty-notice.alert {
   background: var(--lr-callout-bg);
