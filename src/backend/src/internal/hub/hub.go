@@ -103,7 +103,11 @@ func (m *Hub) Join(id string, from *room.Resume) (*room.Room, *room.Client, erro
 		r.IdleTime = nil
 	}
 	m.countConnectionLocked()
-	return r, r.Register(from), nil
+	c := r.Register(from)
+	if !m.set.Extra(id) {
+		m.Recorder.Open(id).Connected(r.ClientCount())
+	}
+	return r, c, nil
 }
 
 // openLocked returns the room for id, creating it and its polling loop when needed.

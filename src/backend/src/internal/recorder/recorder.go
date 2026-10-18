@@ -41,8 +41,12 @@ const (
 	snapshotExt = ".json"
 	// metaName is the file next to the snapshots that says when the competition is held. It is not a snapshot, so it
 	// does not end in .json, and a replay of the folder leaves it alone.
-	metaName   = "competition.meta"
-	archiveExt = ".tar.gz"
+	metaName = "competition.meta"
+	// clientsName is the file next to the snapshots that says how many clients followed the competition that day:
+	// the connections made and the most that were connected at once, one number per line. Like the meta file it is
+	// no snapshot.
+	clientsName = "clients.txt"
+	archiveExt  = ".tar.gz"
 	// snapshotTime names a snapshot: fixed width, so that sorting the names sorts the snapshots in time.
 	snapshotTime = "20060102T150405.000Z"
 	settle       = time.Hour // how long a folder of snapshots is left alone before it is packed
@@ -90,7 +94,12 @@ type Recording struct {
 	skip    bool   // the day is not recorded: it has an archive already, or was deleted
 	period  []byte // the competition's start and end as they are written to the meta file; nil until they are known
 	written []byte // what the meta file of the open day holds
-	closed  atomic.Bool
+
+	connections int    // clients connected during the day, counted from the first one the process saw
+	peak        int    // most clients connected at once during the day
+	clients     string // what the clients file of the open day holds
+	counted     string // the day the two counters are for
+	closed      atomic.Bool
 }
 
 // Open returns the recording of a match, which carries on across restarts and days. It returns nil when recording is
@@ -115,7 +124,14 @@ func (s *Store) archive(name string) string { return filepath.Join(s.dir, name+a
 func (r *Recording) begin(day string) {
 	r.name = r.id + "_" + day
 	r.day, r.dir = day, filepath.Join(r.store.dir, r.name)
-	r.started, r.skip, r.last, r.written = true, false, nil, nil
+	r.started, r.skip, r.last, r.written, r.clients = true, false, nil, nil, ""
+	if r.day != r.counted {
+		if r.counted != "" { // a later day starts from zero; the first one keeps the clients that came before it
+			r.connections, r.peak = 0, 0
+		}
+		r.counted = r.day
+		r.readClients()
+	}
 	if _, err := os.Stat(r.store.archive(r.name)); err == nil {
 		r.skip = true
 		return
@@ -166,6 +182,7 @@ func (r *Recording) Add(body []byte) {
 	}
 	if bytes.Equal(body, r.last) {
 		r.writeMetaLocked()
+		r.writeClientsLocked()
 		return
 	}
 	if err := os.MkdirAll(r.dir, 0o750); err != nil {
@@ -180,6 +197,56 @@ func (r *Recording) Add(body []byte) {
 	}
 	r.last = append(r.last[:0], body...)
 	r.writeMetaLocked()
+	r.writeClientsLocked()
+}
+
+// Connected counts a client that connected, with the number connected now. The counts go to the clients file of the
+// open day; a client that comes before the day's first reply is counted in that day.
+func (r *Recording) Connected(active int) {
+	if r == nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.closed.Load() {
+		return
+	}
+	r.connections++
+	r.peak = max(r.peak, active)
+	r.writeClientsLocked()
+}
+
+// readClients adds the counts a restart left in the clients file of the day.
+func (r *Recording) readClients() {
+	b, err := os.ReadFile(filepath.Join(r.dir, clientsName))
+	if err != nil {
+		return
+	}
+	var connections, peak int
+	if _, err := fmt.Sscanf(string(b), "%d\n%d", &connections, &peak); err == nil {
+		r.connections += connections
+		r.peak = max(r.peak, peak)
+	}
+}
+
+// writeClientsLocked writes the counts to the clients file of the open day when they changed.
+func (r *Recording) writeClientsLocked() {
+	if !r.started || r.skip || r.connections == 0 {
+		return
+	}
+	text := fmt.Sprintf("%d\n%d\n", r.connections, r.peak)
+	if text == r.clients {
+		return
+	}
+	if err := os.MkdirAll(r.dir, 0o750); err != nil {
+		slog.Error("Recording failed", "competition", r.id, "err", err)
+		return
+	}
+	if err := writeFile(filepath.Join(r.dir, clientsName), []byte(text)); err != nil {
+		slog.Error("Recording failed", "competition", r.id, "err", err)
+		return
+	}
+	r.clients = text
 }
 
 // writeMetaLocked writes the period to the meta file of the open day when that holds something else.
@@ -277,9 +344,9 @@ func (s *Store) pack(name string) error {
 	return os.RemoveAll(dir)
 }
 
-// addMeta adds the meta file of the folder to the archive, when there is one.
-func addMeta(tw *tar.Writer, dirName, dir string) error {
-	path := filepath.Join(dir, metaName)
+// addExtra adds a file that is no snapshot (the meta or clients file) to the archive, when the folder has it.
+func addExtra(tw *tar.Writer, dirName, dir, file string) error {
+	path := filepath.Join(dir, file)
 	b, err := os.ReadFile(path) //nolint:gosec // the recording's own folder
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
@@ -291,7 +358,7 @@ func addMeta(tw *tar.Writer, dirName, dir string) error {
 	if fi, err := os.Stat(path); err == nil {
 		mod = fi.ModTime()
 	}
-	if err := tw.WriteHeader(&tar.Header{Name: dirName + "/" + metaName, Mode: 0o640, Size: int64(len(b)), ModTime: mod}); err != nil {
+	if err := tw.WriteHeader(&tar.Header{Name: dirName + "/" + file, Mode: 0o640, Size: int64(len(b)), ModTime: mod}); err != nil {
 		return err
 	}
 	_, err = tw.Write(b)
@@ -318,8 +385,10 @@ func writeArchive(w io.Writer, dirName, dir string, names []string) error {
 			return err
 		}
 	}
-	if err := addMeta(tw, dirName, dir); err != nil {
-		return err
+	for _, file := range []string{metaName, clientsName} {
+		if err := addExtra(tw, dirName, dir, file); err != nil {
+			return err
+		}
 	}
 	if err := tw.Close(); err != nil {
 		return err

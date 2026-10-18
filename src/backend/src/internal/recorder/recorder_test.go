@@ -290,3 +290,32 @@ func TestThePeriodOfTheCompetitionIsKeptWithEachDay(t *testing.T) {
 		t.Fatalf("got %+v", infos)
 	}
 }
+
+func TestTheClientsOfADayAreCountedInATextFile(t *testing.T) {
+	s, now := clockedStore(t, 0)
+	r := s.Open("m1")
+	r.Connected(1) // before the first reply of the day: counted in that day
+	r.Add([]byte(`{"a":1}`))
+	r.Connected(3)
+	r.Connected(2)
+	read := func(name string) string {
+		var buf bytes.Buffer
+		if err := s.Write(&buf, name); err != nil {
+			t.Fatal(err)
+		}
+		return readArchive(t, buf.Bytes())[name+"/"+clientsName]
+	}
+	if got := read("m1_2026-03-08"); got != "3\n3\n" {
+		t.Fatalf("clients file: %q", got)
+	}
+	*now = now.Add(24 * time.Hour)
+	r.Add([]byte(`{"a":1}`))
+	r.Connected(1)
+	if got := read("m1_2026-03-09"); got != "1\n1\n" {
+		t.Fatalf("clients file of the next day: %q", got)
+	}
+	// the file is not a snapshot
+	if infos, _ := s.List(); len(infos) != 2 || infos[0].Snapshots != 1 {
+		t.Fatalf("got %+v", infos)
+	}
+}
