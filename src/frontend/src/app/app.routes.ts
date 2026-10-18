@@ -1,11 +1,10 @@
 import { Routes } from '@angular/router';
 import { DashboardComponent } from './dashboard/dashboard.component';
-import { StartListComponent } from './start-list/start-list.component';
-import { RankingComponent } from './ranking/ranking.component';
 
+// The dashboard is the landing page and ships with the main bundle; the other pages load when first visited.
 export const routes: Routes = [
   { path: '', component: DashboardComponent },
-  { path: 'ranking', component: RankingComponent },
-  { path: 'start-list', component: StartListComponent },
+  { path: 'ranking', loadComponent: () => import('./ranking/ranking.component').then((m) => m.RankingComponent) },
+  { path: 'start-list', loadComponent: () => import('./start-list/start-list.component').then((m) => m.StartListComponent) },
   { path: '**', redirectTo: '' }
 ];
