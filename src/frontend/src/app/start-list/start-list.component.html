@@ -57,7 +57,7 @@
               </div>
               <ul class="start-list-racers">
                 @for (racer of heat.racers; track $index) {
-                  <li class="start-list-racer" [class.chosen]="view.matches(racer.name)">
+                  <li class="start-list-racer" [attr.data-lane]="racer.lane" [class.chosen]="view.matches(racer.name)">
                     @if (racer.lane) { <span class="lane-dot" [attr.data-lane]="racer.lane" [attr.title]="racer.lane"></span> }
                     {{ racer.name }}
                   </li>

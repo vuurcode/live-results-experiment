@@ -133,6 +133,33 @@
 .lane-dot[data-lane='pink'] { --lane: pink; }
 .lane-dot[data-lane='lime'] { --lane: lime; }
 
+// In the dark theme a name carries its lane colour as a badge instead of a dot.
+:host-context([data-coreui-theme='dark']) {
+  .lane-dot {
+    display: none;
+  }
+
+  .start-list-racer[data-lane] {
+    --badge-bg: #6c757d;
+    --badge-fg: #fff;
+    background: var(--badge-bg);
+    color: var(--badge-fg);
+  }
+
+  .start-list-racer[data-lane='white'] { --badge-bg: #f8f9fa; --badge-fg: #212529; }
+  .start-list-racer[data-lane='yellow'] { --badge-bg: #ffd93b; --badge-fg: #212529; }
+  .start-list-racer[data-lane='red'] { --badge-bg: #c93434; }
+  .start-list-racer[data-lane='blue'] { --badge-bg: #2f3fe0; }
+  .start-list-racer[data-lane='orange'] { --badge-bg: #ff9f2e; --badge-fg: #212529; }
+  .start-list-racer[data-lane='pink'] { --badge-bg: #ffb3d1; --badge-fg: #212529; }
+  .start-list-racer[data-lane='lime'] { --badge-bg: #a6f04a; --badge-fg: #212529; }
+
+  .start-list-heat.done .start-list-racer[data-lane]:not(.chosen) {
+    color: var(--badge-fg);
+  }
+
+}
+
 .back-link {
   --cui-btn-color: var(--cui-body-color);
   --cui-btn-border-color: var(--lr-control-border);
