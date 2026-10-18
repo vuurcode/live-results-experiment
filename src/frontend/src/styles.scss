@@ -205,3 +205,11 @@ html { overflow-anchor: none; }
   color: var(--cui-secondary-color);
   opacity: 1;
 }
+
+// CoreUI wraps the header and body of an offcanvas in a plain div (its focus trap); it takes the drawer's height, so the body scrolls on a short screen.
+.offcanvas > div:not(.cdk-visually-hidden) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
