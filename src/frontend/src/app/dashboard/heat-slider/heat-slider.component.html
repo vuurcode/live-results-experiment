@@ -51,7 +51,7 @@
     }
     @if (steps.length > 1 && !live) {
       <span class="you-line" aria-hidden="true" [style.--at]="fraction(value)"></span>
-      <span class="you-pill" aria-hidden="true" [style.--at]="fraction(value)">{{ 'sliderYou' | translate }}</span>
+      <span class="you-pill" aria-hidden="true" [style.--at]="fraction(value)">{{ youText }}</span>
     }
     @if (miniShown) {
       <span class="minimap" [class.minimap-drag]="miniDragging" aria-hidden="true" (pointerdown)="miniDown($event)" (pointermove)="miniMove($event)" (pointerup)="miniUp()" (pointercancel)="miniUp()">
@@ -68,7 +68,7 @@
         <span class="minimap-text minimap-text-end">{{ 'sliderEnd' | translate }}</span>
         @if (!live) {
           <span class="minimap-dot minimap-value" [style.left.%]="miniValue * 100"></span>
-          <span class="minimap-label minimap-label-you" [class]="lean.you" [style.left.%]="miniValue * 100">{{ 'sliderYou' | translate }}</span>
+          <span class="minimap-label minimap-label-you" [class]="lean.you" [style.left.%]="miniValue * 100">{{ youText }}</span>
         }
       </span>
     }

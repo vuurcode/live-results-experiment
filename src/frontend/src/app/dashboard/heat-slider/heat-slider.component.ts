@@ -349,6 +349,12 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     return [this.ts.t('badgeLive'), numbers.map((n) => `#${n}`).join('/')].filter(Boolean).join(' ');
   }
 
+  /** The text of the viewing label: You are viewing, with the number of the viewed heat, or both numbers of a quartet. */
+  protected get youText(): string {
+    const numbers = this.heatNumbers(this.value);
+    return [this.ts.t('sliderYou'), numbers.map((n) => `#${n}`).join('/')].filter(Boolean).join(' ');
+  }
+
   /** The most numbers any heat has, which the distance names under the ticks make room for. */
   protected get numberLines(): number {
     return Math.max(1, ...this.steps.map((_, i) => this.heatNumbers(i).length));
