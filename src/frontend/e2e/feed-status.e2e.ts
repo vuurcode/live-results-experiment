@@ -10,6 +10,15 @@ test.describe('when there is nothing to show', () => {
     await expect(page.locator('.skeleton-view')).toHaveCount(0);
   });
 
+  test('the notice is one compact line on a wide screen', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/?competitionId=e2e-notlive');
+    const notice = page.getByRole('status').filter({ hasText: 'not live yet' });
+    await expect(notice).toBeVisible();
+    const box = (await notice.boundingBox())!;
+    expect(box.height).toBeLessThan(40);
+  });
+
   test('the message follows the browser language', async ({ browser }) => {
     const context = await browser.newContext({ locale: 'nl-NL' });
     const page = await context.newPage();

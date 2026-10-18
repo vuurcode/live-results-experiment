@@ -117,7 +117,17 @@
   background: var(--lr-callout-bg);
   color: var(--lr-callout-fg);
   border-color: var(--lr-callout-line);
-  h2 { font-weight: 600; }
+  // compact: the title, the explanation and the data source's text run on one line, wrapping only where the screen is too narrow
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  column-gap: 0.5rem;
+  row-gap: 0;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  h2 { font-size: inherit; font-weight: 600; margin: 0; }
+  p { margin: 0 !important; font-size: inherit; }
   .text-body-secondary { color: inherit !important; }
 }
 
