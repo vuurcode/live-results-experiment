@@ -1,5 +1,5 @@
 import { findLiveHeat } from '../results/live-heat';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostBinding, HostListener, OnInit, afterEveryRender, afterNextRender, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostBinding, OnInit, afterNextRender, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
@@ -7,19 +7,19 @@ import { DataService } from '../results/data.service';
 import type { ColorSchemeChoice } from '../color-scheme';
 import { parseInteger, parseNumber, SettingsService } from '../settings/settings.service';
 import { FeedStatus, TodayCompetition, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../results/data.models';
-import { Observable, combineLatest, concat, filter, from, map, merge, of, shareReplay, startWith, switchMap, take, timer } from 'rxjs';
+import { Observable, combineLatest, concat, filter, from, map, merge, of, shareReplay, startWith, switchMap, tap, timer } from 'rxjs';
 import { TranslateService, TranslationKey } from '../i18n/translate.service';
 import { TranslatePipe } from '../i18n/translate.pipe';
 import { MassStartTimelineComponent } from './mass-start-timeline/mass-start-timeline.component';
 import { IndividualHeatCardComponent } from './individual-heat-card/individual-heat-card.component';
 import { MassStartRaceRowComponent } from './mass-start-race-row/mass-start-race-row.component';
 import {
-  AccordionModule,
   AlertModule,
   BadgeModule,
   ButtonModule,
   FormModule,
   GridModule,
+  OffcanvasModule,
   PlaceholderModule,
   SharedModule,
 } from '@coreui/angular';
@@ -34,9 +34,10 @@ import {
   type MergedHeatGroup,
 } from '../results/heats.util';
 import { lastViewedVenue, preselectCompetition, rememberVenue } from '../results/competition.util';
-import { SettledScroller } from './scroll.util';
-import { UserScrollGuard } from './user-scroll';
-import { AutoFollow } from './auto-follow';
+import { HeatPeeksComponent } from './heat-peeks/heat-peeks.component';
+import { HeatSliderComponent } from './heat-slider/heat-slider.component';
+import { buildSteps, type HeatStep } from './heat-steps';
+import { distanceAtLap, leaderLaps, massStartLapCount } from '../results/mass-lap.util';
 import { raceListAnimation, raceListKey } from './dashboard.animations';
 
 @Component({
@@ -44,11 +45,11 @@ import { raceListAnimation, raceListKey } from './dashboard.animations';
   standalone: true,
   imports: [
     CommonModule,
-    AccordionModule,
     AlertModule,
     BadgeModule,
     ButtonModule,
     FormModule,
+    OffcanvasModule,
     GridModule,
     PlaceholderModule,
     SharedModule,
@@ -57,6 +58,8 @@ import { raceListAnimation, raceListKey } from './dashboard.animations';
     MassStartTimelineComponent,
     IndividualHeatCardComponent,
     MassStartRaceRowComponent,
+    HeatPeeksComponent,
+    HeatSliderComponent,
   ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
@@ -78,29 +81,19 @@ export class DashboardComponent implements OnInit {
   /** Why the page has no results to show (instead of the loading skeleton), or null while it is just connecting. */
   protected emptyNotice$!: Observable<EmptyNotice | null>;
 
-  protected initialLiveId: string | null = null;
   protected liveEventNumber: number | null = null;
   /** Mass start competitors the viewer follows; several can be selected at once. A new set on every change, for the OnPush rows. */
   protected selectedRaceIds: ReadonlySet<string> = new Set();
-  protected displaySettingsOpen = false;
+  /** The menu drawer with the settings is open. */
+  protected menuOpen = false;
   protected activeHeatKey: { distanceId: string; label: string } | null = null;
 
-  private readonly scroller = new SettledScroller(() => this.settings.animations.value);
-  private readonly autoFollow = new AutoFollow({
-    follow: () => this.settings.follow.value,
-    heatGroups: (distance) => this.mergedHeatGroups(distance),
-    scrollTo: (selector, anchor) => (this.viewerScrolled ? undefined : this.scroller.scrollTo(selector, anchor)),
-    liveDistanceChanged: (live) => {
-      this.initialLiveId = live.id;
-      this.liveEventNumber = live.eventNumber;
-      this.cdr.markForCheck();
-    },
-  });
-  /** The viewer scrolled themselves: the page stays where they put it until the live heat is in view again and they have stopped. */
-  private viewerScrolled = false;
-  private resumeTimer: ReturnType<typeof setInterval> | null = null;
-  private readonly userScroll = new UserScrollGuard(() => this.viewerTookOver());
   private resizeObserver: ResizeObserver | null = null;
+
+  /** The step the viewer slid to; null follows the live heat. */
+  protected position: number | null = null;
+  /** The distances with the steps of the slider and the index of the live one. */
+  protected view$!: Observable<{ distances: ProcessedDistance[]; steps: HeatStep[]; live: number }>;
 
   // Hide mass start settings if no mass start present
   protected hasMassStart$: Observable<boolean>;
@@ -122,34 +115,6 @@ export class DashboardComponent implements OnInit {
   protected openCompetition(event: Event): void {
     const id = (event.target as HTMLSelectElement).value;
     if (id) window.location.search = `?competitionId=${encodeURIComponent(id)}`;
-  }
-
-  /** Opens or folds away the settings panel. */
-  protected toggleSettings(): void {
-    this.displaySettingsOpen = !this.displaySettingsOpen;
-    this.publishTopbarBottom();
-  }
-
-  /** The settings panel hangs under the top bar, which is lower than its pinned spot while the page is near the top: the panel's height limit is the room left below the bar. */
-  @HostListener('window:scroll')
-  @HostListener('window:resize')
-  protected publishTopbarBottom(): void {
-    const bar: HTMLElement | null = this.host.nativeElement.querySelector('.topbar');
-    if (bar) this.host.nativeElement.style.setProperty('--topbar-bottom', `${Math.max(0, bar.getBoundingClientRect().bottom)}px`);
-  }
-
-  /** A click anywhere outside the settings buttons and panels folds them away. */
-  @HostListener('document:click', ['$event'])
-  protected closeSettingsOnOutsideClick(event: MouseEvent): void {
-    if (!this.displaySettingsOpen) return;
-    if (event.composedPath().some((el) => el instanceof Element && el.classList.contains('topbar-settings-group'))) return;
-    this.closeSettings();
-  }
-
-  /** Escape folds the settings panel away. */
-  @HostListener('document:keydown.escape')
-  protected closeSettings(): void {
-    this.displaySettingsOpen = false;
   }
 
   protected isTodayCompetition(competitions: TodayCompetition[], id: string): boolean {
@@ -188,15 +153,9 @@ export class DashboardComponent implements OnInit {
    * so the example text would lag behind. They have no `inputType`; typing does and is applied on `change`, so a
    * half-typed "0." is not overwritten.
    */
-  protected stepLapVariance(event: Event, individual: boolean): void {
+  protected stepLapVariance(event: Event): void {
     if ((event as InputEvent).inputType) return;
-    if (individual) this.setLapVarianceIndividual(event);
-    else this.setLapVariance(event);
-  }
-
-  protected setLapVarianceIndividual(event: Event): void {
-    const val = parseNumber((event.target as HTMLInputElement).value);
-    if (val !== undefined) this.settings.lapVarianceIndividual.set(val);
+    this.setLapVariance(event);
   }
 
   protected setColorScheme(event: Event): void {
@@ -211,10 +170,6 @@ export class DashboardComponent implements OnInit {
     this.settings.showThousandths.set((event.target as HTMLInputElement).checked);
   }
 
-  protected setCompactColors(event: Event): void {
-    this.settings.compactColors.set((event.target as HTMLInputElement).checked);
-  }
-
   /** Switches off the Angular animations (the reordering of rows and the folding of groups) with the setting. */
   @HostBinding('@.disabled') get animationsDisabled(): boolean { return !this.settings.animations.value; }
 
@@ -223,15 +178,7 @@ export class DashboardComponent implements OnInit {
     this.settings.animations.changes$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(on => {
       document.documentElement.setAttribute('data-animations', on ? 'on' : 'off');
     });
-    // CoreUI's accordion template puts aria-expanded on the collapsible region (a plain div), which
-    // ARIA does not allow there. The header button already exposes the expanded state, so drop it.
-    afterEveryRender(() => {
-      this.host.nativeElement
-        .querySelectorAll('.accordion-collapse[aria-expanded]')
-        .forEach(el => el.removeAttribute('aria-expanded'));
-    });
-    // The top bar and the open distance's title stay pinned while scrolling. The title sticks right
-    // below the top bar, whose height changes when it wraps, so publish it as a CSS variable.
+    // The top bar stays pinned; the settings panel's height limit follows its height.
     afterNextRender(() => {
       const bar: HTMLElement | null = this.host.nativeElement.querySelector('.topbar');
       if (!bar || typeof ResizeObserver === 'undefined') return;
@@ -262,16 +209,14 @@ export class DashboardComponent implements OnInit {
       map((distances) => {
         if (!distances || distances.length === 0) return [];
         const sorted = [...distances].sort((a, b) => a.eventNumber - b.eventNumber);
-        // Capture the first live distance id/eventNumber for initial accordion open
-        if (this.initialLiveId === null) {
-          const live = sorted.find((d) => d.isLive);
-          if (live) {
-            this.initialLiveId = live.id;
-            this.liveEventNumber = live.eventNumber;
-          }
-        }
+        if (this.liveEventNumber === null) this.liveEventNumber = sorted.find((d) => d.isLive)?.eventNumber ?? null;
         return sorted;
       }),
+    );
+    this.view$ = this.sortedDistances$.pipe(
+      map((distances) => ({ distances, ...buildSteps(distances, (n) => this.ts.t('heatLabel', { n }), (n) => this.ts.t('lapStepLabel', { n })) })),
+      tap(({ steps }) => this.resolvePosition(steps)),
+      tap(({ steps, live }) => this.followLive(steps[live])),
     );
   }
 
@@ -285,29 +230,18 @@ export class DashboardComponent implements OnInit {
       const target = preselectCompetition(competitions, lastViewedVenue());
       if (target && target.id !== this.dataService.competitionId) window.location.replace(`?competitionId=${encodeURIComponent(target.id)}`);
     });
-    // the browser would restore the previous scroll position on reload, after the page has landed on the live distance
-    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     this.destroyRef.onDestroy(() => this.resizeObserver?.disconnect());
-    const detach = this.userScroll.attach();
-    this.destroyRef.onDestroy(() => {
-      detach();
-      if (this.resumeTimer) clearInterval(this.resumeTimer);
-    });
     this.dataService.eventName$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(name => {
       const pageTitle = this.ts.t('pageTitle');
       this.titleService.setTitle(name ? `${name} | ${pageTitle}` : pageTitle);
     });
     this.dataService.reset$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-      this.initialLiveId = null;
       this.liveEventNumber = null;
-      this.autoFollow.reset();
+      this.position = null;
+      this.positionKey = this.storedPositionKey();
+      this.pinned = this.positionKey !== null;
+      this.liveKey = null;
       this.cdr.markForCheck();
-    });
-    this.sortedDistances$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(distances => this.autoFollow.update(distances));
-    // after a suspension the page lands on the live distance again, as on a fresh load
-    this.dataService.resumed$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-      this.autoFollow.reset();
-      this.sortedDistances$.pipe(take(1)).subscribe(distances => this.autoFollow.update(distances));
     });
     this.sortedDistances$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(distances => {
       this.activeHeatKey = this.findActiveHeat(distances);
@@ -331,27 +265,97 @@ export class DashboardComponent implements OnInit {
     return result;
   }
 
-  private viewerTookOver(): void {
-    this.viewerScrolled = true;
-    this.scroller.cancel();
-    this.resumeTimer ??= setInterval(() => this.resumeFollowing(), 500);
+  /** Where the shown heat comes in from: opposite to the way the slider moved, as if the slider drags the heats along. */
+  protected slideFrom: 'left' | 'right' | null = null;
+
+  private liveKey: string | null = null;
+
+  /**
+   * The gate every data update passes before it may move or animate the view: set only by the viewer choosing a step
+   * (setPosition), cleared only by the viewer choosing live. While it is set, an update re-finds the step by key and
+   * nothing else.
+   */
+  private pinned = this.storedPositionKey() !== null;
+
+  /** On the live position the view moves along when a newer heat starts; a pinned position never moves by itself. */
+  private followLive(liveStep: HeatStep | undefined): void {
+    const key = DashboardComponent.stepKey(liveStep);
+    if (!this.pinned && this.liveKey !== null && key !== null && key !== this.liveKey) this.slideFrom = 'right';
+    this.liveKey = key;
   }
 
-  /** Follows the live heat again once the viewer has stopped scrolling and the heat is in view. */
-  private resumeFollowing(): void {
-    if (this.userScroll.scrolling() || !this.liveHeatInView()) return;
-    clearInterval(this.resumeTimer ?? undefined);
-    this.resumeTimer = null;
-    this.viewerScrolled = false;
-    this.autoFollow.restart();
-    this.sortedDistances$.pipe(take(1)).subscribe(distances => this.autoFollow.update(distances));
+  /** The step slid to, by identity: a heat that comes or goes before it moves its index, not the step on show. */
+  private positionKey: string | null = this.storedPositionKey();
+
+  /** The step slid to is kept per competition, so that a page reload brings the viewer back to it. */
+  private positionStorageKey(): string {
+    return `position:${this.dataService.competitionId}`;
   }
 
-  private liveHeatInView(): boolean {
-    const el = document.querySelector('[data-live]') ?? (this.initialLiveId ? document.querySelector(`[data-distance-body="${this.initialLiveId}"]`) : null);
-    if (!el) return false;
-    const rect = el.getBoundingClientRect();
-    return rect.bottom > 0 && rect.top < window.innerHeight;
+  private storedPositionKey(): string | null {
+    try { return localStorage.getItem(this.positionStorageKey()); } catch { return null; }
+  }
+
+  private storePositionKey(key: string | null): void {
+    try {
+      if (key === null) localStorage.removeItem(this.positionStorageKey());
+      else localStorage.setItem(this.positionStorageKey(), key);
+    } catch { /* storage unavailable: the position lasts for this page */ }
+  }
+
+  private static stepKey(step: HeatStep | undefined): string | null {
+    return step?.key ?? null;
+  }
+
+  /** Keeps a position slid to on its step when the steps change. */
+  private resolvePosition(steps: HeatStep[]): void {
+    if (!this.pinned || this.positionKey === null) return;
+    const index = steps.findIndex((step) => DashboardComponent.stepKey(step) === this.positionKey);
+    if (index >= 0) this.position = index;
+    else if (this.position === null && steps.length > 0) this.setPosition(null, { steps, live: 0 }); // a remembered heat that is gone
+  }
+
+  protected setPosition(position: number | null, view: { steps: HeatStep[]; live: number }): void {
+    this.pinned = position !== null;
+    this.positionKey = position === null ? null : DashboardComponent.stepKey(view.steps[Math.min(position, view.steps.length - 1)]);
+    const index = (p: number | null) => (p === null ? view.live : Math.min(p, view.steps.length - 1));
+    const [from, to] = [index(this.position), index(position)];
+    if (to !== from) this.slideFrom = to > from ? 'right' : 'left';
+    this.position = position;
+    this.storePositionKey(this.positionKey);
+  }
+
+  private readonly lapViews = new Map<string, { signature: string; view: ProcessedDistance }>();
+
+  /**
+   * The mass start as it stands for the step on show: the live distance itself on the lap the leader is on, so it
+   * keeps updating, else the standings after the lap of the step. A past lap is computed once per change of the
+   * racers or the group settings.
+   */
+  protected massView(distance: ProcessedDistance, step: HeatStep): ProcessedDistance {
+    const lap = step.lap ?? 0;
+    if (lap >= Math.min(massStartLapCount(distance), Math.max(1, leaderLaps(distance)))) return distance;
+    const threshold = this.settings.groupThreshold.value;
+    const maxGroups = this.settings.maxGroups.value;
+    const signature = `${threshold}:${maxGroups}:${distance.processedRaces.map((race) => `${race.id}.${race.lap_times.join(',')}`).join(';')}`;
+    const key = `${distance.id}:${lap}`;
+    const cached = this.lapViews.get(key);
+    if (cached?.signature === signature) return cached.view;
+    const view = distanceAtLap(distance, lap, threshold, maxGroups, (n) => this.ts.t(n === 1 ? 'lapUnit' : 'lapsUnit'));
+    this.lapViews.set(key, { signature, view });
+    return view;
+  }
+
+  /** The step before or after the one on show, as a hint beside it; none across a change of distance. */
+  protected neighbour({ steps }: { steps: HeatStep[] }, step: HeatStep, offset: number): HeatStep | null {
+    const other = steps[steps.indexOf(step) + offset];
+    return other?.distanceId === step.distanceId ? other : null;
+  }
+
+  /** The step on show: the one slid to, else the live one. */
+  protected selectedStep({ steps, live }: { steps: HeatStep[]; live: number }): HeatStep | null {
+    if (steps.length === 0) return null;
+    return steps[this.position === null ? live : Math.min(this.position, steps.length - 1)];
   }
 
   protected isActiveHeatRow(distanceId: string, label: string): boolean {
@@ -401,25 +405,9 @@ export class DashboardComponent implements OnInit {
     return pairHeatGroups(distance.heatGroups, (n) => this.ts.t('heatLabel', { n }));
   }
 
-  /** Whether the distance is skated by quartets: some pair skates on yellow or blue, so two pairs make up the four lanes of a row. */
-  protected hasQuartet(groups: MergedHeatGroup<CompetitorUpdate>[]): boolean {
-    return groups.some((g) => g.races.some((r) => r?.lane === 'yellow' || r?.lane === 'blue'));
-  }
-
-  /** Whether the heat is the yellow/blue pair that completes the quartet started by the heat before it. */
-  protected isQuartetSecond(groups: MergedHeatGroup<CompetitorUpdate>[], index: number): boolean {
-    return index > 0 && this.hasQuartet([groups[index]]) && !this.hasQuartet([groups[index - 1]]);
-  }
-
   /** Max trimmed lane count across all heat groups in a distance, so narrower heats don't spread wider than their siblings. */
   protected distanceMaxLaneCount(groups: MergedHeatGroup<CompetitorUpdate>[]): number {
     return Math.max(0, ...groups.map(g => this.trimmedRaces(g.races).length));
-  }
-
-  protected setFollow(event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    this.settings.follow.set(checked);
-    this.autoFollow.restart();
   }
 
 /** True when a individual race race counts as complete: all laps done OR has an invalid_reason. */

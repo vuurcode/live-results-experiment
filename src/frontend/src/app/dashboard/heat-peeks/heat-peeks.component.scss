@@ -1,0 +1,51 @@
+:host { display: block; }
+.peeks { position: relative; }
+.peek-current { min-width: 0; } // the full row wide, so the lane bands run across it; the cards centre themselves
+// the halves are pinned to the sides of the screen with a little space, faint and out of the way of pointers; the whole card is hinted at by its name badges alone
+.peek {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  overflow: hidden;
+  opacity: 0.35;
+  pointer-events: none;
+}
+.peek-before { left: 1rem; } // SIDE_GAP in the component
+.peek-after { right: 1rem; }
+.peek-name {
+  position: absolute;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.15em 0.7em;
+  border-radius: 0.5em;
+  background: var(--lane, #6c757d);
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.peek-name-line {
+  display: block;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+// the heat of the racer, small and centred below the name like the category and club on a card
+.peek-meta {
+  display: block;
+  text-align: center;
+  font-size: 0.5rem;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.peek-before .peek-name { left: 0; } // the badges are at the outer edges
+.peek-after .peek-name { right: 0; }
+.peek-name[data-lane='white'] { --lane: white; color: #212529; box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.5); }
+.peek-name[data-lane='yellow'] { --lane: yellow; color: #212529; }
+.peek-name[data-lane='red'] { --lane: #c93434; }
+.peek-name[data-lane='blue'] { --lane: blue; }
+.peek-name[data-lane='orange'] { --lane: orange; }
+.peek-name[data-lane='pink'] { --lane: pink; }
+.peek-name[data-lane='lime'] { --lane: lime; }
+// the end of a distance: a grey badge, the same box as a racer's
+.peek-edge { --lane: #6c757d; display: flex; align-items: center; justify-content: center; }

@@ -1,11 +1,10 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, Input, afterEveryRender, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, Input, inject } from '@angular/core';
 import { BadgeModule, CardModule } from '@coreui/angular';
 import { CompetitorUpdate } from '../../results/data.models';
 import { TranslateService, TranslationKey } from '../../i18n/translate.service';
 import { parseSeconds, sameHundredths, formatDurationSeconds, truncateLapTime, splitFormattedTime, isRecentUpdate } from '../../results/time.util';
 import { isNeverLive, GHOST_HIDING_CODES, NO_TIME_CODES, RaceCode, RECORD_CODES, RECORD_PRIORITY } from '../../results/race-codes';
 import { categoryName } from '../../results/category.util';
-import { lapBadgeColor } from '../../results/lap-color.util';
 import { isIndividualFinished, individualStartDegrees, individualFinishAngle, individualRaceComplete, individualPrComparison as individualPrComparisonUtil } from '../../results/heats.util';
 
 /** The usual lane colours by slot, for lanes no competitor has shown a colour for yet. */
@@ -30,12 +29,10 @@ export class IndividualHeatCardComponent {
   @Input() lapSchedule: number[] = [];
   @Input() distanceMeters: number | null = null;
   @Input() distanceId = '';
+  @Input() distanceName = '';
   @Input() active = false;
-  /** Colour the compact badges by variance against the previous lap (mass start style). */
-  @Input() colorLaps = false;
   /** Always show thousandths; otherwise hundredths, with thousandths only where a PB needs them. */
   @Input() showThousandths = false;
-  @Input() lapVarianceThreshold = 0;
 
   private rawRaces: (CompetitorUpdate | null)[] = [];
   private cappedFor: { raw: (CompetitorUpdate | null)[]; schedule: number[] } | null = null;
@@ -123,43 +120,9 @@ export class IndividualHeatCardComponent {
     return laps >= this.lapSchedule.length && this.lapProgress(race) < 1 ? laps - 1 : laps;
   }
 
-  /** Number of badge columns the compact body currently has (it follows the card width). */
-  private columns = 0;
-  private observed: Element | null = null;
-  private observer: ResizeObserver | null = null;
-
-  constructor() {
-    inject(DestroyRef).onDestroy(() => this.observer?.disconnect());
-    // The grid is only measured when the body appears or is resized, not on every render
-    afterEveryRender(() => {
-      const body = this.host.nativeElement.querySelector('.individual-compact-body');
-      if (!body || body === this.observed) return;
-      this.observer ??= new ResizeObserver(() => this.measureColumns());
-      if (this.observed) this.observer.unobserve(this.observed);
-      this.observer.observe(body); // also reports the first size
-      this.observed = body;
-    });
-  }
-
-  private measureColumns(): void {
-    const tracks = this.observed ? getComputedStyle(this.observed).gridTemplateColumns.split(' ').length : 0;
-    if (tracks !== this.columns) {
-      this.columns = tracks;
-      this.cdr.markForCheck();
-    }
-  }
-
-  /** Columns the total time takes at the end of a row. */
-  private readonly TOTAL_COLUMNS = 3;
-
-  /** True when the lap badges (the laps still to come included) leave no room for the total on their row: it then gets a line of its own. */
-  protected totalOnOwnLine(race: CompetitorUpdate): boolean {
-    return this.ghostTotalOnOwnLine(Math.max(race.lap_times?.length ?? 0, this.lapSchedule.length));
-  }
-
-  /** The same rule for a number of laps; also used for the placeholder of a card without laps. */
-  protected ghostTotalOnOwnLine(laps = this.lapSchedule.length): boolean {
-    return this.columns > 0 && laps > this.columns - this.TOTAL_COLUMNS;
+  /** Columns of the lap badge grid when every lap shares one row. */
+  protected get cells(): number {
+    return this.lapSchedule.length;
   }
 
   protected isRecentUpdate = isRecentUpdate;
@@ -330,11 +293,6 @@ export class IndividualHeatCardComponent {
     return race.club_code ? (name ? `${name} (${race.club_code})` : race.club_code) : name;
   }
 
-  /** The badges sit beside the name until the race has a code (DNS, PR, ...); then the title gets the room of three lines. */
-  protected titleExpanded(race: CompetitorUpdate): boolean {
-    return !!race.invalid_reason || this.splitRemarks(race.remark).length > 0;
-  }
-
   /** Tooltip of a compact lap badge: three rows - distance, lap time, total time. */
   protected compactBadgeTitle(race: CompetitorUpdate, i: number): string {
     const total = this.individualCumulativeTime(race, i);
@@ -343,22 +301,6 @@ export class IndividualHeatCardComponent {
       `${this.ts.t('tooltipLapTime')}: ${truncateLapTime(race.lap_times[i], 2)}`,
       `${this.ts.t('tooltipTotalTime')}: ${total ? truncateLapTime(total, this.decimals(race)) : ''}`,
     ].join('\n');
-  }
-
-  /** Variance colour class of a compact lap badge, or none when the colours are off. */
-  protected compactLapColor(race: CompetitorUpdate, i: number): string {
-    if (this.colorLaps && i === 1 && this.firstLapPartial()) return 'lap-badge-normal'; // nothing to compare with
-    return this.colorLaps ? lapBadgeColor(race.lap_times, i, this.lapVarianceThreshold) : '';
-  }
-
-  /** Laps that have nothing fair to differ from, shown light grey while the diff colours are on: the first lap, and the second when the first is partial. */
-  protected noDeltaLap(i: number): boolean {
-    return this.colorLaps && (i === 0 || (i === 1 && this.firstLapPartial()));
-  }
-
-  /** True when the first lap is shorter than a full 400m lap (a start from the middle of the track): lap 2 has no fair comparison. */
-  protected firstLapPartial(): boolean {
-    return this.lapSchedule.length > 0 && this.lapSchedule[0] < 400;
   }
 
   /** Where the finish line is on a lap badge's ring, in degrees clockwise from the top. */

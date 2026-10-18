@@ -1,0 +1,97 @@
+<div class="heat-slider" [class.dragging]="expanded" [class.pressed]="dragging" [class.following]="position === null" [class.glide]="glide" [class.zoomed]="zoomed" [class.mini]="miniShown" (wheel)="onWheel($event)">
+  @if (preview; as step) {
+    <div class="heat-preview" role="presentation" [style.left.%]="previewFraction * 100" [style.transform]="'translateX(-' + previewFraction * 100 + '%)'">
+      <div class="heat-preview-title">{{ step.label || step.distanceName }}</div>
+      @if (step.label) {
+        <div class="heat-preview-distance text-body-secondary">{{ step.distanceName }}</div>
+      }
+      <ul class="heat-preview-racers">
+        @for (racer of step.racers; track $index) {
+          <li><span class="lane-dot" [style.background]="racer.lane"></span>{{ racer.name }}@for (badge of racer.badges; track badge.code) {<span class="preview-badge" [class]="'preview-badge-' + badge.kind">{{ badgeText(badge.code) }}</span>}</li>
+        }
+        @if (step.more) {
+          <li class="text-body-secondary">{{ moreText(step) }}</li>
+        }
+      </ul>
+    </div>
+  }
+  <div class="d-flex align-items-center gap-3">
+    <div class="track flex-grow-1">
+      <span class="bar" aria-hidden="true"></span>
+      @for (index of ticks; track index) {
+        @if (inWindow(index)) {
+        <span class="mark mark-tick" [class.mark-future]="index > liveIndex" aria-hidden="true" [style.--at]="fraction(index)">@if (zoomed) {<span class="tick-number">{{ heatNumber(index) }}</span>}</span>
+        }
+      }
+      @let layout = textLayout;
+      @if (layout.current) {
+        <span class="current-distance" aria-hidden="true">{{ layout.current }}</span>
+      }
+      @for (mark of distanceStarts; track mark.index) {
+        @if (inWindow(mark.index) || inWindow(mark.index - 1)) {
+        <span class="mark mark-distance" [class.mark-first]="mark.index === 0" [class.mark-future]="mark.index > liveIndex" aria-hidden="true" [style.--at]="boundaryFraction(mark.index)" [attr.title]="mark.name">@if (mark.text && layout.shown.has(mark.index)) {<span class="mark-text">{{ mark.text }}</span>}</span>
+        }
+      }
+      @if (inWindow(last)) {
+        <span class="mark mark-distance mark-end" [class.mark-future]="liveIndex < last" aria-hidden="true">@if (layout.end) {<span class="mark-text">{{ 'sliderEnd' | translate }}</span>}</span>
+      }
+      @if (steps.length > 1 && inWindow(liveIndex)) {
+        <span class="mark mark-live" aria-hidden="true" [style.--at]="fraction(liveIndex)" [attr.title]="'badgeLive' | translate"></span>
+      }
+      @if (previewIndex !== null && !dragging) {
+        <span class="ghost-dot" aria-hidden="true" [style.--at]="previewFraction"></span>
+      }
+      @if (steps.length > 1 && inWindow(liveIndex)) {
+        <span class="live-dot" aria-hidden="true" [style.--at]="fraction(liveIndex)"></span>
+      }
+      @for (mark of recordMarks; track mark.index + '-' + $index) {
+        @if (inWindow(mark.index)) {
+        <span class="mark mark-record" [class.mark-pb]="!isRecord(mark.code)" aria-hidden="true" [style.--at]="fraction(mark.index)" [style.--off.px]="mark.offset" [attr.title]="mark.title"></span>
+        }
+      }
+    @if (steps.length > 1 && inWindow(liveIndex)) {
+      <button type="button" class="live-pill" [class.is-live]="live" [attr.aria-pressed]="live" [style.--at]="fraction(liveIndex)" (click)="goLive()">{{ 'badgeLive' | translate }}</button>
+    }
+    @if (steps.length > 1 && !live) {
+      <span class="you-line" aria-hidden="true" [style.--at]="fraction(value)"></span>
+      <span class="you-pill" aria-hidden="true" [style.--at]="fraction(value)">{{ 'sliderYou' | translate }}</span>
+    }
+    @if (miniShown) {
+      <span class="minimap" aria-hidden="true">
+        @if (zoomed) {
+          <span class="minimap-window" [style.left.%]="windowLeft * 100" [style.width.%]="(windowRight - windowLeft) * 100"></span>
+        }
+        @for (at of miniBoundaries; track at) {
+          <span class="minimap-boundary" [style.left.%]="at * 100"></span>
+        }
+        @let lean = miniLean;
+        <span class="minimap-dot minimap-live" [style.left.%]="miniLive * 100"></span>
+        <span class="minimap-label minimap-label-live" [class]="lean.live" [style.left.%]="miniLive * 100">{{ 'badgeLive' | translate }}</span>
+        <span class="minimap-text minimap-text-start">{{ miniStartText }}</span>
+        <span class="minimap-text minimap-text-end">{{ 'sliderEnd' | translate }}</span>
+        @if (!live) {
+          <span class="minimap-dot minimap-value" [style.left.%]="miniValue * 100"></span>
+          <span class="minimap-label minimap-label-you" [class]="lean.you" [style.left.%]="miniValue * 100">{{ 'sliderYou' | translate }}</span>
+        }
+      </span>
+    }
+    <span class="thumb-dot" [class.at-live]="live" aria-hidden="true" [style.--at]="fraction(value)"></span>
+    <input
+      type="range"
+      class="form-range w-100" [class.at-live]="live"
+      min="0"
+      [max]="last"
+      step="1"
+      [value]="value"
+      [disabled]="steps.length < 2"
+      [attr.aria-label]="'sliderLabel' | translate"
+      [attr.aria-valuetext]="valueText"
+      (input)="onInput($event)"
+      (pointerdown)="startDrag($event)"
+      (pointermove)="onPointerMove($event)"
+      (pointerleave)="hidePreview()"
+      (blur)="hidePreview()"
+    />
+    </div>
+  </div>
+</div>

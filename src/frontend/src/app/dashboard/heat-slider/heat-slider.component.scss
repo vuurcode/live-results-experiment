@@ -1,0 +1,402 @@
+// The one red of everything live: line, dot, pill, thumb on the live heat and the pulse; dark enough for white text and red text on white.
+$live: #b02a37;
+
+.heat-slider { position: relative; }
+
+.heat-preview {
+  position: absolute;
+  top: 100%;
+  z-index: 20;
+  min-width: 11rem;
+  max-width: min(18rem, 100%);
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--cui-border-radius, 0.375rem);
+  border: 1px solid var(--cui-border-color, #dee2e6);
+  background: var(--cui-body-bg, #fff);
+  color: var(--cui-body-color, #212529);
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+.heat-preview-title { font-weight: 600; }
+.heat-preview-distance { font-size: 0.8rem; margin-bottom: 0.25rem; }
+.heat-preview-racers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.85rem;
+  li { display: flex; align-items: center; gap: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+.preview-badge {
+  flex: none;
+  padding: 0.05em 0.4em;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #fff;
+  &.preview-badge-purple { background: #6f42c1; }
+  &.preview-badge-red { background: #c93434; }
+  &.preview-badge-orange { background: #fd7e14; color: #212529; }
+}
+.lane-dot {
+  flex: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 1px solid rgba(128, 128, 128, 0.6);
+  background: transparent;
+}
+
+.live-pill {
+  // hangs from the end of the live line, moves along with it, and is the way back to live
+  position: absolute;
+  z-index: 4;
+  top: calc((var(--thumb) + var(--bar)) / 2 + 1.1rem);
+  left: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--at));
+  transform: translateX(-50%);
+  border: 1px solid $live;
+  border-radius: 1rem;
+  padding: 0 0.5rem;
+  background: var(--cui-body-bg, #fff);
+  color: $live;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.3;
+  animation: glowRed 1.5s infinite; // the pulse of the Live badge
+  transition: top 0.25s;
+  &.is-live { background: $live; color: #fff; }
+}
+.dragging .live-pill { top: calc((var(--thumb) + var(--bar)) / 2 + var(--grow) - var(--gap)); transition: top 0.25s; }
+@media (prefers-reduced-motion: reduce) { .live-pill { animation: none; } }
+:host-context([data-animations='off']) .live-pill { animation: none; }
+
+// The bar is drawn here instead of by the input, so it can grow downwards while the thumb is held.
+.track {
+  --thumb: 1.5rem;
+  --bar: 0.5rem;
+  --grow: 0rem;
+  --reach: 0.9rem;
+  --rest: 1.7rem;
+  --gap: 0rem;
+  position: relative;
+  margin-inline: 1.25rem; // room beside the bar for the thumb, the first distance text and the live pill
+  margin-top: 2.5rem; // room for the distance text above the lines, and the name of the current distance above that
+  display: flow-root; // keeps the input's negative margins inside the track
+  padding-bottom: calc(var(--rest) + var(--grow)); // room for the lines under the bar; the grown bar pushes what is below it down
+  transition: padding-bottom 0.25s ease;
+  .form-range { position: relative; z-index: 3; }
+}
+.dragging .track { --grow: 2.5rem; --gap: 0.6rem; }
+@media (min-width: 768px) { .dragging .track { --grow: 0rem; --gap: 0rem; } } // on a wide screen the bar stays as it is: its lines do not run down below it
+.bar {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  top: calc((var(--thumb) - var(--bar)) / 2);
+  height: calc(var(--bar) + var(--grow));
+  border-radius: calc(var(--bar) / 2);
+  background: var(--cui-secondary-bg, #e9ecef);
+  border: 1px solid var(--cui-border-color, #dee2e6);
+  transition: height 0.25s ease;
+}
+// The markers are behind the bar and show above and below it; held, they come in front and run on to the bottom of the grown bar.
+.mark {
+  position: absolute;
+  z-index: 0;
+  top: -0.6rem; // a bit shorter than the distance lines
+  height: calc(0.6rem + (var(--thumb) + var(--bar)) / 2 + var(--grow) - var(--gap)); // ends at the bar until it grows, then a little above its bottom
+  left: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--at));
+  width: 2px;
+  padding: 0; // Bootstrap's own .mark class pads by 0.1875em, which made every line several times wider than its width
+  transform: translateX(calc(-50% + var(--off, 0px)));
+  border-radius: 1px;
+  pointer-events: none;
+  transition: height 0.25s ease;
+}
+.mark-tick {
+  width: 2px;
+  border-radius: 0;
+  // centred on a whole pixel: the centring shift of the other markers would smear the line over a pixel too many
+  transform: none;
+  left: calc(round(down, calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--at)), 1px) - 1px);
+  // solid, in the theme's text colour so the dark theme shows them too
+  background: var(--cui-body-color, #000);
+  opacity: 0.7;
+}
+// the record marks sit on the same whole pixel as the tick of their heat, shifted aside by their offset when several share it
+.mark-record {
+  transform: none;
+  left: calc(round(down, calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--at)), 1px) - 1px + var(--off, 0px));
+}
+// A pulsing dot on the bar at the live heat, smaller than the thumb; it moves along like the live line.
+.live-dot {
+  --dot: 0.75rem;
+  position: absolute;
+  z-index: 2;
+  top: calc((var(--thumb) - var(--dot)) / 2);
+  left: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--at));
+  width: var(--dot);
+  height: var(--dot);
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: $live;
+  animation: glowRed 1.5s infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+:host-context([data-animations='off']) .live-dot { animation: none; }
+// A faint dot on the bar under the pointer that jumps to the nearest heat as it moves.
+.ghost-dot {
+  --dot: 0.9rem;
+  position: absolute;
+  z-index: 2;
+  top: calc((var(--thumb) - var(--dot)) / 2);
+  left: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--at));
+  width: var(--dot);
+  height: var(--dot);
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: var(--cui-body-color, #000);
+  opacity: 0.3;
+  pointer-events: none;
+  transition: left 0.12s ease-out;
+}
+:host-context([data-animations='off']) .ghost-dot { transition: none; }
+.mark-distance.mark-first { left: 0; } // the first distance starts at the left end of the bar
+.mark-distance.mark-end { left: 100%; } // the end of the bar
+.mark-end .mark-text { left: auto; right: 0; transform: none; }
+.mark-first .mark-text { left: 0; transform: none; }
+
+.mark-distance {
+  // in front of the bar, from the bar up; the distance text sits on top of the line
+  z-index: 2;
+  top: -1.3rem;
+  height: calc(1.3rem + (var(--thumb) + var(--bar)) / 2 + var(--grow) - var(--gap));
+  transition: height 0.25s;
+  background: #000;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35); // keeps the black line visible in the dark theme
+}
+// The distance under its marker, in small print.
+.mark-text {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 0.1rem;
+  font-size: 0.6rem;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--cui-secondary-color, #6c757d); // readable at this size; the muted look is the colour, not opacity
+}
+// Records are coloured: a personal best purple like its card border, the other records the rainbow of theirs.
+.mark-record {
+  background: linear-gradient(#ff3b30, #ffcc00, #34c759, #0a84ff, #e040fb, #ff3b30);
+  animation: markRainbow 4s linear infinite;
+  // only under the bar, like the live line, so the lines of a step with several records line up
+  top: calc((var(--thumb) + var(--bar)) / 2 - 0.1rem);
+  height: 1.2rem;
+  transition: height 0.25s, top 0.25s;
+}
+.dragging .mark-record { height: calc(0.1rem + var(--grow) - var(--gap)); }
+@keyframes markRainbow { to { filter: hue-rotate(360deg); } } // the colours fade into one another
+@media (prefers-reduced-motion: reduce) { .mark-record { animation: none; } }
+:host-context([data-animations='off']) .mark-record { animation: none; }
+.mark-live {
+  // a short line under the bar; held, it runs the full height like the other long lines
+  top: calc((var(--thumb) + var(--bar)) / 2 - 0.1rem);
+  height: 1.2rem;
+  background: $live;
+  animation: glowRed 1.5s infinite; // the pulse of the Live badge
+  transition: height 0.25s, top 0.25s;
+}
+.dragging .mark-live {
+  top: -0.9rem;
+  height: calc(0.9rem + (var(--thumb) + var(--bar)) / 2 + var(--grow) - var(--gap));
+}
+@keyframes glowRed {
+  0%   { box-shadow: 0 0 0 0   rgba(176, 42, 55, 0.7); }
+  70%  { box-shadow: 0 0 0 6px rgba(176, 42, 55, 0); }
+  100% { box-shadow: 0 0 0 0   rgba(176, 42, 55, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .mark-live { animation: none; } }
+:host-context([data-animations='off']) .mark-live { animation: none; }
+.dragging .mark { z-index: 2; }
+// A data update while the thumb is held moves the live line and dot without animation.
+.dragging .mark-live { transition: height 0.25s, top 0.25s; }
+.dragging .live-dot { transition: none; }
+.mark-future { opacity: 0.4; } // heats still to come
+.mark-tick {
+  // heats done are half as tall above the bar until the bar grows; the rest is behind the bar
+  top: -0.05rem;
+  height: calc(1.05rem + var(--grow) - var(--gap));
+  transition: top 0.6s ease, height 0.6s ease, opacity 0.6s ease; // a tick shortens when its heat is reached
+}
+// heats still to come are the long ones
+.mark-tick.mark-future {
+  width: 1px;
+  left: round(down, calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--at)), 1px);
+  top: -0.6rem; height: calc(1.6rem + var(--grow) - var(--gap));
+}
+.dragging .mark-tick { top: -0.6rem; height: calc(1.6rem + var(--grow) - var(--gap)); }
+.mark-distance.mark-future { opacity: 1; background: rgba(0, 0, 0, 0.4); } // only the line fades, the text stays readable
+.mark-pb { background: #6f42c1; animation: none; }
+
+// A larger thumb (and track) than the default range input, easier to grab on a phone.
+.form-range {
+  height: var(--thumb);
+  // the area above and below the bar is part of the input, so a press there grabs the slider too; the negative margin keeps the layout as it was
+  display: block;
+  box-sizing: content-box;
+  padding: var(--reach) 0 calc(var(--reach) + var(--grow));
+  margin: calc(-1 * var(--reach)) 0 calc(-1 * var(--reach) - var(--grow));
+  &::-webkit-slider-thumb { width: var(--thumb); height: var(--thumb); margin-top: calc((var(--bar, 0.5rem) - var(--thumb)) / 2); }
+  &::-moz-range-thumb { width: var(--thumb); height: var(--thumb); }
+  &::-webkit-slider-runnable-track { height: var(--bar, 0.5rem); background: transparent; }
+  &::-moz-range-track { height: var(--bar, 0.5rem); background: transparent; }
+}
+
+// The thumb is drawn by .thumb-dot, so it can glide along when the live heat moves on; the input's own thumb stays as an invisible hit area.
+.form-range {
+  &::-webkit-slider-thumb { opacity: 0; }
+  &::-moz-range-thumb { opacity: 0; }
+}
+.thumb-dot {
+  position: absolute;
+  z-index: 3;
+  --dot: 1.1rem; // smaller than the hit area of the input, centred on it
+  top: calc((var(--thumb) - var(--dot)) / 2);
+  left: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--at));
+  width: var(--dot);
+  height: var(--dot);
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: #0f6b4f; // dark green off the live heat
+  pointer-events: none;
+  &.at-live { background: $live; animation: glowRed 1.5s infinite; } // red on the live heat, pulsing like the Live badge
+}
+// Off the live heat the thumb has a line and a label under it like the live marker, in green and still.
+.you-line, .you-pill {
+  position: absolute;
+  left: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--at));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.you-line {
+  z-index: 2;
+  top: calc((var(--thumb) + var(--bar)) / 2 - 0.1rem);
+  height: 1.2rem;
+  width: 2px;
+  background: #0f6b4f;
+}
+.you-pill {
+  z-index: 4;
+  top: calc((var(--thumb) + var(--bar)) / 2 + 1.1rem);
+  border: 1px solid #0f6b4f;
+  border-radius: 1rem;
+  padding: 0 0.5rem;
+  background: #0f6b4f;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+// The live line, pill and dot, and a thumb on them, glide when the live heat advances; when heats come or go, the markers jump with the ticks.
+.glide .live-pill { transition: top 0.25s, left 0.6s ease; }
+.glide .mark-live { transition: height 0.25s, top 0.25s, left 0.6s ease; }
+.glide .live-dot { transition: left 0.6s ease; }
+.glide.dragging .live-pill { transition: top 0.25s; }
+.glide.dragging .mark-live { transition: height 0.25s, top 0.25s; }
+.glide.dragging .live-dot { transition: none; }
+// Following live, the thumb glides to the newest heat; sliding by hand it is right under the pointer.
+.glide:not(.pressed) .thumb-dot.at-live { transition: left 0.6s ease; }
+@media (prefers-reduced-motion: reduce) { .thumb-dot.at-live { animation: none; } .glide .thumb-dot { transition: none; } }
+:host-context([data-animations='off']) .thumb-dot { animation: none; transition: none; }
+
+// Held on a narrow screen the bar shows a window of heats; what falls outside it is clipped at the ends of the track.
+.zoomed .track { clip-path: inset(-4rem -1.25rem -4rem -1.25rem); }
+// The whole event under the zoomed bar, with the window, the distance boundaries, the live heat and the thumb on it.
+.minimap {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  top: -5rem; // above the bar, with the Live and You labels over it and the texts at its ends under it
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  background: var(--cui-secondary-bg, #e9ecef);
+  border: 1px solid var(--cui-border-color, #dee2e6);
+  pointer-events: none;
+}
+.minimap-window { position: absolute; top: -1px; bottom: -1px; background: var(--cui-body-color, #000); opacity: 0.35; border-radius: 0.25rem; }
+.minimap-boundary { position: absolute; top: -0.2rem; bottom: -0.2rem; width: 1px; background: var(--cui-body-color, #000); opacity: 0.6; }
+.minimap-dot {
+  position: absolute;
+  top: 50%;
+  width: 0.6rem;
+  height: 0.6rem;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+}
+.minimap-live { background: $live; }
+.minimap-value { background: #0f6b4f; }
+// Zoomed, each heat has its number above its tick; the distance names move up above the numbers.
+.tick-number {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 0.1rem;
+  font-size: 0.65rem;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--cui-body-color, #000);
+}
+.zoomed .track { margin-top: 2.7rem; }
+.zoomed .mark-distance .mark-text { margin-bottom: 0.9rem; }
+// The name of the distance the thumb is on, when there is no room for the names along the bar.
+.current-distance {
+  position: absolute;
+  top: -2.3rem; // above the long lines of the distances, with a gap
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--cui-secondary-color, #6c757d);
+  pointer-events: none;
+}
+.mini .track { margin-top: 6.4rem; } // room for the mini-map above the bar
+.minimap-text {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  font-size: 0.6rem;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--cui-secondary-color, #6c757d);
+}
+.minimap-text-start { left: 0; }
+.minimap-text-end { right: 0; }
+// Live and You above their dots on the mini-map; close together they lean apart.
+.minimap-label {
+  position: absolute;
+  bottom: calc(100% + 0.35rem);
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  &.lean-left { transform: translateX(calc(-100% + 0.3rem)); }
+  &.lean-right { transform: translateX(-0.3rem); }
+}
+.minimap-label-live { color: $live; }
+.minimap-label-you { color: #0f6b4f; }
+
+// At the bottom of a narrow screen the preview opens upwards.
+@media (max-width: 767.98px) {
+  .heat-preview { top: auto; bottom: 100%; margin: 0 0 0.25rem; }
+}

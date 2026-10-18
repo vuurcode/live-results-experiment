@@ -76,16 +76,9 @@ export class SettingsService {
   readonly maxGroups = new Setting('maxGroups', 4, parseInteger, (v) => Math.max(0, Math.round(v)));
   /** Percentage a mass start lap may differ from the previous before its badge changes colour. */
   readonly lapVariance = new Setting('lapVariancePct', 5, parseInteger, (v) => Math.max(0, Math.round(v)));
-  /** Long track has its own threshold: its laps are far more even, so it takes one decimal. */
-  // the storage key stays as saved by earlier visits
-  readonly lapVarianceIndividual = new Setting('lapVariancePctTimed', 0.5, parseNumber, (v) => Math.max(0, Math.round(v * 10) / 10));
-  /** Compact long track badges coloured by variance against the previous lap, like mass start. */
-  readonly compactColors = new Setting('compactColors', true, parseFlag);
   /** Times show thousandths; hundredths when off. */
   readonly showThousandths = new Setting('thousandths', false, parseFlag);
   readonly colorScheme = colorSchemeSetting;
   /** Whether things move: laps drawn and counted up, flashes, reordering, folding and scrolling. Off shows every change at once. */
   readonly animations = new Setting('animations', true, parseFlag);
-  /** Whether the page scrolls along with the live heat. */
-  readonly follow = new Setting('follow', true, parseFlag);
 }

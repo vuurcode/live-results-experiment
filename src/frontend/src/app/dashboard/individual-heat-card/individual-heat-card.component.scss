@@ -13,6 +13,7 @@
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   font-size: 0.78em;
   font-weight: 600;
@@ -24,38 +25,21 @@
   border-radius: 0.25rem;
   overflow: hidden;
 }
-.individual-heat-lane-bgs {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  grid-template-columns: repeat(var(--lane-count, 4), minmax(0, 1fr)); // the columns of the cards below
-  // Hide lane colour strips when cards stack to single column
-  @media (max-width: $four-lanes-min - 1px) { display: none; }
-}
-:host-context([data-coreui-theme='dark']) {
-  // the lane colours stay as they are in the dark theme; a slightly stronger tint keeps the white lane visibly white on the dark page
-  --lane-tint: 9%;
-}
-.individual-heat-lane-bg {
-  background: color-mix(in srgb, var(--lane-color, transparent) var(--lane-tint, 5%), transparent);
-}
 .individual-heat-label-text,
 .individual-heat-start-chips {
   position: relative;
   z-index: 1;
 }
-// The current heat is marked by a badge behind each competitor's name
-.individual-comp-live { font-size: 0.6em; vertical-align: middle; margin-left: 0.4rem; }
-// up to 4 lane columns per row, then 2 per row on narrow viewports, then 1 column on very narrow ones
-// The lane columns and the cards in them share the rows of this grid (two rows per line: title and body), so the cards of a line
-// are as tall as the tallest one, and so are their titles.
+// the second pair of a quartet starts a little below the first pair's lane bands
+:host(:not(:first-child)) .individual-heat-label { margin-top: 0.75rem; }
+// The live heat is marked by a badge after its label
+.individual-heat-live { font-size: 0.85em; }
+// The lanes of a heat are cards stacked on top of each other, each with a title row and a body row.
 .individual-competitors-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  --card-lanes: 1; // the watermarks size themselves from the card width, about the viewport width over the lanes in a row
-  @media (min-width: 768px) { --card-lanes: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  // as many columns as the widest heat of the distance has lanes, so a distance of two-lane heats uses the full width
-  @media (min-width: $four-lanes-min) { --card-lanes: calc(var(--lane-count, 4) * var(--heats-per-row, 1)); grid-template-columns: repeat(var(--lane-count, 4), minmax(0, 1fr)); }
+  --card-lanes: 1; // the watermarks size themselves from the card width
+  container-type: inline-size; // the lap badges size themselves from the width of the row (not of the lane columns: a container there stops the subgrid from growing with its content)
 }
 .individual-lane-col {
   display: grid;
@@ -63,9 +47,16 @@
   grid-template-rows: subgrid;
   grid-template-columns: minmax(0, 1fr); // long names wrap or cut off inside the column
   min-width: 0;
-  @media (min-width: 768px) and (max-width: $four-lanes-min - 1px) { &:last-child:nth-child(odd) { grid-column: 1 / -1; } } // a lone last lane takes the full row
   padding: 0.4rem 0.25rem 1rem;
-  background: color-mix(in srgb, var(--lane-color, transparent) var(--lane-tint, 5%), transparent);
+  // light theme: the lane colour tints a band across the whole row behind the card; the dark theme has the name badge only
+  background: color-mix(in srgb, var(--lane-color, transparent) 5%, transparent);
+  :host-context([data-coreui-theme='dark']) & { background: none; }
+  // the card is as wide as its lap badges need (a lap column is 3.3rem, at least 10 of them), centred; a narrower screen gets the full width and the badges shrink, then wrap
+  .individual-competitor-card {
+    --slots: max(10, var(--cells, 8)); // never narrower than a card of 10 laps
+    width: min(100%, calc(var(--slots) * 3.3rem + (var(--slots) - 1) * 0.3rem + 2rem + 2px));
+    justify-self: center;
+  }
 }
 .individual-badge-purple,
 .individual-badge-red,
@@ -82,68 +73,82 @@
 .individual-comp-title { display: flex; flex-direction: column; } // the header fills the title, which is as tall as the tallest of its row
 .individual-comp-header {
   flex: 1 1 auto;
-  align-content: flex-start;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  column-gap: 0.5rem;
-  row-gap: 0.2rem;
+  align-items: flex-end; // the name and the code badges sit on the bottom line with the total time
+  justify-content: space-between;
+  gap: 0.5rem;
   padding: 0.4rem 1rem; // the same side padding as the card body below
   border-bottom: 1px solid var(--lr-line);
   background: var(--lr-tint);
   overflow: hidden;
   box-sizing: border-box;
 }
-.individual-comp-name {
-  font-size: 0.8em;
-  flex: 0 0 100%; // the name has the first line to itself, the badges the second
-  max-width: 100%;
-  overflow-wrap: anywhere; // ... and only a name longer than the card wraps instead of being cut off
+// The name badge with the personal best after it
+.individual-comp-who {
+  display: flex;
+  align-items: flex-end;
+  flex: 1 1 0;
+  min-width: 0;
+  gap: 0.5rem;
 }
-// In the dark theme the lane colours are hard to see on the page, so the name is a badge in the colour of the lane.
-:host-context([data-coreui-theme='dark']) .individual-comp-name-text {
+.individual-comp-name {
+  font-size: 1.1em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+// The name is a badge in the colour of the lane, the category / club small below the name inside it.
+.individual-comp-name-text {
   display: inline-block;
   max-width: 100%;
   vertical-align: bottom;
   overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 0 0.45em;
-  border-radius: 0.4em;
+  padding: 0.15em 0.7em;
+  border-radius: 0.5em;
   background: var(--lane-color, transparent);
   color: #fff;
 }
-:host-context([data-coreui-theme='dark']) .individual-comp-name-text[data-lane='white'],
-:host-context([data-coreui-theme='dark']) .individual-comp-name-text[data-lane='yellow'] { color: #212529; }
-.individual-comp-meta {
-  flex: 0 0 100%;
-  min-height: 1.1em; // the line is there (empty) on every card, so titles have the same height
-  margin-top: -0.2rem;
-  font-size: 0.5rem; // the same as the captions above the badges
-  line-height: 1.1;
-  color: var(--lr-text-meta); // 7.5:1 on the title background
+.individual-comp-name-line {
+  display: block;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-// A racing card puts the badges on the right of the name, so several cards fit in a single-lane view; the category / club stays below the name.
-.individual-comp-header-merged {
-  .individual-comp-name { flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .individual-comp-badges { order: 1; flex: 0 1 auto; justify-content: flex-end; min-height: 2.45rem; margin-left: auto; } // as tall as the PB time with its caption, so the title keeps its height with or without badges
-  .individual-comp-meta { order: 2; }
+.individual-comp-name-text[data-lane='white'],
+.individual-comp-name-text[data-lane='yellow'] { color: #212529; }
+.individual-comp-name-text[data-lane='red'] { background: #c93434; } // white text on it: 5.2:1, pure red gave 4.0:1
+.individual-comp-name-text[data-lane='white'] { box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.5); } // keeps the white badge visible on a light card
+.individual-comp-meta {
+  display: block;
+  text-align: center;
+  font-size: 0.5rem; // the same as the captions above the badges
+  line-height: 1.1;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.individual-comp-right {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  max-width: 60%;
 }
 .individual-comp-badges {
-  // The second line of the title, aligned left.
   display: flex;
-  flex: 1 1 100%;
+  flex: 0 1 auto;
   flex-wrap: wrap;
-  justify-content: flex-start;
-  align-items: flex-end; // the remark badges share their bottom edge with the PB time badge on the right
+  justify-content: flex-end;
+  align-items: flex-end;
   gap: 0.3rem;
-  min-height: 2.6rem; // reserved also without badges, so the title has the same height on every card
-  > c-badge { display: inline-flex; align-items: center; } // as tall as the PB time badge on the right (see min-height below)
+  > c-badge { display: inline-flex; align-items: center; }
   // larger than the lap badges, for readability
-  .individual-badge-purple, .individual-badge-red, .individual-badge-orange, .individual-finished-badge,
-  .individual-split-badge { font-size: 0.8rem !important; min-height: 1.6rem; }
+  .individual-badge-purple, .individual-badge-red, .individual-badge-orange, .individual-finished-badge {
+    font-size: 0.8rem !important;
+    min-height: 1.6rem;
+  }
 }
 // Opaque gray split-time badge prepended before the cumulative time in individual race lap rows
 .individual-split-badge {
@@ -151,7 +156,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.6em; /* match .individual-pr-badge */
+  font-size: 0.69em;
   line-height: 1;
   font-family: inherit;
   font-variant-numeric: tabular-nums;
@@ -194,20 +199,21 @@
 }
 // Placeholder badges for the laps (and the finish) of a card that has not started: the distance stays readable, the badge itself is a plain light grey shape
 .individual-split-badge.individual-ghost-badge {
-  font-size: 0.78em; // the size of a lap badge
-  min-width: 3rem;
+  font-size: 0.9em; // the size of a lap badge
+  min-width: min(3.3rem, 100%);
   background-color: var(--lr-neutral-bg);
   color: transparent;
   &.individual-ghost-total { font-size: 1.5rem; padding: 0.25em 0.6em; min-width: 4.5rem; } // the size of the total badge it stands in for
 }
 .individual-compact-lap {
+  width: 100%; // the column's width: the badge below sizes against it
   display: inline-flex;
   flex-direction: column; // the lap distance sits small above its badge
   align-items: center;
   gap: 0.2rem;
   line-height: 1.1;
 }
-.individual-split-badge.individual-compact-badge { font-size: 0.78em; min-width: 3rem; } // larger lap times; every badge is wide enough for a 6-character distance above it
+.individual-split-badge.individual-compact-badge { font-size: 0.9em; min-width: min(3.3rem, 100%); } // larger lap times; every badge is wide enough for a 6-character distance above it
 .compact-dist {
   // never wider than the badge below it: width 0 + min-width 100% keeps the label out of the column's
   // intrinsic width, so the badge sets it; the label is small enough for even 5-digit distances
@@ -255,18 +261,16 @@
   font-variant-numeric: tabular-nums;
 }
 .individual-comp-body.individual-compact-body { // beats the plain .individual-comp-body padding defined further down
-  // The badges sit in columns as wide as a badge (so as many fit on a row as the badges allow), spread over the width: a short last row lines up left with the rows above it,
-  // and the side padding stays what it is on a full row. The total time takes the last columns of the last row.
+  // The badges sit in columns as wide as a badge (so as many fit on a row as the badges allow), centred in the card.
   display: grid;
-  grid-template-columns: repeat(auto-fill, 3rem);
-  justify-content: space-between; // first column at the left padding, last at the right: the same edges as the title
+  // a column is 3.3rem, narrower (down to 2.5rem) when that lets every lap and the total fit on one row; when even that is not enough the badges continue on the next row
+  grid-template-columns: repeat(auto-fit, clamp(2.5rem, calc((100cqw - 2rem - 0.3rem * var(--cells, 8)) / var(--cells, 8)), 3.3rem));
+  justify-content: center; // room left over is spacing on both sides; empty columns collapse, so the total follows the last lap
   justify-items: center;
   align-items: center;
   gap: 0.3rem;
   padding: 0.6rem 1rem; // roomier: the single row already saves a lot of height
   min-height: 4.7rem; // a card without laps yet keeps its height (also once the distances and the total are there)
-  .individual-compact-final { grid-column: -4 / -1; justify-self: end; }
-  .individual-compact-final.individual-compact-own-line { grid-column: 1 / -1; justify-self: center; } // the laps fill a row: the total gets its own, centred
 }
 
 .individual-comp-body {

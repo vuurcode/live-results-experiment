@@ -1,7 +1,105 @@
 <div class="d-flex flex-column min-vh-100">
   <!-- ===== TOP BAR ===== -->
   <header class="topbar text-white px-2 px-md-4 py-2 d-flex flex-wrap align-items-center gap-2 gap-md-3">
-    <img class="topbar-logo" src="icon.png" alt="" [attr.title]="'pageTitle' | translate" width="32" height="32" />
+    <button cButton color="light" variant="outline" size="sm" class="topbar-group-btn" (click)="menuOpen = true" aria-controls="mainMenu" [attr.aria-expanded]="menuOpen" [attr.aria-label]="'menuTitle' | translate" [attr.title]="'menuTitle' | translate">
+      <svg class="topbar-group-burger" viewBox="0 0 16 16" width="1.4em" height="1.4em" fill="currentColor" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3A.5.5 0 0 1 2.5 8zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>
+    </button>
+    <c-offcanvas id="mainMenu" placement="start" [visible]="menuOpen" (visibleChange)="menuOpen = $event" [attr.aria-label]="'menuTitle' | translate">
+      <c-offcanvas-header>
+        <h5 cOffcanvasTitle>{{ 'menuTitle' | translate }}</h5>
+        <button cButtonClose (click)="menuOpen = false" [attr.aria-label]="'menuClose' | translate"></button>
+      </c-offcanvas-header>
+      <c-offcanvas-body class="settings-panel">
+        @let withMassStart = (hasMassStart$ | async);
+        <section class="settings-section" aria-labelledby="settingsGeneralHeading">
+          <h2 id="settingsGeneralHeading" class="settings-heading">{{ 'generalSettings' | translate }}</h2>
+          <div class="setting-group ms-2">
+            <label class="small text-nowrap mb-0 setting-label" for="colorSchemeInput">{{ 'colorSchemeLabel' | translate }}</label>
+            <select
+              id="colorSchemeInput"
+              cSelect sizing="sm" class="scheme-select"
+              (change)="setColorScheme($event)"
+            >
+              <option value="auto" [selected]="settings.colorScheme.value === 'auto'">{{ 'colorSchemeAuto' | translate }}</option>
+              <option value="dark" [selected]="settings.colorScheme.value === 'dark'">{{ 'colorSchemeOn' | translate }}</option>
+              <option value="light" [selected]="settings.colorScheme.value === 'light'">{{ 'colorSchemeOff' | translate }}</option>
+            </select>
+            <div class="setting-popover">
+              <div class="setting-popover-title">{{ 'colorSchemePopoverTitle' | translate }}</div>
+              <div class="setting-popover-body" [innerHTML]="ts.html('colorSchemePopoverBody')"></div>
+            </div>
+          </div>
+          <div class="setting-group ms-2">
+            <label class="small text-nowrap mb-0 setting-label" for="animationsInput">{{ 'animationsLabel' | translate }}</label>
+            <c-form-check [switch]="true"><input cFormCheckInput role="switch" id="animationsInput" type="checkbox" [checked]="settings.animations.value" (change)="setAnimations($event)" /></c-form-check>
+            <div class="setting-popover">
+              <div class="setting-popover-title">{{ 'animationsPopoverTitle' | translate }}</div>
+              <div class="setting-popover-body" [innerHTML]="ts.html('animationsPopoverBody')"></div>
+            </div>
+          </div>
+          <div class="setting-group ms-2">
+            <label class="small text-nowrap mb-0 setting-label" for="thousandthsInput">{{ (settings.showThousandths.value ? 'thousandthsLabel' : 'hundredthsLabel') | translate }}</label>
+            <c-form-check [switch]="true"><input cFormCheckInput role="switch" id="thousandthsInput" type="checkbox" [checked]="settings.showThousandths.value" (change)="setShowThousandths($event)" /></c-form-check>
+            <div class="setting-popover">
+              <div class="setting-popover-title">{{ 'thousandthsPopoverTitle' | translate }}</div>
+              <div class="setting-popover-body" [innerHTML]="ts.html(settings.showThousandths.value ? 'thousandthsOnBody' : 'thousandthsOffBody')"></div>
+            </div>
+          </div>
+        </section>
+        @if (withMassStart) {
+          <section class="settings-section settings-section-mass" aria-labelledby="settingsMassStartHeading">
+            <h2 id="settingsMassStartHeading" class="settings-heading">{{ 'massStartSettings' | translate }}</h2>
+            <div class="setting-group setting-group-pair ms-1">
+              <label class="small text-nowrap mb-0 setting-label" for="groupThresholdInput">{{ 'maxGapLabel' | translate }}</label>
+              <c-input-group sizing="sm" class="threshold-group">
+                <input
+                  id="groupThresholdInput"
+                  type="number"
+                  min="0" max="10" step="0.5"
+                  cFormControl sizing="sm" class="threshold-input"
+                  [value]="settings.groupThreshold.value"
+                  (change)="setGroupThreshold($event)"
+                />
+                <span cInputGroupText>s</span>
+</c-input-group>
+              <label class="small text-nowrap mb-0 setting-label" for="maxGroupsInput">{{ 'maxGroupsLabel' | translate }}</label>
+              <input
+                id="maxGroupsInput"
+                type="number"
+                min="0" step="1"
+                cFormControl sizing="sm" class="threshold-input"
+                [value]="settings.maxGroups.value"
+                (change)="setMaxGroups($event)"
+              />
+              <div class="setting-popover">
+                <div class="setting-popover-body" [innerHTML]="ts.html('maxGapPopoverBody')"></div>
+                <div class="setting-popover-body" [innerHTML]="ts.html('maxGroupsPopoverBody')"></div>
+              </div>
+            </div>
+            <div class="setting-group ms-2">
+              <label class="small text-nowrap mb-0 setting-label" for="lapVarianceInput">{{ 'lapDeltaLabel' | translate }}</label>
+              <c-input-group sizing="sm" class="threshold-group">
+                <input
+                  id="lapVarianceInput"
+                  type="number"
+                  min="0" max="50" step="1"
+                  cFormControl sizing="sm" class="threshold-input"
+                  [value]="settings.lapVariance.value"
+                  (change)="setLapVariance($event)"
+                  (input)="stepLapVariance($event)"
+                />
+                <span cInputGroupText>%</span>
+</c-input-group>
+              <div class="setting-popover">
+                <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
+                <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
+                <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(settings.lapVariance.value))"></div>
+              </div>
+            </div>
+          </section>
+        }
+      </c-offcanvas-body>
+    </c-offcanvas>
     @let competitions = (todayCompetitions$ | async) ?? [];
     @let picked = !!dataService.competitionId && isTodayCompetition(competitions, dataService.competitionId);
     @let noCompetition = (dataService.status$ | async)?.status === 'No competition';
@@ -30,150 +128,7 @@
     } @else if (noCompetition) {
       <span class="competition-hint competition-hint-alone">{{ 'noLiveCompetitionsHint' | translate }}</span>
     }
-    <div class="topbar-settings ms-auto d-flex flex-wrap align-items-center gap-2">
-      <!-- Display settings (collapsible) -->
-      <div class="topbar-settings-group d-flex flex-wrap align-items-center">
-        <button cButton color="light" variant="outline" size="sm" class="topbar-group-btn" (click)="toggleSettings()" [attr.aria-expanded]="displaySettingsOpen" [attr.aria-label]="'displaySettings' | translate" [attr.title]="'displaySettings' | translate">
-          <span class="topbar-group-text">{{ 'displaySettings' | translate }}</span><svg class="topbar-group-cog" viewBox="0 0 16 16" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.86z"/></svg> <span class="topbar-group-arrow" [class.open]="displaySettingsOpen">▾</span>
-        </button>
-        @if (displaySettingsOpen) {
-          <div class="topbar-settings-body settings-panel" role="group" [attr.aria-label]="'displaySettings' | translate">
-            @let withMassStart = (hasMassStart$ | async);
-            <!-- One panel in columns: general, individual race and, in a mass start match, mass start settings -->
-            <section class="settings-section" aria-labelledby="settingsGeneralHeading">
-              <h2 id="settingsGeneralHeading" class="settings-heading">{{ 'generalSettings' | translate }}</h2>
-              <div class="setting-group ms-2">
-                <label class="small text-nowrap mb-0 setting-label" for="followInput">{{ 'followLabel' | translate }}</label>
-                <c-form-check [switch]="true"><input cFormCheckInput role="switch" id="followInput" type="checkbox" [checked]="settings.follow.value" (change)="setFollow($event)" /></c-form-check>
-                <div class="setting-popover">
-                  <div class="setting-popover-title">{{ 'followPopoverTitle' | translate }}</div>
-                  <div class="setting-popover-body" [innerHTML]="ts.html('followPopoverBody')"></div>
-                </div>
-              </div>
-              <div class="setting-group ms-2">
-                <label class="small text-nowrap mb-0 setting-label" for="colorSchemeInput">{{ 'colorSchemeLabel' | translate }}</label>
-                <select
-                  id="colorSchemeInput"
-                  cSelect sizing="sm" class="scheme-select"
-                  (change)="setColorScheme($event)"
-                >
-                  <option value="auto" [selected]="settings.colorScheme.value === 'auto'">{{ 'colorSchemeAuto' | translate }}</option>
-                  <option value="dark" [selected]="settings.colorScheme.value === 'dark'">{{ 'colorSchemeOn' | translate }}</option>
-                  <option value="light" [selected]="settings.colorScheme.value === 'light'">{{ 'colorSchemeOff' | translate }}</option>
-                </select>
-                <div class="setting-popover">
-                  <div class="setting-popover-title">{{ 'colorSchemePopoverTitle' | translate }}</div>
-                  <div class="setting-popover-body" [innerHTML]="ts.html('colorSchemePopoverBody')"></div>
-                </div>
-              </div>
-              <div class="setting-group ms-2">
-                <label class="small text-nowrap mb-0 setting-label" for="animationsInput">{{ 'animationsLabel' | translate }}</label>
-                <c-form-check [switch]="true"><input cFormCheckInput role="switch" id="animationsInput" type="checkbox" [checked]="settings.animations.value" (change)="setAnimations($event)" /></c-form-check>
-                <div class="setting-popover">
-                  <div class="setting-popover-title">{{ 'animationsPopoverTitle' | translate }}</div>
-                  <div class="setting-popover-body" [innerHTML]="ts.html('animationsPopoverBody')"></div>
-                </div>
-              </div>
-              <div class="setting-group ms-2">
-                <label class="small text-nowrap mb-0 setting-label" for="thousandthsInput">{{ (settings.showThousandths.value ? 'thousandthsLabel' : 'hundredthsLabel') | translate }}</label>
-                <c-form-check [switch]="true"><input cFormCheckInput role="switch" id="thousandthsInput" type="checkbox" [checked]="settings.showThousandths.value" (change)="setShowThousandths($event)" /></c-form-check>
-                <div class="setting-popover">
-                  <div class="setting-popover-title">{{ 'thousandthsPopoverTitle' | translate }}</div>
-                  <div class="setting-popover-body" [innerHTML]="ts.html(settings.showThousandths.value ? 'thousandthsOnBody' : 'thousandthsOffBody')"></div>
-                </div>
-              </div>
-            </section>
-            <section class="settings-section" aria-labelledby="settingsIndividualHeading">
-              <h2 id="settingsIndividualHeading" class="settings-heading">{{ 'individualRaceSettings' | translate }}</h2>
-              <div class="setting-group ms-2">
-                <label class="small text-nowrap mb-0 setting-label" for="compactColorsInput">{{ 'compactColorsLabel' | translate }}</label>
-                <c-form-check [switch]="true"><input cFormCheckInput role="switch" id="compactColorsInput" type="checkbox" [checked]="settings.compactColors.value" (change)="setCompactColors($event)" /></c-form-check>
-                <div class="setting-popover">
-                  <div class="setting-popover-title">{{ 'compactColorsPopoverTitle' | translate }}</div>
-                  <div class="setting-popover-body" [innerHTML]="ts.html('compactColorsPopoverBody')"></div>
-                </div>
-              </div>
-              <div class="setting-collapse" [class.open]="settings.compactColors.value" [attr.inert]="settings.compactColors.value ? null : ''">
-                <div class="setting-collapse-inner">
-                <div class="setting-group ms-2">
-                  <label class="small text-nowrap mb-0 setting-label" for="lapVarianceIndividualInput">{{ 'lapDeltaLabel' | translate }}</label>
-                  <c-input-group sizing="sm" class="threshold-group">
-                    <input
-                      id="lapVarianceIndividualInput"
-                      type="number"
-                      min="0" max="50" step="0.1"
-                      cFormControl sizing="sm" class="threshold-input"
-                      [value]="settings.lapVarianceIndividual.value"
-                      (change)="setLapVarianceIndividual($event)"
-                      (input)="stepLapVariance($event, true)"
-                    />
-                    <span cInputGroupText>%</span>
-</c-input-group>
-                  <div class="setting-popover">
-                    <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
-                    <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
-                    <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(settings.lapVarianceIndividual.value))"></div>
-                  </div>
-                </div>
-                </div>
-              </div>
-            </section>
-            @if (withMassStart) {
-              <section class="settings-section settings-section-mass" aria-labelledby="settingsMassStartHeading">
-                <h2 id="settingsMassStartHeading" class="settings-heading">{{ 'massStartSettings' | translate }}</h2>
-                <div class="setting-group setting-group-pair ms-1">
-                  <label class="small text-nowrap mb-0 setting-label" for="groupThresholdInput">{{ 'maxGapLabel' | translate }}</label>
-                  <c-input-group sizing="sm" class="threshold-group">
-                    <input
-                      id="groupThresholdInput"
-                      type="number"
-                      min="0" max="10" step="0.5"
-                      cFormControl sizing="sm" class="threshold-input"
-                      [value]="settings.groupThreshold.value"
-                      (change)="setGroupThreshold($event)"
-                    />
-                    <span cInputGroupText>s</span>
-</c-input-group>
-                  <label class="small text-nowrap mb-0 setting-label" for="maxGroupsInput">{{ 'maxGroupsLabel' | translate }}</label>
-                  <input
-                    id="maxGroupsInput"
-                    type="number"
-                    min="0" step="1"
-                    cFormControl sizing="sm" class="threshold-input"
-                    [value]="settings.maxGroups.value"
-                    (change)="setMaxGroups($event)"
-                  />
-                  <div class="setting-popover">
-                    <div class="setting-popover-body" [innerHTML]="ts.html('maxGapPopoverBody')"></div>
-                    <div class="setting-popover-body" [innerHTML]="ts.html('maxGroupsPopoverBody')"></div>
-                  </div>
-                </div>
-                <div class="setting-group ms-2">
-                  <label class="small text-nowrap mb-0 setting-label" for="lapVarianceInput">{{ 'lapDeltaLabel' | translate }}</label>
-                  <c-input-group sizing="sm" class="threshold-group">
-                    <input
-                      id="lapVarianceInput"
-                      type="number"
-                      min="0" max="50" step="1"
-                      cFormControl sizing="sm" class="threshold-input"
-                      [value]="settings.lapVariance.value"
-                      (change)="setLapVariance($event)"
-                      (input)="stepLapVariance($event, false)"
-                    />
-                    <span cInputGroupText>%</span>
-</c-input-group>
-                  <div class="setting-popover">
-                    <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
-                    <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
-                    <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(settings.lapVariance.value))"></div>
-                  </div>
-                </div>
-              </section>
-            }
-          </div>
-        }
-      </div>
-    </div>
+    <img class="topbar-logo" src="icon.png" alt="" [attr.title]="'pageTitle' | translate" width="32" height="32" />
   </header>
   <!-- ===== ERRORS ===== -->
   <div class="px-2 pt-2">
@@ -184,63 +139,95 @@
     }
   </div>
   <!-- ===== MAIN CONTENT ===== -->
-  <main class="flex-grow-1 px-2 pb-4">
+  <main class="flex-grow-1 px-2 pb-4 main-clip">
     @if ((sortedDistances$ | async)?.length) {
       @let liveFeed = dataService.feed$ | async;
       @if (liveFeed?.state === 'not_live') {
         <ng-container *ngTemplateOutlet="noticeTpl; context: { $implicit: { titleKey: 'feedNotLiveTitle', bodyKey: 'feedNotLiveBody', message: liveFeed?.message } }" />
       }
-      <c-accordion [alwaysOpen]="true">
-        @for (distance of sortedDistances$ | async; track distance.id) {
-          <div [attr.data-distance-header]="distance.id" class="accordion-scroll-anchor"></div>
-          <c-accordion-item [visible]="distance.id === initialLiveId"
-            [class.accordion-done]="isDistanceDone(distance)">
-            <ng-template cTemplateId="accordionHeader">
-              <div class="d-flex w-100 align-items-center gap-2 me-3">
-                @if (distance.isLive) {
-                  <c-badge color="danger" class="glowing-badge flex-shrink-0">{{ 'badgeLive' | translate }}</c-badge>
-                } @else if (isDistanceDone(distance)) {
-                  <c-badge color="dark" class="flex-shrink-0">{{ 'badgeDone' | translate }}</c-badge>
-                }
-                <span class="flex-grow-1 d-flex align-items-center gap-1 flex-wrap">
-                  {{ distance.name }}
+      @let view = view$ | async;
+      @if (view; as v) {
+        <app-heat-slider class="heat-slider-host" [steps]="v.steps" [liveIndex]="v.live" [position]="position" (positionChange)="setPosition($event, v)" />
+        @let step = selectedStep(v);
+        @for (distance of v.distances; track distance.id) {
+          @if (step && distance.id === step.distanceId) {
+            <!-- a new element per step, so the slide-in plays again whenever the step changes -->
+            @for (current of [step]; track current.key) {
+            <section class="step-view" [class.slide-from-left]="slideFrom === 'left'" [class.slide-from-right]="slideFrom === 'right'" [attr.data-distance-body]="distance.id" [attr.aria-label]="distance.name">
+              @if (distance.isMassStart) {
+                <h2 class="distance-title d-flex align-items-center gap-2 flex-wrap">
+                  @if (distance.isLive) {
+                    <c-badge color="danger" class="glowing-badge flex-shrink-0">{{ 'badgeLive' | translate }}</c-badge>
+                  } @else if (isDistanceDone(distance)) {
+                    <c-badge color="dark" class="flex-shrink-0">{{ 'badgeDone' | translate }}</c-badge>
+                  }
+                  <span>{{ distance.name }}</span>
                   @if (distance.isMassStart && distance.totalLaps) {
                     <small class="text-muted">({{ distance.totalLaps }} {{ 'lapsUnit' | translate }})</small>
                   }
                   @if (!distance.isMassStart && distance.distanceMeters) {
                     <small class="text-muted">({{ distance.distanceMeters }}m)</small>
                   }
-
-                </span>
-              </div>
-            </ng-template>
-            <ng-template cTemplateId="accordionBody">
-              <!-- ===== MASS-START TOP STRIP ===== -->
+                </h2>
+              }
+              @let shown = massView(distance, current);
               @if (distance.isMassStart) {
-                <div [attr.data-distance-body]="distance.id"></div>
-                @if (distance.processedRaces.length) {
-                <div class="groups-strip mb-3 pb-1">
-                  <app-mass-start-timeline
-                    [races]="distance.processedRaces"
+                @if (shown.processedRaces.length) {
+                  <div class="groups-strip mb-3 pb-1">
+                    <app-mass-start-timeline
+                      [races]="shown.processedRaces"
+                      [selectedRaceIds]="selectedRaceIds"
+                      (raceSelect)="selectRace($event)"
+                    />
+                  </div>
+                }
+              <div class="mass-cards" [@raceList]="raceListKey(shown.processedRaces)">
+                @for (race of shown.processedRaces; track race.id; let raceIdx = $index) {
+                  <!-- Group finishing line above each group's first member -->
+                  @if (groupForRace(shown, race.id); as grp) {
+                    <div class="group-finishing-line d-flex align-items-center gap-2">
+                      <div class="group-line-bar flex-grow-1"></div>
+                      <span class="group-sep-count-badge">{{ grp.races.length }}</span>
+                      <span class="group-line-label">{{ groupDisplayName(grp, grp.groupNumber === 1, shown.anyFinished) }}</span>
+                      @if (grp.gapToGroupAhead) {
+                        <span class="group-sep-gap-badge">{{ grp.gapToGroupAhead }}</span>
+                      }
+                      <div class="group-line-bar flex-grow-1"></div>
+                    </div>
+                  } @else if (raceIdx > 0 && isFirstInNewGroup(shown, raceIdx)) {
+                    <div class="standings-group-gap"></div>
+                  }
+                  <app-mass-start-race-row
+                    [race]="race"
+                    [distance]="shown"
+                    [raceIdx]="raceIdx"
                     [selectedRaceIds]="selectedRaceIds"
+                    [lapVarianceThreshold]="settings.lapVariance.value"
                     (raceSelect)="selectRace($event)"
                   />
-                </div>
+                  <!-- Inline finishing line: rendered below the last lap-completed competitor -->
+                  @if (shown.finishingLineAfter && race.id === shown.finishingLineAfter) {
+                    <div class="finishing-line d-flex align-items-center gap-2">
+                      <div class="finishing-line-bar flex-grow-1"></div>
+                      <span class="finishing-line-label">{{ 'lapCompleted' | translate }}</span>
+                      <div class="finishing-line-bar flex-grow-1"></div>
+                    </div>
+                  }
                 }
-              } <!-- end @if distance.isMassStart -->
-              <c-row>
-                <!-- TIMED DISTANCE: one plain unstyled row per heat, competitor cards inside -->
-                @if (!distance.isMassStart) {
-                  <c-col [xs]="12">
-                    @let lapSchedule = distance.distanceMeters ? individualDistanceLapSchedule(distance.distanceMeters) : [];
-                    @let heatGroups = mergedHeatGroups(distance);
-                    @let laneColors = heatGroupLaneColors(heatGroups);
-                    @let maxLanes = distanceMaxLaneCount(heatGroups);
-                    <div class="heat-rows" [class.heat-rows-pairs]="maxLanes <= 2 && hasQuartet(heatGroups)">
-                    @for (displayGroup of heatGroups; track displayGroup.label; let heatIdx = $index) {
+              </div>
+              } @else {
+                @let lapSchedule = distance.distanceMeters ? individualDistanceLapSchedule(distance.distanceMeters) : [];
+                @let heatGroups = mergedHeatGroups(distance);
+                @let laneColors = heatGroupLaneColors(heatGroups);
+                @let maxLanes = distanceMaxLaneCount(heatGroups);
+                <app-heat-peeks [prev]="neighbour(v, step, -1)" [next]="neighbour(v, step, 1)">
+                <div class="heat-rows">
+                  @for (heatIdx of step.heatIndexes; track heatIdx) {
+                    @let displayGroup = heatGroups[heatIdx];
+                    @if (displayGroup) {
                       <app-individual-heat-card
-                        [class.quartet-second]="isQuartetSecond(heatGroups, heatIdx)"
                         [label]="displayGroup.label"
+                        [distanceName]="distance.name"
                         [races]="displayGroup.races"
                         [maxLanes]="maxLanes"
                         [laneColors]="laneColors"
@@ -248,74 +235,40 @@
                         [distanceMeters]="distance.distanceMeters"
                         [distanceId]="distance.id"
                         [active]="isActiveHeatRow(distance.id, displayGroup.label)"
-                        [colorLaps]="settings.compactColors.value"
                         [showThousandths]="settings.showThousandths.value"
                         [animate]="settings.animations.value"
-                        [lapVarianceThreshold]="settings.lapVarianceIndividual.value"
                       />
                     }
-                    </div>
-                  </c-col>
-                }
-                <!-- MASS-START: full-width standings -->
-                @if (distance.isMassStart) {
-                  <c-col [xs]="12">
-                    <div class="mass-cards" [@raceList]="raceListKey(distance.processedRaces)">
-                      @for (race of distance.processedRaces; track race.id; let raceIdx = $index) {
-                        <!-- Group finishing line above each group's first member -->
-                        @if (groupForRace(distance, race.id); as grp) {
-                          <div class="group-finishing-line d-flex align-items-center gap-2">
-                            <div class="group-line-bar flex-grow-1"></div>
-                            <span class="group-sep-count-badge">{{ grp.races.length }}</span>
-                            <span class="group-line-label">{{ groupDisplayName(grp, grp.groupNumber === 1, distance.anyFinished) }}</span>
-                            @if (grp.gapToGroupAhead) {
-                              <span class="group-sep-gap-badge">{{ grp.gapToGroupAhead }}</span>
-                            }
-                            <div class="group-line-bar flex-grow-1"></div>
-                          </div>
-                        } @else if (raceIdx > 0 && isFirstInNewGroup(distance, raceIdx)) {
-                          <div class="standings-group-gap"></div>
-                        }
-                        <app-mass-start-race-row
-                          [race]="race"
-                          [distance]="distance"
-                          [raceIdx]="raceIdx"
-                          [selectedRaceIds]="selectedRaceIds"
-                          [lapVarianceThreshold]="settings.lapVariance.value"
-                          (raceSelect)="selectRace($event)"
-                        />
-                        <!-- Inline finishing line: rendered below the last lap-completed competitor -->
-                        @if (distance.finishingLineAfter && race.id === distance.finishingLineAfter) {
-                          <div class="finishing-line d-flex align-items-center gap-2">
-                            <div class="finishing-line-bar flex-grow-1"></div>
-                            <span class="finishing-line-label">{{ 'lapCompleted' | translate }}</span>
-                            <div class="finishing-line-bar flex-grow-1"></div>
-                          </div>
-                        }
-                      }
-                    </div>
-                  </c-col>
-                }
-              </c-row>
-            </ng-template>
-          </c-accordion-item>
+                  }
+                </div>
+                </app-heat-peeks>
+              }
+            </section>
+            }
+          }
         }
-      </c-accordion>
+      }
     } @else {
       @let notice = emptyNotice$ | async;
       @if (notice) {
         <!-- Nothing to show: say why instead of loading forever -->
         <ng-container *ngTemplateOutlet="noticeTpl; context: { $implicit: notice }" />
       } @else {
-        <!-- Skeleton placeholder while connecting -->
-      @for (i of [1,2,3]; track i) {
-        <div cPlaceholderAnimation="glow" class="skeleton-accordion mb-2 rounded">
-          <div class="skeleton-accordion-header d-flex align-items-center gap-3 p-3 rounded">
-            <span cPlaceholder class="skeleton-title-sm"></span>
-            <span cPlaceholder class="skeleton-badge"></span>
+        <!-- Skeleton of the slider and one heat while connecting -->
+        <div cPlaceholderAnimation="glow" class="skeleton-view" aria-hidden="true">
+          <div class="skeleton-slider"><span cPlaceholder class="skeleton-bar"></span></div>
+          <span cPlaceholder class="skeleton-heat-label"></span>
+          <div class="skeleton-card rounded">
+            <div class="skeleton-card-head d-flex align-items-center gap-3 p-3">
+              <span cPlaceholder class="skeleton-name"></span>
+              <span cPlaceholder class="skeleton-badge"></span>
+            </div>
+            <div class="d-flex justify-content-center gap-2 p-3">
+              <span cPlaceholder class="skeleton-lap"></span>
+              <span cPlaceholder class="skeleton-lap"></span>
+            </div>
           </div>
         </div>
-      }
       }
     }
   </main>

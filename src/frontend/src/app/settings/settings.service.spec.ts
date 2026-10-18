@@ -12,17 +12,15 @@ describe('SettingsService', () => {
     expect(s.groupThreshold.value).toBe(2);
     expect(s.maxGroups.value).toBe(4);
     expect(s.lapVariance.value).toBe(5);
-    expect(s.lapVarianceIndividual.value).toBe(0.5);
-    expect([s.compactColors.value, s.showThousandths.value, s.follow.value]).toEqual([true, false, true]);
+    expect(s.showThousandths.value).toBe(false);
   });
 
   it('keeps what is set across page loads', () => {
     const s = create();
-    s.follow.set(false);
     s.showThousandths.set(true);
     s.maxGroups.set(7);
     const reloaded = create();
-    expect([reloaded.follow.value, reloaded.showThousandths.value, reloaded.maxGroups.value]).toEqual([false, true, 7]);
+    expect([reloaded.showThousandths.value, reloaded.maxGroups.value]).toEqual([true, 7]);
   });
 
   it('clamps what is set', () => {
@@ -30,15 +28,13 @@ describe('SettingsService', () => {
     s.groupThreshold.set(99);
     s.maxGroups.set(-3);
     s.lapVariance.set(2.6);
-    s.lapVarianceIndividual.set(0.26);
-    expect([s.groupThreshold.value, s.maxGroups.value, s.lapVariance.value, s.lapVarianceIndividual.value]).toEqual([10, 0, 3, 0.3]);
+    expect([s.groupThreshold.value, s.maxGroups.value, s.lapVariance.value]).toEqual([10, 0, 3]);
   });
 
   it('falls back to the default for unusable stored values', () => {
     localStorage.setItem('maxGroups', 'many');
-    localStorage.setItem('follow', 'maybe');
     const s = create();
-    expect([s.maxGroups.value, s.follow.value]).toEqual([4, true]);
+    expect(s.maxGroups.value).toBe(4);
   });
 
   it('tells subscribers about a change', () => {

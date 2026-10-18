@@ -43,7 +43,7 @@ html {
   --lr-live: #dc3545;
   --lr-accent: #6f42c1;        // personal bests and records
   --lr-accent-text: rgba(111, 66, 193, 0.85);
-  --lr-slower-text: rgba(176, 84, 0, 0.9);
+  --lr-slower-text: #9a4a00;
   --lr-fall: red;
   --lr-fall-text: rgba(255, 0, 0, 0.8);
   --lr-warn: #c45e00;
@@ -92,9 +92,9 @@ html {
   --lr-strong-fg: #11161b;
   --lr-rank-bg: #aebfd3;
   --lr-rank-fg: #11161b;
-  --lr-strong-flash: #7fd49a;  // dark text on it: 10:1
+  --lr-strong-flash: #fff;  // the newest lap badge flashes white, not green, in the dark
   --lr-flash-yellow: #54430f;
-  --lr-flash-green: #1d4a2c;
+  --lr-flash-green: rgba(255, 255, 255, 0.22);  // update flash in the dark: a white tint, light text stays readable
   --lr-ring: #f1f3f5;
   --lr-bib-bg: #e9ecef;
   --lr-bib-fg: #000;
@@ -150,14 +150,20 @@ html {
 
 // Loading placeholders (CoreUI's cPlaceholder): only their size and colour are set here
 .skeleton-title    { display: inline-block; width: 160px; height: 1.25rem; vertical-align: middle; color: var(--lr-skeleton-b); }
-.skeleton-title-sm { width: 120px; height: 1rem; }
 .skeleton-badge    { width: 56px; height: 1.25rem; border-radius: 99px; }
-.skeleton-accordion {
+.skeleton-view { display: flex; flex-direction: column; align-items: center; gap: 1rem; padding-top: 1rem; }
+.skeleton-slider { width: 100%; padding: 1.5rem 0.5rem 0; }
+.skeleton-bar { display: block; width: 100%; height: 0.5rem; border-radius: 99px; }
+.skeleton-heat-label { width: 14rem; max-width: 80%; height: 0.9rem; }
+.skeleton-card {
+  width: min(36rem, 100%);
   color: var(--lr-skeleton-line);
   background: var(--lr-skeleton-panel);
   border: 1px solid var(--lr-skeleton-line);
 }
-.skeleton-accordion-header { border-bottom: 1px solid var(--lr-skeleton-line); }
+.skeleton-card-head { border-bottom: 1px solid var(--lr-skeleton-line); }
+.skeleton-name { width: 9rem; height: 1.75rem; border-radius: 0.5rem; }
+.skeleton-lap  { width: 3rem; height: 1.75rem; border-radius: 0.25rem; }
 
 // Shrinking a pinned distance title moves the content below it. With scroll anchoring the browser answers by scrolling,
 // which un-pins the title again right at the pinning boundary and makes the bars flicker.

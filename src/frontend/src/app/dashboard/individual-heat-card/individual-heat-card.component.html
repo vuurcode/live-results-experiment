@@ -3,16 +3,14 @@
      [attr.data-heat-label]="label"
      [attr.data-distance-id]="distanceId">
   <div class="individual-heat-label">
-    <div class="individual-heat-lane-bgs" aria-hidden="true" [style.--lane-count]="laneCount">
-      @for (race of races.slice(0, maxLanes); track $index) {
-        <div class="individual-heat-lane-bg" [style.--lane-color]="laneColor(race, $index)"></div>
-      }
-    </div>
-    <span class="individual-heat-label-text">{{ label }}</span>
+    <span class="individual-heat-label-text">{{ label }}@if (distanceMeters) { · {{ distanceMeters }}m } ({{ distanceName }})</span>
+    @if (active) {
+      <c-badge color="danger" class="glowing-badge individual-heat-live">{{ ts.t('badgeLive') }}</c-badge>
+    }
   </div>
   <div class="individual-competitors-row" [style.--lane-count]="laneCount">
     @for (race of races.slice(0, maxLanes); track $index) {
-      <div class="individual-lane-col" [style.--lane-color]="laneColor(race, $index)">
+      <div class="individual-lane-col" [style.--lane-color]="laneColor(race, $index)" [style.--cells]="cells">
       @if (race) {
       <c-card
           class="individual-competitor-card"
@@ -43,32 +41,47 @@
               <div class="individual-watermark individual-watermark-slower" aria-hidden="true">+ {{ splitFormattedTime(truncateLapTime(slowCmp.diff, decimals(race)))[0] }}<small class="individual-watermark-decimal">{{ splitFormattedTime(truncateLapTime(slowCmp.diff, decimals(race)))[1] }}</small></div>
             }
           }
-          <div class="individual-comp-header" [class.individual-comp-header-merged]="!titleExpanded(race)">
-            <span class="individual-comp-name"><span class="individual-comp-name-text" [attr.data-lane]="laneColor(race, $index)">{{ race.name }}</span>@if (showLive(race)) { <c-badge color="danger" class="glowing-badge individual-comp-live">{{ ts.t('badgeLive') }}</c-badge>}</span>
-            <!-- category name and (club code), small below the name; the line keeps its height when there is none -->
-            <span class="individual-comp-meta">{{ metaLine(race) }}</span>
-            <!-- Badges on their own line; the row keeps its height when there are none -->
-            <div class="individual-comp-badges">
-              @for (remarkCode of splitRemarks(race.remark); track remarkCode) {
-                <c-badge [class]="remarkBadgeClass(remarkCode)" [title]="individualLabelTitle(remarkCode)">{{ remarkBadgeText(remarkCode) }}</c-badge>
-              }
-              @if (race.invalid_reason) {
-                <c-badge [class]="invalidBadgeClass(race.invalid_reason)" [title]="individualLabelTitle(race.invalid_reason)">{{ race.invalid_reason }}</c-badge>
-              }
+          <div class="individual-comp-header">
+            <!-- name badge, with the category name and (club code) small below the name, and the personal best after it -->
+            <div class="individual-comp-who">
+              <span class="individual-comp-name"><span class="individual-comp-name-text" [attr.data-lane]="laneColor(race, $index)"><span class="individual-comp-name-line">{{ race.name }}</span>@if (metaLine(race)) { <small class="individual-comp-meta">{{ metaLine(race) }}</small>}</span></span>
               @if (race.personal_record) {
-                <div class="ms-auto d-flex align-items-end gap-1">
-                  <span class="individual-pb-current"><span class="individual-pb-current-label">{{ ts.t(isPbImproved(race) ? 'pbPreviousLabel' : 'pbCurrentLabel') }}</span><c-badge class="individual-split-badge" [class.individual-pb-beaten]="isPbImproved(race)" [attr.title]="isPbImproved(race) ? ts.t('pbImprovedTitle') : null">{{ splitFormattedTime(truncateLapTime(race.personal_record, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(race.personal_record, decimals(race)))[1] }}</small></c-badge></span>
-                </div>
+                <span class="individual-pb-current"><span class="individual-pb-current-label">{{ ts.t(isPbImproved(race) ? 'pbPreviousLabel' : 'pbCurrentLabel') }}</span><c-badge class="individual-split-badge" [class.individual-pb-beaten]="isPbImproved(race)" [attr.title]="isPbImproved(race) ? ts.t('pbImprovedTitle') : null">{{ splitFormattedTime(truncateLapTime(race.personal_record, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(race.personal_record, decimals(race)))[1] }}</small></c-badge></span>
+              }
+            </div>
+            <!-- top right: the race badges, with the total time against the right edge -->
+            <div class="individual-comp-right">
+              <div class="individual-comp-badges">
+                @for (remarkCode of splitRemarks(race.remark); track remarkCode) {
+                  <c-badge [class]="remarkBadgeClass(remarkCode)" [title]="individualLabelTitle(remarkCode)">{{ remarkBadgeText(remarkCode) }}</c-badge>
+                }
+                @if (race.invalid_reason) {
+                  <c-badge [class]="invalidBadgeClass(race.invalid_reason)" [title]="individualLabelTitle(race.invalid_reason)">{{ race.invalid_reason }}</c-badge>
+                }
+              </div>
+              @let totalTime = compactTotalTime(race);
+              @if (totalTime) {
+                <span class="individual-compact-final" [class.individual-compact-done]="compactDone(race)">
+                  <!-- distance reached so far: small and subtle; 'Finish (distance)' once the final lap is done -->
+                  <span class="compact-reached">{{ compactDone(race) ? ts.t('finishLabel') + ' (' : '' }}{{ lapSchedule[totalLaps(race) - 1] }}m{{ compactDone(race) ? ')' : '' }}</span>
+                  <span class="individual-lap-time"><span class="race-time">{{ splitFormattedTime(truncateLapTime(totalTime, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(totalTime, decimals(race)))[1] }}</small></span></span>
+                </span>
+              }
+              @if (race.lap_times.length === 0 && lapSchedule.length > 0) {
+                <span class="individual-compact-final individual-ghost-final" [class.individual-ghost-hidden]="ghostsHidden(race)" aria-hidden="true">
+                  <span class="compact-reached">{{ ts.t('finishLabel') }} ({{ lapSchedule[lapSchedule.length - 1] }}m)</span>
+                  <c-badge class="individual-split-badge individual-ghost-badge individual-ghost-total">&nbsp;</c-badge>
+                </span>
               }
             </div>
           </div>
         </div>
-        <!-- Card body: the lap times as badges on one row (wrapping for many laps), each with its distance above, and the total time so far -->
+        <!-- Card body: the lap times as badges on one row (wrapping for many laps), each with its distance above -->
         <div class="individual-comp-body individual-compact-body">
           @for (lap of race.lap_times; track $index; let last = $last) {
             <span class="individual-compact-lap">
               <span class="compact-dist">{{ lapSchedule[$index] }}m</span>
-              <c-badge class="individual-split-badge individual-compact-badge {{ compactLapColor(race, $index) }}" [style.--lap-fraction]="lapFraction($index)" [style.--ring-from]="ringFinish" [attr.title]="compactBadgeTitle(race, $index)" [class.individual-compact-partial]="noDeltaLap($index)" [class.individual-compact-latest]="last" [class.individual-compact-ringed]="true" [class.individual-snake-fresh]="last && snakeFresh(race)" [class.individual-flash-update]="last && isSplitFlashing(race.lastUpdated)">{{ splitFormattedTime(truncateLapTime(lap, 1))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(lap, 1))[1] }}</small></c-badge>
+              <c-badge class="individual-split-badge individual-compact-badge" [style.--lap-fraction]="lapFraction($index)" [style.--ring-from]="ringFinish" [attr.title]="compactBadgeTitle(race, $index)" [class.individual-compact-latest]="last" [class.individual-compact-ringed]="true" [class.individual-snake-fresh]="last && snakeFresh(race)" [class.individual-flash-update]="last && isSplitFlashing(race.lastUpdated)">{{ splitFormattedTime(truncateLapTime(lap, 1))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(lap, 1))[1] }}</small></c-badge>
             </span>
           } @empty {
             @if (lapSchedule.length > 0) {
@@ -79,10 +92,6 @@
                   <c-badge class="individual-split-badge individual-ghost-badge">&nbsp;</c-badge>
                 </span>
               }
-              <span class="individual-compact-final individual-ghost-final" [class.individual-ghost-hidden]="ghostsHidden(race)" [class.individual-compact-own-line]="ghostTotalOnOwnLine()" aria-hidden="true">
-                <span class="compact-reached">{{ ts.t('finishLabel') }} ({{ lapSchedule[lapSchedule.length - 1] }}m)</span>
-                <c-badge class="individual-split-badge individual-ghost-badge individual-ghost-total">&nbsp;</c-badge>
-              </span>
             } @else {
               <span class="individual-static-placeholder"></span>
             }
@@ -95,14 +104,6 @@
                 <c-badge class="individual-split-badge individual-ghost-badge">&nbsp;</c-badge>
               </span>
             }
-          }
-          @let totalTime = compactTotalTime(race);
-          @if (totalTime) {
-            <span class="individual-compact-final" [class.individual-compact-done]="compactDone(race)" [class.individual-compact-own-line]="totalOnOwnLine(race)">
-              <!-- distance reached so far: small and subtle; 'Finish (distance)' once the final lap is done -->
-              <span class="compact-reached">{{ compactDone(race) ? ts.t('finishLabel') + ' (' : '' }}{{ lapSchedule[totalLaps(race) - 1] }}m{{ compactDone(race) ? ')' : '' }}</span>
-              <span class="individual-lap-time"><span class="race-time">{{ splitFormattedTime(truncateLapTime(totalTime, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(totalTime, decimals(race)))[1] }}</small></span></span>
-            </span>
           }
         </div>
       </c-card>

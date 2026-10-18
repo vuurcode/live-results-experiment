@@ -4,10 +4,10 @@ export interface Translations {
   pageTitle: string;
   // Topbar buttons
   displaySettings: string;
+  menuTitle: string;
+  menuClose: string;
   massStartSettings: string;
   generalSettings: string;
-  individualRaceSettings: string;
-  // Follow setting
   todayCompetitionsLabel: string;
   noCompetitionOption: string;
   selectCompetitionHint: string;
@@ -26,9 +26,6 @@ export interface Translations {
   thousandthsPopoverTitle: string;
   thousandthsOnBody: string;
   thousandthsOffBody: string;
-  compactColorsLabel: string;
-  compactColorsPopoverTitle: string;
-  compactColorsPopoverBody: string;
   feedNotLiveTitle: string;
   feedNotLiveBody: string;
   feedSourceMessage: string;
@@ -45,9 +42,12 @@ export interface Translations {
   tooltipDistance: string;
   tooltipLapTime: string;
   tooltipTotalTime: string;
-  followLabel: string;
-  followPopoverTitle: string;
-  followPopoverBody: string;
+  sliderLabel: string;
+  sliderMore: string;   // contains {n}
+  sliderYou: string;    // the label under the slider thumb when it is not on the live heat
+  sliderEnd: string;    // the label at the right end of the slider
+  peekStart: string;    // the grey hint left of the first heat of a distance
+  peekEnd: string;      // the grey hint right of the last heat of a distance
   // Max gap setting
   maxGapLabel: string;
   timelineLabel: string;
@@ -73,6 +73,7 @@ export interface Translations {
   tailOfRace: string;
   groupLabel: string;  // contains {n}
   heatLabel: string;   // contains {n}
+  lapStepLabel: string; // contains {n}
   // Race events
   lapCompleted: string;
   finished: string;

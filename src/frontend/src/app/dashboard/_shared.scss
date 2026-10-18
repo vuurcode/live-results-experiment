@@ -157,7 +157,7 @@
   display: inline-flex;
   align-items: baseline; // the small decimal sits on the baseline of the whole seconds
   justify-content: center;
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   line-height: 1;
   font-family: monospace;
   font-variant-numeric: tabular-nums;
@@ -166,7 +166,7 @@
   border-radius: 0.22rem;
   flex-shrink: 0;
   opacity: 1;
-  min-width: 3rem; /* wide enough for the lap label above it */
+  min-width: 3.3rem; /* wide enough for the lap label above it */
   text-align: center;
 
   // soft tints with dark text: the colour hints at the difference without shouting
@@ -292,23 +292,24 @@
   }
 }
 .individual-split-badge.individual-compact-badge {
-  &.lap-badge-normal { background-color: $tint-normal-bg; color: $tint-normal-fg; } // beats the plain badge rule above
-  &.lap-badge-slow   { background-color: $tint-slow-bg; color: $tint-slow-fg; }
-  &.lap-badge-fast   { background-color: $tint-fast-bg; color: $tint-fast-fg; }
-  &.individual-compact-partial { background-color: var(--lr-neutral-bg); color: var(--lr-neutral-fg); } // the first lap has no previous lap to differ from: light grey while the diff colours are on
   // every lap of a running race has a ring that a snake draws around the badge counter-clockwise, once, when the lap arrives
   // (a badge that is merely rendered, such as when a distance is unfolded, shows the finished ring)
-  &.individual-compact-ringed[class*='lap-badge-'] {
+  &.individual-compact-ringed {
     @include lap-ring;
   }
-  &.individual-flash-update[class*='lap-badge-'] { animation: none; }
+  &.individual-flash-update { animation: none; }
 }
 // once the race is finished the rings of its laps fade away after the last snake has been drawn, so a done heat shows no ring
 // (a card rendered finished never has it); the ring itself fades, not the card, which keeps its contrast
-.race-finished .individual-compact-ringed[class*='lap-badge-']::after {
+.race-finished .individual-compact-ringed::after {
   opacity: 0;
   transition: opacity 0.6s ease-out 1.5s;
   @media (prefers-reduced-motion: reduce) { transition: none; }
+}
+// the badge of the final lap appears together with the finished state: its snake is drawn first, the ring fades once it is done
+.race-finished .individual-compact-ringed.individual-snake-fresh::after {
+  opacity: 1;
+  transition: none;
 }
 .individual-compact-final .individual-lap-time {
   // the total as a badge, also while the race runs (light grey, like the placeholder), the same size as the final one

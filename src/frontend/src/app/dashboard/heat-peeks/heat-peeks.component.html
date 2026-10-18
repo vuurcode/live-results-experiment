@@ -1,0 +1,23 @@
+<div class="peeks" [style.--shown.px]="shown()">
+  @if (showBefore()) {
+    <div class="peek peek-before" aria-hidden="true" [style.width.px]="half()">
+      @if (!before()) {
+        <span class="peek-name peek-edge" [style.top.px]="badgeOf(0).top" [style.height.px]="badgeOf(0).height"><span class="peek-name-line">{{ 'peekStart' | translate }}</span></span>
+      }
+      @for (racer of before() ? rowsOf(before()!) : []; track $index) {
+        <span class="peek-name" [attr.data-lane]="racer.lane" [style.top.px]="badgeOf($index).top" [style.height.px]="badgeOf($index).height"><span class="peek-name-line">{{ racer.name }}</span><span class="peek-meta">{{ before()!.label }}</span></span>
+      }
+    </div>
+  }
+  <div class="peek-current"><ng-content /></div>
+  @if (showAfter()) {
+    <div class="peek peek-after" aria-hidden="true" [style.width.px]="half()">
+      @if (!after()) {
+        <span class="peek-name peek-edge" [style.top.px]="badgeOf(0).top" [style.height.px]="badgeOf(0).height"><span class="peek-name-line">{{ 'peekEnd' | translate }}</span></span>
+      }
+      @for (racer of after() ? rowsOf(after()!) : []; track $index) {
+        <span class="peek-name" [attr.data-lane]="racer.lane" [style.top.px]="badgeOf($index).top" [style.height.px]="badgeOf($index).height"><span class="peek-name-line">{{ racer.name }}</span><span class="peek-meta">{{ after()!.label }}</span></span>
+      }
+    </div>
+  }
+</div>
