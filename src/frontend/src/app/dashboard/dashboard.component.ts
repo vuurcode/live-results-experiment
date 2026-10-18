@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, Elem
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DataService } from '../results/data.service';
 import type { ColorSchemeChoice } from '../color-scheme';
 import { parseInteger, parseNumber, SettingsService } from '../settings/settings.service';
@@ -55,6 +56,7 @@ import { raceListAnimation, raceListKey } from './dashboard.animations';
     SharedModule,
     FormsModule,
     TranslatePipe,
+    RouterLink,
     MassStartTimelineComponent,
     IndividualHeatCardComponent,
     MassStartRaceRowComponent,
@@ -72,6 +74,8 @@ export class DashboardComponent implements OnInit {
   private titleService = inject(Title);
   protected ts = inject(TranslateService);
   private cdr = inject(ChangeDetectorRef);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
   private destroyRef = inject(DestroyRef);
 
@@ -270,13 +274,6 @@ export class DashboardComponent implements OnInit {
 
   private liveKey: string | null = null;
 
-  /**
-   * The gate every data update passes before it may move or animate the view: set only by the viewer choosing a step
-   * (setPosition), cleared only by the viewer choosing live. While it is set, an update re-finds the step by key and
-   * nothing else.
-   */
-  private pinned = this.storedPositionKey() !== null;
-
   /** On the live position the view moves along when a newer heat starts; a pinned position never moves by itself. */
   private followLive(liveStep: HeatStep | undefined): void {
     const key = DashboardComponent.stepKey(liveStep);
@@ -285,7 +282,27 @@ export class DashboardComponent implements OnInit {
   }
 
   /** The step slid to, by identity: a heat that comes or goes before it moves its index, not the step on show. */
-  private positionKey: string | null = this.storedPositionKey();
+  private positionKey: string | null = this.heatFromUrl() ?? this.storedPositionKey();
+
+  /**
+   * The gate every data update passes before it may move or animate the view: set only by the viewer choosing a step
+   * (setPosition), cleared only by the viewer choosing live. While it is set, an update re-finds the step by key and
+   * nothing else.
+   * It starts set when a position is remembered or linked to.
+   */
+  private pinned = this.positionKey !== null;
+
+  /**
+   * A link to a heat (the start list, the ranking) carries its step key as `heat`. It becomes the remembered position
+   * and leaves the address, so a reload or a later slide is not overruled by it.
+   */
+  private heatFromUrl(): string | null {
+    const key = this.route.snapshot.queryParamMap.get('heat');
+    if (!key) return null;
+    this.storePositionKey(key);
+    void this.router.navigate([], { queryParams: { heat: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    return key;
+  }
 
   /** The step slid to is kept per competition, so that a page reload brings the viewer back to it. */
   private positionStorageKey(): string {
