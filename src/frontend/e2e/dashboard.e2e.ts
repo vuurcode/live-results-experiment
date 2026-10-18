@@ -343,6 +343,17 @@ test.describe('mass start', () => {
     await expect(names(page)).toHaveText(['Competitor E', 'Competitor F', 'Competitor G', 'Competitor H']);
   });
 
+  test('a lap of a mass start that is still to come shows no results, only a note', async ({ page, request }) => {
+    await restartReplay(request, 'e2e-mass');
+    await page.goto('/?competitionId=e2e-mass');
+    await expect(slider(page)).toBeVisible({ timeout: 15_000 });
+    await slider(page).focus();
+    await page.keyboard.press('End');
+    await expect(page.locator('.empty-notice')).toHaveText('Future lap');
+    await expect(page.locator('.race-item-laps')).toHaveCount(0);
+    await expect(page.locator('.groups-strip')).toHaveCount(0);
+  });
+
   test('selecting a competitor highlights their row, selecting again clears it', async ({ page, request }) => {
     await restartReplay(request, 'e2e-mass');
     await page.goto('/?competitionId=e2e-mass');

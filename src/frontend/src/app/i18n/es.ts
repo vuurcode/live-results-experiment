@@ -76,6 +76,7 @@ export const es: Translations = {
   sliderEnd: 'Fin',
   peekStart: 'Inicio de la distancia',
   peekEnd: 'Fin de la distancia',
+  futureLap: 'Vuelta futura',
   maxGapLabel: 'Diferencia máx. para un grupo',
   timelineLabel: 'Diferencias entre los patinadores',
   maxGapPopoverBody:

@@ -76,6 +76,7 @@ export const nl: Translations = {
   sliderEnd: 'Einde',
   peekStart: 'Begin afstand',
   peekEnd: 'Einde afstand',
+  futureLap: 'Toekomstige ronde',
   maxGapLabel: 'Max. verschil voor groep',
   timelineLabel: 'Verschillen tussen de rijders',
   maxGapPopoverBody:

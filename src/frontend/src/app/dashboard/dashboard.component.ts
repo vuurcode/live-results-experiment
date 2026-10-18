@@ -350,6 +350,11 @@ export class DashboardComponent implements OnInit {
     return view;
   }
 
+  /** Whether the lap of a mass start on show is still to come: the leader has not completed the lap before it. */
+  protected isFutureLap(distance: ProcessedDistance, step: HeatStep): boolean {
+    return step.lap !== null && step.lap > Math.max(1, leaderLaps(distance));
+  }
+
   /** The step before or after the one on show, as a hint beside it; none across a change of distance. */
   protected neighbour({ steps }: { steps: HeatStep[] }, step: HeatStep, offset: number): HeatStep | null {
     const other = steps[steps.indexOf(step) + offset];

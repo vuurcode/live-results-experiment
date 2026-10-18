@@ -76,6 +76,7 @@ export const fr: Translations = {
   sliderEnd: 'Fin',
   peekStart: 'Début de la distance',
   peekEnd: 'Fin de la distance',
+  futureLap: 'Tour à venir',
   maxGapLabel: 'Écart max. pour un groupe',
   timelineLabel: 'Écarts entre les coureurs',
   maxGapPopoverBody:

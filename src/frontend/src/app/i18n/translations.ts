@@ -77,6 +77,7 @@ export interface Translations {
   sliderEnd: string;    // the label at the right end of the slider
   peekStart: string;    // the grey hint left of the first heat of a distance
   peekEnd: string;      // the grey hint right of the last heat of a distance
+  futureLap: string;
   // Max gap setting
   maxGapLabel: string;
   timelineLabel: string;

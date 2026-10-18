@@ -76,6 +76,7 @@ export const nb: Translations = {
   sliderEnd: 'Slutt',
   peekStart: 'Start på distansen',
   peekEnd: 'Slutt på distansen',
+  futureLap: 'Kommende runde',
   maxGapLabel: 'Maks. avstand for gruppe',
   timelineLabel: 'Avstander mellom løperne',
   maxGapPopoverBody:

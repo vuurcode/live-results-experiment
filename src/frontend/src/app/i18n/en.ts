@@ -76,6 +76,7 @@ export const en: Translations = {
   sliderEnd: 'End',
   peekStart: 'Start of distance',
   peekEnd: 'End of distance',
+  futureLap: 'Future lap',
   maxGapLabel: 'Max gap for group',
   timelineLabel: 'Gaps between the riders',
   maxGapPopoverBody:

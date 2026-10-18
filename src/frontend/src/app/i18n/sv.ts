@@ -76,6 +76,7 @@ export const sv: Translations = {
   sliderEnd: 'Slut',
   peekStart: 'Start på distansen',
   peekEnd: 'Slut på distansen',
+  futureLap: 'Kommande varv',
   maxGapLabel: 'Max avstånd för grupp',
   timelineLabel: 'Avstånd mellan åkarna',
   maxGapPopoverBody:

@@ -76,6 +76,7 @@ export const it: Translations = {
   sliderEnd: 'Fine',
   peekStart: 'Inizio della distanza',
   peekEnd: 'Fine della distanza',
+  futureLap: 'Giro futuro',
   maxGapLabel: 'Distacco max. per gruppo',
   timelineLabel: 'Distacchi tra i pattinatori',
   maxGapPopoverBody:

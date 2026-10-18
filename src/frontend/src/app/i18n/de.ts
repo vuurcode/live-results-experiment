@@ -76,6 +76,7 @@ export const de: Translations = {
   sliderEnd: 'Ende',
   peekStart: 'Start der Distanz',
   peekEnd: 'Ende der Distanz',
+  futureLap: 'Kommende Runde',
   maxGapLabel: 'Max. Abstand für Gruppe',
   timelineLabel: 'Abstände zwischen den Fahrern',
   maxGapPopoverBody:
