@@ -11,3 +11,6 @@ export const openMenu = (page: Page) => page.getByRole('button', { name: 'Menu',
  */
 export const heatUrl = (competition: string, distanceId: string, heat: number) =>
   `/?competitionId=${competition}&heat=${encodeURIComponent(`${distanceId}:${heat}`)}`;
+
+/** The address of the settings page of a competition. */
+export const settingsUrl = (competition: string) => `/settings?competitionId=${competition}`;

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MOCK_URL } from './env';
-import { heatUrl, openMenu } from './slider';
+import { heatUrl, openMenu, settingsUrl } from './slider';
 
 test.describe('large screens', () => {
   for (const [width, font] of [
@@ -44,7 +44,7 @@ test.describe('pinned titles', () => {
     const strip = page.locator('.groups-strip').first();
     await expect(strip).toBeVisible({ timeout: 15_000 });
     await page.waitForTimeout(1500); // the badges settle on their lines
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.evaluate(() => window.scrollTo(0, 150));
     await page.waitForTimeout(300);
     const box = (await strip.boundingBox())!;
     const barBottom = await page.evaluate(() => document.querySelector('.topbar')!.getBoundingClientRect().bottom);
@@ -100,14 +100,13 @@ test('racing competitor card titles have the same height with or without badges'
 });
 
 test.describe('menu and tooltips', () => {
-  test('the help text is always shown under its setting and fits inside the menu', async ({ page }) => {
+  test('the help text is always shown under its setting and fits inside the settings page', async ({ page }) => {
     for (const width of [1280, 320]) {
       await page.setViewportSize({ width, height: 700 });
-      await page.goto('/?competitionId=e2e-individual');
-      await openMenu(page);
-      const bodies = page.locator('#mainMenu .setting-popover-body:visible');
+      await page.goto(settingsUrl('e2e-individual'));
+      const bodies = page.locator('.settings-page .setting-popover-body:visible');
       await expect(bodies.first()).toBeVisible(); // without hovering anything
-      const panel = (await page.locator('#mainMenu').boundingBox())!;
+      const panel = (await page.locator('.settings-page').boundingBox())!;
       for (const body of await bodies.all()) {
         const box = (await body.boundingBox())!;
         expect(box.x).toBeGreaterThanOrEqual(panel.x - 1);
@@ -163,15 +162,15 @@ test.describe('card side padding', () => {
   }
 });
 
-test('on a short screen the open menu stays inside the viewport and scrolls to its last setting', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 600 });
-  await page.goto('/?competitionId=e2e-mass');
+test('on a short screen the open menu stays inside the viewport and scrolls to its last link', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 260 });
+  await page.goto('/?competitionId=e2e-individual');
   await openMenu(page);
   const panel = page.locator('#mainMenu');
   await expect(panel).toBeVisible();
   const box = (await panel.boundingBox())!;
-  expect(box.y + box.height).toBeLessThanOrEqual(600 + 1);
-  await page.locator('#mainMenu .settings-panel').evaluate((el) => { el.scrollTop = el.scrollHeight; });
-  const last = (await panel.locator('.setting-popover').last().boundingBox())!;
-  expect(last.y + last.height).toBeLessThanOrEqual(600 + 1);
+  expect(box.y + box.height).toBeLessThanOrEqual(260 + 1);
+  await page.locator('#mainMenu .menu-panel').evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  const last = (await panel.locator('.menu-link').last().boundingBox())!;
+  expect(last.y + last.height).toBeLessThanOrEqual(260 + 1);
 });

@@ -73,6 +73,17 @@ test('the open menu has no axe violations', async ({ page, request }) => {
   expect(violations.map((v) => `${v.id} (${v.nodes.length}): ${v.nodes[0]?.target.join(' ')}`)).toEqual([]);
 });
 
+for (const competition of ['e2e-individual', 'e2e-mass']) {
+  test(`the settings page of ${competition} has no axe violations`, async ({ page, request }) => {
+    await restartReplay(request, competition);
+    await page.goto(`/settings?competitionId=${competition}`);
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    await settleTransitions(page);
+    const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+    expect(violations.map((v) => `${v.id} (${v.nodes.length}): ${v.nodes[0]?.target.join(' ')}`)).toEqual([]);
+  });
+}
+
 test('the heat slider is a labelled range input', async ({ page, request }) => {
   await restartReplay(request, 'e2e-individual');
   await page.goto('/?competitionId=e2e-individual');

@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { MOCK_URL } from './env';
-import { heatUrl, openMenu, slider } from './slider';
+import { heatUrl, settingsUrl, slider } from './slider';
 
 /**
  * Restart a competition's replay from its first sample, so every test starts from the same state.
@@ -269,11 +269,10 @@ test.describe('snake around the newest lap', () => {
 test.describe('dark mode setting', () => {
   test('follows the browser by default; On and Off override it and persist', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
-    await page.goto('/?competitionId=e2e-individual');
+    await page.goto(settingsUrl('e2e-individual'));
     const theme = () => page.locator('html').getAttribute('data-coreui-theme');
     await expect.poll(theme).toBe('dark');
 
-    await openMenu(page);
     const select = page.getByLabel('Dark mode');
     await expect(select).toHaveValue('auto');
     await select.selectOption({ label: 'Off' });
@@ -286,7 +285,6 @@ test.describe('dark mode setting', () => {
     await page.reload();
     await expect.poll(theme).toBe('dark');
 
-    await openMenu(page);
     await page.getByLabel('Dark mode').selectOption({ label: 'Browser default' });
     await expect.poll(theme).toBe('light');
   });
@@ -296,15 +294,15 @@ test.describe('animations setting', () => {
   test('is on by default; switched off, it persists and no snake is drawn when a lap arrives', async ({ page, request }) => {
     await restartReplay(request, 'e2e-multi');
     await page.setViewportSize({ width: 1400, height: 1000 });
-    await page.goto('/?competitionId=e2e-multi');
+    await page.goto(settingsUrl('e2e-multi'));
     await expect(page.locator('html')).toHaveAttribute('data-animations', 'on');
 
-    await openMenu(page);
     const toggle = page.getByRole('switch', { name: 'Animations' });
     await expect(toggle).toBeChecked();
     await toggle.uncheck();
     await expect(page.locator('html')).toHaveAttribute('data-animations', 'off');
     expect(await page.evaluate(() => localStorage.getItem('animations'))).toBe('false');
+    await page.getByRole('link', { name: /Back to the live view/ }).click();
 
     const badges = () => page.locator('[data-live] .individual-card-live .individual-compact-badge').count();
     await expect.poll(badges, { timeout: 20_000 }).toBeGreaterThan(0);
@@ -396,17 +394,14 @@ test('the competition picker replaces the event name, venue first, start time on
   expect(running.trim()).toMatch(/^(🔴 |⚪ )?\d{2}:\d{2}( - \d{2}:\d{2})? · E2E Individual Event \(Mock Ice Rink\)$/);
 });
 
-test('the menu holds the general settings and, in a mass start match, the mass start ones under their own headings', async ({ page, request }) => {
+test('the settings page holds the general settings and, in a mass start match, the mass start ones under their own headings', async ({ page, request }) => {
   await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-mass' } });
-  await page.goto('/?competitionId=e2e-mass');
-  await expect(page.locator('#mainMenu')).toBeHidden(); // closed on load
-  await openMenu(page);
-  await expect(page.locator('#mainMenu')).toBeVisible();
+  await page.goto(settingsUrl('e2e-mass'));
   await expect(page.locator('.settings-heading')).toHaveText(['General', 'Mass start']);
   await expect(page.getByLabel('Lap time diff threshold')).toBeVisible();
   // the threshold takes one decimal and its example follows the setting (also while stepping)
   const threshold = page.getByLabel('Lap time diff threshold');
-  const example = page.locator('.settings-panel .setting-popover-example');
+  const example = page.locator('.setting-popover-example');
   const value = await threshold.inputValue();
   await threshold.fill('1');
   await threshold.blur();
@@ -414,8 +409,7 @@ test('the menu holds the general settings and, in a mass start match, the mass s
   expect(value).not.toBe('1');
 });
 
-test('without a mass start the menu has no mass start section', async ({ page }) => {
-  await page.goto('/?competitionId=e2e-individual');
-  await openMenu(page);
+test('without a mass start the settings page has no mass start section', async ({ page }) => {
+  await page.goto(settingsUrl('e2e-individual'));
   await expect(page.locator('.settings-heading')).toHaveText(['General']);
 });

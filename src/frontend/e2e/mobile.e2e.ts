@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import { heatUrl } from './slider';
 
 for (const width of [320, 390]) {
   test.describe(`mobile ${width}px`, () => {
@@ -9,7 +10,7 @@ for (const width of [320, 390]) {
         await page.goto(`/?competitionId=${competition}`);
         await expect(page.getByRole('heading', { level: 1 })).toBeAttached();
         await page.getByRole('button', { name: 'Menu', exact: true }).click();
-        await expect(page.locator('#mainMenu .setting-group').first()).toBeVisible();
+        await expect(page.locator('#mainMenu .menu-link').first()).toBeVisible();
 
         const { scrollWidth, clientWidth } = await page.evaluate(() => ({
           scrollWidth: document.documentElement.scrollWidth,
@@ -19,12 +20,31 @@ for (const width of [320, 390]) {
       });
     }
 
+    test('the settings page has no horizontal page scroll', async ({ page }) => {
+      await page.goto('/settings?competitionId=e2e-mass');
+      await expect(page.locator('.setting-group').first()).toBeVisible();
+      const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      }));
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+    });
+
     test('menu and settings controls are at least 24px (WCAG 2.5.8)', async ({ page }) => {
       await page.goto('/?competitionId=e2e-mass');
       await page.getByRole('button', { name: 'Menu', exact: true }).click();
-      await expect(page.locator('#mainMenu .setting-group').first()).toBeVisible();
+      await expect(page.locator('#mainMenu .menu-link').first()).toBeVisible();
+      const menuSmall = await page.evaluate(() =>
+        [...document.querySelectorAll('#mainMenu button, #mainMenu a')]
+          .map((e) => ({ n: e.id || e.className.toString(), r: e.getBoundingClientRect() }))
+          .filter((x) => x.r.width > 0 && (x.r.width < 24 || x.r.height < 24))
+          .map((x) => `${x.n} ${Math.round(x.r.width)}x${Math.round(x.r.height)}`),
+      );
+      expect(menuSmall).toEqual([]);
+      await page.goto('/settings?competitionId=e2e-mass');
+      await expect(page.locator('.setting-group').first()).toBeVisible();
       const small = await page.evaluate(() =>
-        [...document.querySelectorAll('header button, #mainMenu button, #mainMenu input, #mainMenu a, #mainMenu select')]
+        [...document.querySelectorAll('main button, main input, main a, main select')]
           .map((e) => ({ n: e.id || e.className.toString(), r: e.getBoundingClientRect() }))
           .filter((x) => x.r.width > 0 && (x.r.width < 24 || x.r.height < 24))
           .map((x) => `${x.n} ${Math.round(x.r.width)}x${Math.round(x.r.height)}`),
@@ -33,3 +53,41 @@ for (const width of [320, 390]) {
     });
   });
 }
+
+test.describe('swiping between heats', () => {
+  test.use({ viewport: { width: 390, height: 740 }, hasTouch: true });
+
+  /** A finger stroke from one point to another, in steps over `ms` milliseconds. */
+  async function swipe(page: Page, from: [number, number], to: [number, number], ms = 200) {
+    const cdp = await page.context().newCDPSession(page);
+    const steps = 8;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: from[0], y: from[1] }] });
+    for (let i = 1; i <= steps; i++) {
+      await page.waitForTimeout(ms / steps);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: from[0] + ((to[0] - from[0]) * i) / steps, y: from[1] + ((to[1] - from[1]) * i) / steps }] });
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  }
+
+  const heat = (page: Page) => page.getByRole('slider');
+
+  test('a quick horizontal swipe moves to the next and the previous heat', async ({ page }) => {
+    await page.goto(heatUrl('e2e-pairs', 'dist-500', 2));
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/, { timeout: 15_000 });
+    await swipe(page, [340, 400], [60, 405]);
+    await expect(heat(page)).not.toHaveAttribute('aria-valuetext', /Heat 2$/);
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 3$/);
+    await swipe(page, [60, 400], [340, 395]);
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
+  });
+
+  test('a short, a diagonal and a slow stroke leave the heat alone', async ({ page }) => {
+    await page.goto(heatUrl('e2e-pairs', 'dist-500', 2));
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/, { timeout: 15_000 });
+    await swipe(page, [250, 400], [180, 400]);
+    await swipe(page, [340, 300], [120, 460]);
+    await swipe(page, [340, 400], [60, 400], 1500);
+    await page.waitForTimeout(500);
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
+  });
+});

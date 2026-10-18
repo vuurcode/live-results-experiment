@@ -5,12 +5,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DataService } from '../results/data.service';
-import type { ColorSchemeChoice } from '../color-scheme';
-import { parseInteger, parseNumber, SettingsService } from '../settings/settings.service';
+import { SettingsService } from '../settings/settings.service';
 import { FeedStatus, TodayCompetition, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../results/data.models';
 import { Observable, combineLatest, concat, filter, from, map, merge, of, shareReplay, startWith, switchMap, tap, timer } from 'rxjs';
 import { TranslateService, TranslationKey } from '../i18n/translate.service';
 import { TranslatePipe } from '../i18n/translate.pipe';
+import { swipeDirection, type SwipePoint } from './swipe.util';
 import { MassStartTimelineComponent } from './mass-start-timeline/mass-start-timeline.component';
 import { IndividualHeatCardComponent } from './individual-heat-card/individual-heat-card.component';
 import { MassStartRaceRowComponent } from './mass-start-race-row/mass-start-race-row.component';
@@ -99,9 +99,6 @@ export class DashboardComponent implements OnInit {
   /** The distances with the steps of the slider and the index of the live one. */
   protected view$!: Observable<{ distances: ProcessedDistance[]; steps: HeatStep[]; live: number }>;
 
-  // Hide mass start settings if no mass start present
-  protected hasMassStart$: Observable<boolean>;
-
   /** The competitions of today, asked again every few minutes so new competitions show up and finished ones drop off while the page stays open. */
   protected readonly todayCompetitions$: Observable<TodayCompetition[]> = merge(timer(0, 5 * 60_000), this.dataService.competitionsChanged$.pipe(map(() => -1))).pipe(
     filter(n => n === 0 || document.visibilityState !== 'hidden'), // nobody sees the list of a hidden page
@@ -131,58 +128,11 @@ export class DashboardComponent implements OnInit {
     this.selectedRaceIds = next;
   }
 
-  protected setGroupThreshold(event: Event): void {
-    const val = parseNumber((event.target as HTMLInputElement).value);
-    if (val !== undefined) this.settings.groupThreshold.set(val);
-  }
-
-  protected setMaxGroups(event: Event): void {
-    const val = parseInteger((event.target as HTMLInputElement).value);
-    if (val !== undefined) this.settings.maxGroups.set(val);
-  }
-
-  protected setLapVariance(event: Event): void {
-    const val = parseInteger((event.target as HTMLInputElement).value);
-    if (val !== undefined) this.settings.lapVariance.set(val);
-  }
-
-  /** The values of the threshold example text, following the given setting (a lap of 40.0 s as the base). */
-  protected lapExample(pct: number): Record<string, string> {
-    const seconds = (n: number) => this.ts.num(n, 1); // a time always has a decimal
-    return { pct: this.ts.num(pct), slow: seconds(40 * (1 + pct / 100)), fast: seconds(40 * (1 - pct / 100)) };
-  }
-
-  /**
-   * The mouse wheel and the spinner buttons change a number input without a `change` event (that waits for blur),
-   * so the example text would lag behind. They have no `inputType`; typing does and is applied on `change`, so a
-   * half-typed "0." is not overwritten.
-   */
-  protected stepLapVariance(event: Event): void {
-    if ((event as InputEvent).inputType) return;
-    this.setLapVariance(event);
-  }
-
-  protected setColorScheme(event: Event): void {
-    this.settings.colorScheme.set((event.target as HTMLSelectElement).value as ColorSchemeChoice);
-  }
-
-  protected setAnimations(event: Event): void {
-    this.settings.animations.set((event.target as HTMLInputElement).checked);
-  }
-
-  protected setShowThousandths(event: Event): void {
-    this.settings.showThousandths.set((event.target as HTMLInputElement).checked);
-  }
-
   /** Switches off the Angular animations (the reordering of rows and the folding of groups) with the setting. */
   @HostBinding('@.disabled') get animationsDisabled(): boolean { return !this.settings.animations.value; }
 
   constructor() {
-    // the stylesheet stills the CSS animations and transitions under this attribute
-    this.settings.animations.changes$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(on => {
-      document.documentElement.setAttribute('data-animations', on ? 'on' : 'off');
-    });
-    // The top bar stays pinned; the settings panel's height limit follows its height.
+    // The top bar stays pinned; what sticks below it follows its height.
     afterNextRender(() => {
       const bar: HTMLElement | null = this.host.nativeElement.querySelector('.topbar');
       if (!bar || typeof ResizeObserver === 'undefined') return;
@@ -206,9 +156,6 @@ export class DashboardComponent implements OnInit {
     ]).pipe(
       map(([feed, status, waitedLong]) => emptyNotice(feed, status.status, waitedLong)),
     );
-    this.hasMassStart$ = this.dataService.processedData$.pipe(
-      map(distances => !!distances?.some(d => d.isMassStart))
-    );
     this.sortedDistances$ = this.dataService.processedData$.pipe(
       map((distances) => {
         if (!distances || distances.length === 0) return [];
@@ -220,6 +167,7 @@ export class DashboardComponent implements OnInit {
     this.view$ = this.sortedDistances$.pipe(
       map((distances) => ({ distances, ...buildSteps(distances, (n) => this.ts.t('heatLabel', { n }), (n) => this.ts.t('lapStepLabel', { n })) })),
       tap(({ steps }) => this.resolvePosition(steps)),
+      tap(({ steps, live }) => { this.swipeView = { steps, live }; }),
       tap(({ steps, live }) => this.followLive(steps[live])),
     );
   }
@@ -330,6 +278,45 @@ export class DashboardComponent implements OnInit {
     const index = steps.findIndex((step) => DashboardComponent.stepKey(step) === this.positionKey);
     if (index >= 0) this.position = index;
     else if (this.position === null && steps.length > 0) this.setPosition(null, { steps, live: 0 }); // a remembered heat that is gone
+  }
+
+  private swipeView: { steps: HeatStep[]; live: number } | null = null;
+  private swipeFrom: SwipePoint | null = null;
+  private narrow = typeof matchMedia === 'function' ? matchMedia('(max-width: 767.98px)') : null;
+
+  protected swipeStart(event: TouchEvent): void {
+    this.swipeFrom = null;
+    if (!this.narrow?.matches || event.touches.length !== 1 || !this.swipeStartsOnPage(event.target)) return;
+    this.swipeFrom = { x: event.touches[0].clientX, y: event.touches[0].clientY, time: event.timeStamp };
+  }
+
+  /** Moves a heat on a swipe over the heats, on narrow screens only (a wide screen has no room to swipe in). */
+  protected swipeEnd(event: TouchEvent): void {
+    const from = this.swipeFrom;
+    this.swipeFrom = null;
+    const view = this.swipeView;
+    if (!from || !view || event.touches.length > 0 || event.changedTouches.length !== 1) return;
+    const touch = event.changedTouches[0];
+    const direction = swipeDirection(from, { x: touch.clientX, y: touch.clientY, time: event.timeStamp }, window.innerWidth);
+    if (direction === 0) return;
+    const current = this.position === null ? view.live : Math.min(this.position, view.steps.length - 1);
+    const target = current + direction;
+    if (target < 0 || target >= view.steps.length) return;
+    this.setPosition(target === view.live ? null : target, view);
+    this.cdr.markForCheck();
+  }
+
+  protected swipeCancel(): void {
+    this.swipeFrom = null;
+  }
+
+  /** A stroke that starts on the slider, a form control or something that scrolls sideways by itself belongs to that element. */
+  private swipeStartsOnPage(target: EventTarget | null): boolean {
+    for (let element = target instanceof Element ? target : null; element; element = element.parentElement) {
+      if (element.matches('app-heat-slider, input, select, textarea, button, a, [role="slider"]')) return false;
+      if (element.scrollWidth > element.clientWidth + 1 && ['auto', 'scroll'].includes(getComputedStyle(element).overflowX)) return false;
+    }
+    return true;
   }
 
   protected setPosition(position: number | null, view: { steps: HeatStep[]; live: number }): void {

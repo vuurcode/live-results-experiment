@@ -16,6 +16,11 @@ export interface Translations {
   rankingGap: string;
   rankingLive: string;
   menuStartList: string;
+  menuMain: string;
+  menuSettings: string;
+  menuCreditBy: string;
+  menuCreditFree: string;
+  settingsTitle: string;
   startListTitle: string;
   startListNone: string;
   startListSearch: string;
