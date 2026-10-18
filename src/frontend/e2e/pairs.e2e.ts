@@ -26,6 +26,27 @@ test.describe('two-lane competition', () => {
     await expect(page.locator('.peek-before .peek-name[data-lane]')).not.toHaveCount(0);
   });
 
+  test('each peek badge has an arrow below it, centred under the badge and in the middle of its lane, pointing to its heat', async ({ page, request }) => {
+    await restartReplay(request);
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await page.goto(heatUrl(COMPETITION, 'dist-500', 2));
+    await expect(slider(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
+    for (const side of ['before', 'after'] as const) {
+      const lane = page.locator(`.peek-${side} .peek-lane:has(.peek-arrow)`).first();
+      await expect(lane).toBeVisible();
+      const boxes = await lane.evaluate((el) => {
+        const r = (e: Element) => e.getBoundingClientRect();
+        const badge = r(el.querySelector('.peek-name')!);
+        const arrow = r(el.querySelector('.peek-arrow')!);
+        const laneBox = r(el);
+        return { badgeX: badge.left + badge.width / 2, badgeBottom: badge.bottom, arrowX: arrow.left + arrow.width / 2, arrowTop: arrow.top, arrowY: arrow.top + arrow.height / 2, laneY: laneBox.top + laneBox.height / 2 };
+      });
+      expect(Math.abs(boxes.arrowX - boxes.badgeX), side).toBeLessThanOrEqual(1);
+      expect(Math.abs(boxes.arrowY - boxes.laneY), side).toBeLessThanOrEqual(1);
+      expect(boxes.arrowTop, side).toBeGreaterThanOrEqual(boxes.badgeBottom - 1);
+    }
+  });
+
   test('shows pairs, a lone skater, a DNF and a personal best', async ({ page, request }) => {
     await restartReplay(request);
     // one heat per slider step, with at most the two lanes

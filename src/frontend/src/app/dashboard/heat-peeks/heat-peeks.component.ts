@@ -9,10 +9,10 @@ const MIN_BEFORE = 110;
 const MIN_AFTER = 80;
 
 interface Peek {
-  /** The heat the racers are in, "Heat 3". */
+  /** The heat the racers are in, "Heat 3", or both heats of a quartet. */
   label: string;
   /** The lanes in order; an empty lane has no name and is drawn as an empty badge in the colour of the lane. */
-  racers: { name: string | null; lane: string | null }[];
+  racers: { name: string | null; lane: string | null; heat: string | null }[];
 }
 
 /**
@@ -56,8 +56,8 @@ export class HeatPeeksComponent implements AfterViewInit {
   protected half = signal(0);
   protected showBefore = signal(false);
   protected showAfter = signal(false);
-  /** The box of each name badge of the heat on show: its top and height from the top of the row, in px. */
-  protected badges = signal<{ top: number; height: number }[]>([]);
+  /** The box of each name badge of the heat on show and of its lane: top and height from the top of the row, in px. */
+  protected badges = signal<{ top: number; height: number; laneTop: number; laneHeight: number }[]>([]);
 
   ngAfterViewInit(): void {
     this.zone.runOutsideAngular(() => {
@@ -84,7 +84,7 @@ export class HeatPeeksComponent implements AfterViewInit {
 
   private peekOf(step: HeatStep | null): Peek | null {
     if (!step || step.isMassStart || step.racers.length === 0) return null;
-    return { label: step.label, racers: step.slots.map((slot) => ({ name: slot.racer?.name ?? null, lane: slot.lane })) };
+    return { label: step.label, racers: step.slots.map((slot) => ({ name: slot.racer?.name ?? null, lane: slot.lane, heat: slot.racer?.heat ?? null })) };
   }
 
   /** Reads the card width and the lane rows off the heat on show and decides which halves fit. */
@@ -96,9 +96,10 @@ export class HeatPeeksComponent implements AfterViewInit {
     // the cards of the heat side by side (the four lane view) are as wide as their union
     const shown = Math.round(Math.max(...boxes.map((b) => b.right)) - Math.min(...boxes.map((b) => b.left)));
     // one box per lane; an empty lane has no name, so it takes the box of the first name on show (the names of a row are level)
-    const lanes = [...this.host.querySelectorAll<HTMLElement>('.individual-lane-col')].map((lane) => lane.querySelector<HTMLElement>('.individual-comp-name-text'));
+    const laneCols = [...this.host.querySelectorAll<HTMLElement>('.individual-lane-col')];
+    const lanes = laneCols.map((lane) => lane.querySelector<HTMLElement>('.individual-comp-name-text'));
     const first = lanes.find((name) => name !== null);
-    const badges = first ? lanes.map((name) => ({ top: this.offsetWithin(name ?? first), height: (name ?? first).offsetHeight })) : [];
+    const badges = first ? lanes.map((name, i) => ({ top: this.offsetWithin(name ?? first), height: (name ?? first).offsetHeight, laneTop: this.offsetWithin(laneCols[i]), laneHeight: laneCols[i].offsetHeight })) : [];
     const half = Math.round(cardWidth / 2);
     // the heat on show is centred, so a half takes the room beside it, up to half a card
     const free = (width - shown) / 2 - SIDE_GAP;
@@ -129,8 +130,8 @@ export class HeatPeeksComponent implements AfterViewInit {
   }
 
   /** The badge box of a racer: the one of the same lane on show, else the last. */
-  protected badgeOf(index: number): { top: number; height: number } {
+  protected badgeOf(index: number): { top: number; height: number; laneTop: number; laneHeight: number } {
     const badges = this.badges();
-    return badges[index] ?? badges[badges.length - 1] ?? { top: 0, height: 0 };
+    return badges[index] ?? badges[badges.length - 1] ?? { top: 0, height: 0, laneTop: 0, laneHeight: 0 };
   }
 }

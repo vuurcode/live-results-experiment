@@ -5,7 +5,7 @@
         <span class="peek-name peek-edge" [style.top.px]="badgeOf(0).top" [style.height.px]="badgeOf(0).height"><span class="peek-name-line">{{ 'peekStart' | translate }}</span></span>
       }
       @for (racer of before() ? rowsOf(before()!) : []; track $index) {
-        <span class="peek-name" [class.peek-empty]="racer.name === null" [attr.data-lane]="racer.lane" [style.top.px]="badgeOf($index).top" [style.height.px]="badgeOf($index).height"><span class="peek-name-line">{{ racer.name }}</span>@if (racer.name !== null) {<span class="peek-meta">{{ before()!.label }}</span>}</span>
+        <span class="peek-lane" [style.top.px]="badgeOf($index).laneTop" [style.height.px]="badgeOf($index).laneHeight"><span class="peek-name" [class.peek-empty]="racer.name === null" [attr.data-lane]="racer.lane" [style.margin-top.px]="badgeOf($index).top - badgeOf($index).laneTop" [style.height.px]="badgeOf($index).height"><span class="peek-name-line">{{ racer.name }}</span>@if (racer.name !== null) {<span class="peek-meta">{{ racer.heat ?? before()!.label }}</span>}</span>@if (racer.name !== null) {<svg class="peek-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12H5M11 6l-6 6 6 6" /></svg>}</span>
       }
     </div>
   }
@@ -16,7 +16,7 @@
         <span class="peek-name peek-edge" [style.top.px]="badgeOf(0).top" [style.height.px]="badgeOf(0).height"><span class="peek-name-line">{{ 'peekEnd' | translate }}</span></span>
       }
       @for (racer of after() ? rowsOf(after()!) : []; track $index) {
-        <span class="peek-name" [class.peek-empty]="racer.name === null" [attr.data-lane]="racer.lane" [style.top.px]="badgeOf($index).top" [style.height.px]="badgeOf($index).height"><span class="peek-name-line">{{ racer.name }}</span>@if (racer.name !== null) {<span class="peek-meta">{{ after()!.label }}</span>}</span>
+        <span class="peek-lane" [style.top.px]="badgeOf($index).laneTop" [style.height.px]="badgeOf($index).laneHeight"><span class="peek-name" [class.peek-empty]="racer.name === null" [attr.data-lane]="racer.lane" [style.margin-top.px]="badgeOf($index).top - badgeOf($index).laneTop" [style.height.px]="badgeOf($index).height"><span class="peek-name-line">{{ racer.name }}</span>@if (racer.name !== null) {<span class="peek-meta">{{ racer.heat ?? after()!.label }}</span>}</span>@if (racer.name !== null) {<svg class="peek-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h15M13 6l6 6-6 6" /></svg>}</span>
       }
     </div>
   }

@@ -47,7 +47,7 @@ describe('buildSteps', () => {
 
   it('lists the racers of a heat with their lanes', () => {
     const { steps } = buildSteps([distance(1, [[race('a', ['30.0']), race('b', ['31.0'], { lane: 'red' })]])], label, lapLabel);
-    expect(steps[0].racers).toEqual([{ name: 'Skater a', lane: 'white', badges: [] }, { name: 'Skater b', lane: 'red', badges: [] }]);
+    expect(steps[0].racers).toEqual([{ name: 'Skater a', lane: 'white', badges: [], heat: 'Heat 1' }, { name: 'Skater b', lane: 'red', badges: [], heat: 'Heat 1' }]);
   });
 
   it('gives a mass start a step for each lap, live at the lap the leader has completed', () => {
@@ -65,6 +65,7 @@ describe('buildSteps', () => {
     const { steps } = buildSteps([distance(1, [wr, yb, [race('e', ['30'])]])], label, lapLabel);
     expect(steps.map((st) => st.heatIndexes)).toEqual([[0, 1], [2]]);
     expect(steps[0].racers.map((r) => r.lane)).toEqual(['white', 'red', 'yellow', 'blue']);
+    expect(steps[0].racers.map((r) => r.heat)).toEqual(['Heat 1', 'Heat 1', 'Heat 2', 'Heat 2']);
   });
 
   it('gives a racer the badges of the remark and the invalid reason', () => {

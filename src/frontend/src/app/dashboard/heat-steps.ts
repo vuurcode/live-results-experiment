@@ -9,6 +9,8 @@ export interface StepRacer {
   lane: string | null;
   /** The remark and invalid reason codes of the racer, as the card shows them */
   badges: { code: string; kind: 'purple' | 'orange' | 'red' }[];
+  /** The label of the heat the racer skates in, which for a quartet is one of its two */
+  heat: string | null;
 }
 
 /** A lane of a heat: the racer in it, if any, and its colour. */
@@ -94,7 +96,7 @@ export function buildSteps(distances: ProcessedDistance[], labelFor: (heat: numb
       for (let lap = 1; lap <= laps; lap++) {
         const races = racesAtLap(distance.processedRaces, lap, distance.totalLaps);
         const final = lap === laps;
-        all.push({ ...base, key: `${distance.id}:lap:${lap}`, heatIndexes: [], lap, label: lapLabelFor(lap), racers: races.slice(0, MASS_START_PREVIEW).map(racer), slots: [], more: Math.max(0, races.length - MASS_START_PREVIEW), records: final ? recordsOf(races) : [], racerRecords: final ? racerRecordsOf(races) : [], faults: [] });
+        all.push({ ...base, key: `${distance.id}:lap:${lap}`, heatIndexes: [], lap, label: lapLabelFor(lap), racers: races.slice(0, MASS_START_PREVIEW).map((r) => racer(r)), slots: [], more: Math.max(0, races.length - MASS_START_PREVIEW), records: final ? recordsOf(races) : [], racerRecords: final ? racerRecordsOf(races) : [], faults: [] });
       }
       continue;
     }
@@ -102,7 +104,7 @@ export function buildSteps(distances: ProcessedDistance[], labelFor: (heat: numb
       const races = heats.flatMap(({ group }) => group.races);
       if (started(races)) last = all.length;
       else if (distance.isLive && last < all.length && !all.some((s) => s.distanceId === distance.id)) last = all.length;
-      all.push({ ...base, key: `${distance.id}:${distance.heatGroups[heats[0].index].heat}`, heatIndexes: heats.map(({ index }) => index), lap: null, label: heatsLabel(heats.map(({ group, index }) => ({ label: group.label, heat: distance.heatGroups[index].heat }))), racers: races.filter((r) => r !== null).map(racer), slots: heats.flatMap(({ group }) => group.races.map((race, slot) => ({ racer: race ? racer(race) : null, lane: race?.lane || emptyLaneColor(group.races, slot) }))), more: 0, records: recordsOf(races), racerRecords: racerRecordsOf(races), faults: faultsOf(races) });
+      all.push({ ...base, key: `${distance.id}:${distance.heatGroups[heats[0].index].heat}`, heatIndexes: heats.map(({ index }) => index), lap: null, label: heatsLabel(heats.map(({ group, index }) => ({ label: group.label, heat: distance.heatGroups[index].heat }))), racers: heats.flatMap(({ group }) => group.races.filter((r) => r !== null).map((r) => racer(r, group.label))), slots: heats.flatMap(({ group }) => group.races.map((race, slot) => ({ racer: race ? racer(race, group.label) : null, lane: race?.lane || emptyLaneColor(group.races, slot) }))), more: 0, records: recordsOf(races), racerRecords: racerRecordsOf(races), faults: faultsOf(races) });
     }
   }
   return { steps: all, live: Math.max(last, 0) };
@@ -128,7 +130,7 @@ function quartets(groups: MergedHeatGroup<CompetitorUpdate>[]): { group: MergedH
   return out;
 }
 
-function racer(race: CompetitorUpdate): StepRacer {
+function racer(race: CompetitorUpdate, heat: string | null = null): StepRacer {
   const remarks = race.remark?.trim().split(/\s+/).filter(Boolean) ?? [];
   const kindOf = (code: string) => {
     const upper = code.toUpperCase();
@@ -137,5 +139,5 @@ function racer(race: CompetitorUpdate): StepRacer {
   };
   const codes = [...(race.invalid_reason ? [race.invalid_reason] : []), ...remarks];
   const badges = codes.filter((code, i) => codes.indexOf(code) === i).map((code) => ({ code, kind: kindOf(code) }));
-  return { name: race.name, lane: race.lane || null, badges };
+  return { name: race.name, lane: race.lane || null, badges, heat };
 }
