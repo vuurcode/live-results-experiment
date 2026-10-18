@@ -1,9 +1,7 @@
 import { AfterViewInit, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Input, NgZone, inject, signal } from '@angular/core';
 import { TranslatePipe } from '../../i18n/translate.pipe';
-import type { HeatStep, StepRacer } from '../heat-steps';
+import type { HeatStep } from '../heat-steps';
 
-/** The lanes the badges take their colour from when the feed names none, as the cards do. */
-const DEFAULT_LANES = ['white', 'red'];
 /** The space between a half and the side of the screen, in px; keep in step with the `.peek` offsets (1rem). */
 const SIDE_GAP = 16;
 /** The least width, in px, a half is worth showing at: it shrinks with the room beside the heat on show, the previous one going first. */
@@ -13,7 +11,8 @@ const MIN_AFTER = 80;
 interface Peek {
   /** The heat the racers are in, "Heat 3". */
   label: string;
-  racers: { name: string; lane: string }[];
+  /** The lanes in order; an empty lane has no name and is drawn as an empty badge in the colour of the lane. */
+  racers: { name: string | null; lane: string | null }[];
 }
 
 /**
@@ -35,6 +34,10 @@ export class HeatPeeksComponent implements AfterViewInit {
   private host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private zone = inject(NgZone);
   private destroyRef = inject(DestroyRef);
+
+  /** The heat before or after the one on show is the live one: its half gets the red border of live cards. */
+  @Input() prevLive = false;
+  @Input() nextLive = false;
 
   @Input() set prev(step: HeatStep | null) {
     this.before.set(this.peekOf(step));
@@ -81,7 +84,7 @@ export class HeatPeeksComponent implements AfterViewInit {
 
   private peekOf(step: HeatStep | null): Peek | null {
     if (!step || step.isMassStart || step.racers.length === 0) return null;
-    return { label: step.label, racers: step.racers.map((racer: StepRacer, i) => ({ name: racer.name, lane: racer.lane ?? DEFAULT_LANES[i % 2] })) };
+    return { label: step.label, racers: step.slots.map((slot) => ({ name: slot.racer?.name ?? null, lane: slot.lane })) };
   }
 
   /** Reads the card width and the lane rows off the heat on show and decides which halves fit. */
@@ -92,7 +95,10 @@ export class HeatPeeksComponent implements AfterViewInit {
     const cardWidth = boxes[0].width;
     // the cards of the heat side by side (the four lane view) are as wide as their union
     const shown = Math.round(Math.max(...boxes.map((b) => b.right)) - Math.min(...boxes.map((b) => b.left)));
-    const badges = [...this.host.querySelectorAll<HTMLElement>('.individual-comp-name-text')].map((name) => ({ top: this.offsetWithin(name), height: name.offsetHeight }));
+    // one box per lane; an empty lane has no name, so it takes the box of the first name on show (the names of a row are level)
+    const lanes = [...this.host.querySelectorAll<HTMLElement>('.individual-lane-col')].map((lane) => lane.querySelector<HTMLElement>('.individual-comp-name-text'));
+    const first = lanes.find((name) => name !== null);
+    const badges = first ? lanes.map((name) => ({ top: this.offsetWithin(name ?? first), height: (name ?? first).offsetHeight })) : [];
     const half = Math.round(cardWidth / 2);
     // the heat on show is centred, so a half takes the room beside it, up to half a card
     const free = (width - shown) / 2 - SIDE_GAP;

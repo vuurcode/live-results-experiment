@@ -20,7 +20,7 @@
       <span class="bar" aria-hidden="true"></span>
       @for (index of ticks; track index) {
         @if (ticksShown && inWindow(index)) {
-        <span class="mark mark-tick" [class.mark-future]="index > liveIndex" aria-hidden="true" [style.--at]="fraction(index)">@if (zoomed) {<span class="tick-number">@for (number of heatNumbers(index); track $index) {<span>{{ number }}</span>}</span>}</span>
+        <span class="mark mark-tick" [class.mark-future]="index > liveIndex" [class.mark-tick-live]="index === liveIndex && steps.length > 1" aria-hidden="true" [style.--at]="fraction(index)">@if (zoomed) {<span class="tick-number">@for (number of heatNumbers(index); track $index) {<span>{{ number }}</span>}</span>}</span>
         }
       }
       @let layout = textLayout;
@@ -43,7 +43,7 @@
       }
       @for (mark of recordMarks; track mark.index + '-' + $index) {
         @if (inWindow(mark.index)) {
-        <span class="mark mark-record" [class.mark-pb]="!isRecord(mark.code)" aria-hidden="true" [style.--at]="fraction(mark.index)" [style.--off.px]="mark.offset" [attr.title]="mark.title"></span>
+        <span class="mark mark-record" [class.mark-pb]="!mark.fault && !isRecord(mark.code)" [class.mark-fault]="mark.fault" [class.mark-dq]="mark.code === 'DQ'" [class.mark-record-live]="mark.live" aria-hidden="true" [style.--at]="fraction(mark.index)" [style.--off.px]="mark.offset" [attr.title]="mark.title"></span>
         }
       }
     @if (steps.length > 1 && inWindow(liveIndex)) {

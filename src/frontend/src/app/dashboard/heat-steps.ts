@@ -1,5 +1,5 @@
 import type { CompetitorUpdate, ProcessedDistance } from '../results/data.models';
-import { pairHeatGroups, type MergedHeatGroup } from '../results/heats.util';
+import { emptyLaneColor, pairHeatGroups, type MergedHeatGroup } from '../results/heats.util';
 import { leaderLaps, massStartLapCount, racesAtLap } from '../results/mass-lap.util';
 import { RaceCode, RECORD_CODES, RECORD_PRIORITY } from '../results/race-codes';
 
@@ -9,6 +9,12 @@ export interface StepRacer {
   lane: string | null;
   /** The remark and invalid reason codes of the racer, as the card shows them */
   badges: { code: string; kind: 'purple' | 'orange' | 'red' }[];
+}
+
+/** A lane of a heat: the racer in it, if any, and its colour. */
+export interface StepSlot {
+  racer: StepRacer | null;
+  lane: string | null;
 }
 
 /** One stop of the slider: a heat of a distance, or the standings of a mass start after a lap. */
@@ -28,12 +34,16 @@ export interface HeatStep {
   /** The label of the heat, those of a quartet's pairs joined, or of the lap of a mass start */
   label: string;
   racers: StepRacer[];
+  /** The slots of the heats in lane order, the empty ones included, with the colour of their lane; a mass start has none */
+  slots: StepSlot[];
   /** Racers a mass start preview names at most */
   more: number;
   /** The record codes (WR, NR, TR, TRC, PR) the racers of the step have, the most significant first */
   records: string[];
   /** The most significant record code of each racer that has one, so a step with several record racers can show a line for each */
   racerRecords: string[];
+  /** The fault code (DQ, FL, DNF) of each racer that has one, for a short line on the slider */
+  faults: string[];
 }
 
 /** The mass start racers a preview names; the rest is counted. */
@@ -48,6 +58,18 @@ function recordsOf(races: (CompetitorUpdate | null)[]): string[] {
 /** The most significant record code of each race that has one. */
 function racerRecordsOf(races: (CompetitorUpdate | null)[]): string[] {
   return races.flatMap((race) => recordsOf([race]).slice(0, 1));
+}
+
+const FAULT_CODES: ReadonlySet<string> = new Set<string>([RaceCode.Disqualified, RaceCode.Fall, RaceCode.DidNotFinish]);
+
+/** The fault code of each race that has one, a disqualification first. */
+function faultsOf(races: (CompetitorUpdate | null)[]): string[] {
+  return races.flatMap((race) => {
+    if (!race) return [];
+    const codes = [race.invalid_reason, ...(race.remark?.trim().split(/\s+/) ?? [])].filter((c): c is string => !!c).map((c) => c.toUpperCase());
+    const code = codes.find((c) => c === RaceCode.Disqualified) ?? codes.find((c) => FAULT_CODES.has(c));
+    return code ? [code] : [];
+  });
 }
 
 function started(races: (CompetitorUpdate | null)[]): boolean {
@@ -72,7 +94,7 @@ export function buildSteps(distances: ProcessedDistance[], labelFor: (heat: numb
       for (let lap = 1; lap <= laps; lap++) {
         const races = racesAtLap(distance.processedRaces, lap, distance.totalLaps);
         const final = lap === laps;
-        all.push({ ...base, key: `${distance.id}:lap:${lap}`, heatIndexes: [], lap, label: lapLabelFor(lap), racers: races.slice(0, MASS_START_PREVIEW).map(racer), more: Math.max(0, races.length - MASS_START_PREVIEW), records: final ? recordsOf(races) : [], racerRecords: final ? racerRecordsOf(races) : [] });
+        all.push({ ...base, key: `${distance.id}:lap:${lap}`, heatIndexes: [], lap, label: lapLabelFor(lap), racers: races.slice(0, MASS_START_PREVIEW).map(racer), slots: [], more: Math.max(0, races.length - MASS_START_PREVIEW), records: final ? recordsOf(races) : [], racerRecords: final ? racerRecordsOf(races) : [], faults: [] });
       }
       continue;
     }
@@ -80,7 +102,7 @@ export function buildSteps(distances: ProcessedDistance[], labelFor: (heat: numb
       const races = heats.flatMap(({ group }) => group.races);
       if (started(races)) last = all.length;
       else if (distance.isLive && last < all.length && !all.some((s) => s.distanceId === distance.id)) last = all.length;
-      all.push({ ...base, key: `${distance.id}:${distance.heatGroups[heats[0].index].heat}`, heatIndexes: heats.map(({ index }) => index), lap: null, label: heatsLabel(heats.map(({ group, index }) => ({ label: group.label, heat: distance.heatGroups[index].heat }))), racers: races.filter((r) => r !== null).map(racer), more: 0, records: recordsOf(races), racerRecords: racerRecordsOf(races) });
+      all.push({ ...base, key: `${distance.id}:${distance.heatGroups[heats[0].index].heat}`, heatIndexes: heats.map(({ index }) => index), lap: null, label: heatsLabel(heats.map(({ group, index }) => ({ label: group.label, heat: distance.heatGroups[index].heat }))), racers: races.filter((r) => r !== null).map(racer), slots: heats.flatMap(({ group }) => group.races.map((race, slot) => ({ racer: race ? racer(race) : null, lane: race?.lane || emptyLaneColor(group.races, slot) }))), more: 0, records: recordsOf(races), racerRecords: racerRecordsOf(races), faults: faultsOf(races) });
     }
   }
   return { steps: all, live: Math.max(last, 0) };

@@ -5,10 +5,9 @@ import { TranslateService, TranslationKey } from '../../i18n/translate.service';
 import { parseSeconds, sameHundredths, formatDurationSeconds, truncateLapTime, splitFormattedTime, isRecentUpdate } from '../../results/time.util';
 import { isNeverLive, GHOST_HIDING_CODES, NO_TIME_CODES, RaceCode, RECORD_CODES, RECORD_PRIORITY } from '../../results/race-codes';
 import { categoryName } from '../../results/category.util';
-import { isIndividualFinished, individualStartDegrees, individualFinishAngle, individualRaceComplete, individualPrComparison as individualPrComparisonUtil } from '../../results/heats.util';
+import { emptyLaneColor, isIndividualFinished, individualStartDegrees, individualFinishAngle, individualRaceComplete, individualPrComparison as individualPrComparisonUtil } from '../../results/heats.util';
 
 /** The usual lane colours by slot, for lanes no competitor has shown a colour for yet. */
-const DEFAULT_LANE_ORDER = ['white', 'red', 'yellow', 'blue'];
 
 @Component({
   selector: 'app-individual-heat-card',
@@ -278,10 +277,9 @@ export class IndividualHeatCardComponent {
     return Math.min(4, Math.max(1, this.maxLanes || this.races.length));
   }
 
-  /** Lane colour of a slot: the competitor's own; an empty slot of a pair has none, else the colour other heats show for it, else the standard order. */
+  /** Lane colour of a slot: the competitor's own, else that of the empty lane. */
   protected laneColor(race: CompetitorUpdate | null, slot: number): string | null {
-    if (!race && this.races.length <= 2) return null;
-    return race?.lane ?? this.laneColors[slot] ?? DEFAULT_LANE_ORDER[slot] ?? null;
+    return race?.lane ?? emptyLaneColor(this.races, slot, this.laneColors);
   }
 
   /** Category name and club code for under the name: "Women Juniors A1 (CLF4)", or whichever of the two there is. */

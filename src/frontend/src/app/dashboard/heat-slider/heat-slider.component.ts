@@ -299,13 +299,15 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     return own;
   }
 
-  /** A line for each racer with a record, side by side on their step; the line of a step that has a long line too goes beside it. */
-  protected get recordMarks(): { index: number; code: string; title: string; offset: number }[] {
+  /** A line for each racer with a record, and a shorter one for each DQ, fall and DNF, side by side on their step; the line of a step that has a long line too goes beside it, those of the live step stand above it. */
+  protected get recordMarks(): { index: number; code: string; title: string; offset: number; live: boolean; fault: boolean }[] {
     return this.steps.flatMap((step, index) => {
-      const n = step.racerRecords.length;
+      const codes = [...step.racerRecords, ...step.faults];
+      const n = codes.length;
       const title = `${step.records.join(' ')} · ${this.stepText(step)}`;
-      const side = this.hasLongLine(index) ? (index === this.last ? -1 : 1) : 0;
-      return step.racerRecords.map((code, i) => ({ index, code, title, offset: Math.round(side === 0 ? (i - (n - 1) / 2) * MARK_GAP : side * (MARK_BESIDE + i * MARK_GAP)) }));
+      const live = index === this.liveIndex;
+      const side = !live && this.hasLongLine(index) ? (index === this.last ? -1 : 1) : 0;
+      return codes.map((code, i) => ({ index, code, title, live, fault: i >= step.racerRecords.length, offset: Math.round(side === 0 ? (i - (n - 1) / 2) * MARK_GAP : side * (MARK_BESIDE + i * MARK_GAP)) }));
     });
   }
 

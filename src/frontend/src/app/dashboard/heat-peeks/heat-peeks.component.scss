@@ -49,3 +49,15 @@
 .peek-name[data-lane='lime'] { --lane: lime; }
 // the end of a distance: a grey badge, the same box as a racer's
 .peek-edge { --lane: #6c757d; display: flex; align-items: center; justify-content: center; }
+// an empty lane is still drawn, as an empty badge of its colour
+.peek-empty { opacity: 0.6; }
+// a half of the live heat pulses on its border in the live red
+.peek-live {
+  box-sizing: border-box;
+  border: 2px solid var(--lr-live);
+  border-radius: 0.5rem;
+  animation: peekLive 1.5s infinite;
+}
+@keyframes peekLive { 50% { border-color: color-mix(in srgb, var(--lr-live) 25%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .peek-live { animation: none; } }
+:host-context([data-animations='off']) .peek-live { animation: none; }

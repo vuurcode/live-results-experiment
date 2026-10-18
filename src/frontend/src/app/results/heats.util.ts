@@ -85,6 +85,23 @@ export function pairHeatGroups<T>(
   });
 }
 
+/** The lanes in the order of the slots of a heat. */
+export const DEFAULT_LANE_ORDER = ['white', 'red', 'yellow', 'blue'];
+const LANE_MATE: Record<string, string> = { white: 'red', red: 'white', yellow: 'blue', blue: 'yellow' };
+
+/**
+ * The colour of a slot without a racer, so that its lane is drawn all the same. A pair has the mate of the other slot's
+ * colour; a bigger heat keeps one slot per lane, so it has the colour other heats show for that slot, else the standard order.
+ * A distance is skated in pairs or in quartets throughout, so the slots of its heats are alike.
+ */
+export function emptyLaneColor(races: ({ lane: string } | null)[], slot: number, shown: (string | null)[] = []): string | null {
+  if (races.length <= 2) {
+    const mate = races[1 - slot]?.lane;
+    return (mate ? LANE_MATE[mate] : undefined) ?? DEFAULT_LANE_ORDER[slot] ?? null;
+  }
+  return shown[slot] ?? DEFAULT_LANE_ORDER[slot] ?? null;
+}
+
 /** Removes trailing null slots from a races array. */
 export function trimmedRaces<T>(races: (T | null)[]): (T | null)[] {
   let last = races.length - 1;

@@ -50,3 +50,7 @@ All components:
 
 - [x] Narrow screens: a quick, long, horizontal swipe on the main view moves to the next or previous heat; short, slow, diagonal strokes and strokes that start on the slider, a control or something that scrolls sideways are ignored
 - [x] The heat slider sits at the bottom of the screen; its live marker reads Live #x (Live #x/#y for a quartet) and slides from the start to the live heat on page load; on a narrow screen the zoomed overview can be dragged, and wheeling over the bar zooms it like holding does
+- [x] A heat to come shows an empty grey lap badge for every lap, with its distance above it
+- [x] Every page has the same top bar with the menu and the competition picker
+- [x] A lane without a racer is still drawn in its colour, on the card and in the peeks; a peek of the live heat pulses red on its border
+- [x] The slider marks DQ, fall and DNF with a line half as long as a record line, and the records of the live heat stand above it

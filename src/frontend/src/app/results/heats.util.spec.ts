@@ -6,6 +6,7 @@ import {
   individualRaceComplete,
   pairHeatGroups,
   trimmedRaces,
+  emptyLaneColor,
   heatGroupLaneColors,
   individualPrComparison,
   massFinishGapFromLeader,
@@ -152,5 +153,16 @@ describe('individualStartDegrees', () => {
 describe('individualFinishAngle', () => {
   it('puts the finish on the bottom straight right of the middle, and the 1000m finish in the middle of the bottom', () => {
     expect([500, 1500, 10000, 1000].map(individualFinishAngle)).toEqual([135, 135, 135, 180]);
+  });
+});
+
+describe('emptyLaneColor', () => {
+  it('gives the empty slot of a pair the mate of the colour of the other', () => {
+    expect(emptyLaneColor([{ lane: 'white' }, null], 1)).toBe('red');
+    expect(emptyLaneColor([null, { lane: 'blue' }], 0)).toBe('yellow');
+  });
+  it('falls back to the standard order for an empty pair, and uses the colour other heats show in a bigger heat', () => {
+    expect(emptyLaneColor([null, null], 1)).toBe('red');
+    expect(emptyLaneColor([{ lane: 'white' }, null, null, null], 2, ['white', 'red', 'blue'])).toBe('blue');
   });
 });
