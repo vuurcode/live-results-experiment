@@ -43,7 +43,7 @@ export class HeaderComponent {
   /** Length of the shown option text; on narrow screens a longer one gets a smaller font. */
   protected selectedLabelLength(competitions: TodayCompetition[]): number {
     const m = competitions.find(x => x.id === this.dataService.competitionId);
-    return m ? `⚪ 00:00 - 00:00 · ${m.name} (${m.venue.name})`.length : 20;
+    return m ? `⚪ 00:00 - 00:00 · ${m.venue.name} · ${m.name}`.length : 20;
   }
 
   /** Open another competition; the page reads its competitionId on load. */
