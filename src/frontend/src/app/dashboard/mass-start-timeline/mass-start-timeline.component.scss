@@ -91,10 +91,11 @@
   background: var(--mass-card-bg);
   transition: right 0.4s ease, top 0.4s ease, outline 0.1s, opacity 0.5s ease;
   @media (prefers-reduced-motion: reduce) { transition: none; }
-  // the right side marks the racer's place on the axis: it lights up for a moment each time the badge is rendered
+  // the right side marks the racer's place on the axis
   border-right-width: 3px;
-  animation: racer-in 0.5s ease-out, place-mark 4s ease-in-out;
-  @media (prefers-reduced-motion: reduce) { animation: none; border-right-color: var(--lr-text); }
+  border-right-color: var(--lr-text);
+  animation: racer-in 0.5s ease-out;
+  @media (prefers-reduced-motion: reduce) { animation: none; }
   &.timeline-racer-faded { opacity: 0; pointer-events: none; }
   &.timeline-leader { background: var(--mass-card-leader-bg); border-color: var(--mass-card-leader-line); }
 }
@@ -107,10 +108,6 @@
   border-radius: 0.3em;
   background-color: var(--cui-warning, #f9b115);
   color: #212529;
-}
-@keyframes place-mark { // in over the first second, held for two, back to the plain border in the last second
-  0% { border-right-color: transparent; }
-  25%, 75% { border-right-color: var(--lr-text); }
 }
 @keyframes racer-in {
   from { opacity: 0; }
