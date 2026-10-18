@@ -4,102 +4,6 @@
     <button cButton color="light" variant="outline" size="sm" class="topbar-group-btn" (click)="menuOpen = true" aria-controls="mainMenu" [attr.aria-expanded]="menuOpen" [attr.aria-label]="'menuTitle' | translate" [attr.title]="'menuTitle' | translate">
       <svg class="topbar-group-burger" viewBox="0 0 16 16" width="1.4em" height="1.4em" fill="currentColor" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3A.5.5 0 0 1 2.5 8zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>
     </button>
-    <c-offcanvas id="mainMenu" placement="start" [visible]="menuOpen" (visibleChange)="menuOpen = $event" [attr.aria-label]="'menuTitle' | translate">
-      <c-offcanvas-header>
-        <h5 cOffcanvasTitle>{{ 'menuTitle' | translate }}</h5>
-        <button cButtonClose (click)="menuOpen = false" [attr.aria-label]="'menuClose' | translate"></button>
-      </c-offcanvas-header>
-      <c-offcanvas-body class="settings-panel">
-        @let withMassStart = (hasMassStart$ | async);
-        <section class="settings-section" aria-labelledby="settingsGeneralHeading">
-          <h2 id="settingsGeneralHeading" class="settings-heading">{{ 'generalSettings' | translate }}</h2>
-          <div class="setting-group ms-2">
-            <label class="small text-nowrap mb-0 setting-label" for="colorSchemeInput">{{ 'colorSchemeLabel' | translate }}</label>
-            <select
-              id="colorSchemeInput"
-              cSelect sizing="sm" class="scheme-select"
-              (change)="setColorScheme($event)"
-            >
-              <option value="auto" [selected]="settings.colorScheme.value === 'auto'">{{ 'colorSchemeAuto' | translate }}</option>
-              <option value="dark" [selected]="settings.colorScheme.value === 'dark'">{{ 'colorSchemeOn' | translate }}</option>
-              <option value="light" [selected]="settings.colorScheme.value === 'light'">{{ 'colorSchemeOff' | translate }}</option>
-            </select>
-            <div class="setting-popover">
-              <div class="setting-popover-title">{{ 'colorSchemePopoverTitle' | translate }}</div>
-              <div class="setting-popover-body" [innerHTML]="ts.html('colorSchemePopoverBody')"></div>
-            </div>
-          </div>
-          <div class="setting-group ms-2">
-            <label class="small text-nowrap mb-0 setting-label" for="animationsInput">{{ 'animationsLabel' | translate }}</label>
-            <c-form-check [switch]="true"><input cFormCheckInput role="switch" id="animationsInput" type="checkbox" [checked]="settings.animations.value" (change)="setAnimations($event)" /></c-form-check>
-            <div class="setting-popover">
-              <div class="setting-popover-title">{{ 'animationsPopoverTitle' | translate }}</div>
-              <div class="setting-popover-body" [innerHTML]="ts.html('animationsPopoverBody')"></div>
-            </div>
-          </div>
-          <div class="setting-group ms-2">
-            <label class="small text-nowrap mb-0 setting-label" for="thousandthsInput">{{ (settings.showThousandths.value ? 'thousandthsLabel' : 'hundredthsLabel') | translate }}</label>
-            <c-form-check [switch]="true"><input cFormCheckInput role="switch" id="thousandthsInput" type="checkbox" [checked]="settings.showThousandths.value" (change)="setShowThousandths($event)" /></c-form-check>
-            <div class="setting-popover">
-              <div class="setting-popover-title">{{ 'thousandthsPopoverTitle' | translate }}</div>
-              <div class="setting-popover-body" [innerHTML]="ts.html(settings.showThousandths.value ? 'thousandthsOnBody' : 'thousandthsOffBody')"></div>
-            </div>
-          </div>
-        </section>
-        @if (withMassStart) {
-          <section class="settings-section settings-section-mass" aria-labelledby="settingsMassStartHeading">
-            <h2 id="settingsMassStartHeading" class="settings-heading">{{ 'massStartSettings' | translate }}</h2>
-            <div class="setting-group setting-group-pair ms-1">
-              <label class="small text-nowrap mb-0 setting-label" for="groupThresholdInput">{{ 'maxGapLabel' | translate }}</label>
-              <c-input-group sizing="sm" class="threshold-group">
-                <input
-                  id="groupThresholdInput"
-                  type="number"
-                  min="0" max="10" step="0.5"
-                  cFormControl sizing="sm" class="threshold-input"
-                  [value]="settings.groupThreshold.value"
-                  (change)="setGroupThreshold($event)"
-                />
-                <span cInputGroupText>s</span>
-</c-input-group>
-              <label class="small text-nowrap mb-0 setting-label" for="maxGroupsInput">{{ 'maxGroupsLabel' | translate }}</label>
-              <input
-                id="maxGroupsInput"
-                type="number"
-                min="0" step="1"
-                cFormControl sizing="sm" class="threshold-input"
-                [value]="settings.maxGroups.value"
-                (change)="setMaxGroups($event)"
-              />
-              <div class="setting-popover">
-                <div class="setting-popover-body" [innerHTML]="ts.html('maxGapPopoverBody')"></div>
-                <div class="setting-popover-body" [innerHTML]="ts.html('maxGroupsPopoverBody')"></div>
-              </div>
-            </div>
-            <div class="setting-group ms-2">
-              <label class="small text-nowrap mb-0 setting-label" for="lapVarianceInput">{{ 'lapDeltaLabel' | translate }}</label>
-              <c-input-group sizing="sm" class="threshold-group">
-                <input
-                  id="lapVarianceInput"
-                  type="number"
-                  min="0" max="50" step="1"
-                  cFormControl sizing="sm" class="threshold-input"
-                  [value]="settings.lapVariance.value"
-                  (change)="setLapVariance($event)"
-                  (input)="stepLapVariance($event)"
-                />
-                <span cInputGroupText>%</span>
-</c-input-group>
-              <div class="setting-popover">
-                <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
-                <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
-                <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(settings.lapVariance.value))"></div>
-              </div>
-            </div>
-          </section>
-        }
-      </c-offcanvas-body>
-    </c-offcanvas>
     @let competitions = (todayCompetitions$ | async) ?? [];
     @let picked = !!dataService.competitionId && isTodayCompetition(competitions, dataService.competitionId);
     @let noCompetition = (dataService.status$ | async)?.status === 'No competition';
@@ -130,6 +34,106 @@
     }
     <img class="topbar-logo" src="icon.png" alt="" [attr.title]="'pageTitle' | translate" width="32" height="32" />
   </header>
+  <c-offcanvas id="mainMenu" placement="start" [visible]="menuOpen" (visibleChange)="menuOpen = $event" [attr.aria-label]="'menuTitle' | translate">
+    <c-offcanvas-header>
+      <h2 cOffcanvasTitle class="h5 m-0">{{ 'menuTitle' | translate }}</h2>
+      <button cButtonClose (click)="menuOpen = false" [attr.aria-label]="'menuClose' | translate"></button>
+    </c-offcanvas-header>
+    <c-offcanvas-body class="settings-panel">
+      @let withMassStart = (hasMassStart$ | async);
+      <nav class="settings-section" [attr.aria-label]="'menuTitle' | translate">
+        <a cButton color="secondary" variant="outline" class="w-100 menu-link" routerLink="/start-list" queryParamsHandling="preserve" (click)="menuOpen = false">{{ 'menuStartList' | translate }}</a>
+        <a cButton color="secondary" variant="outline" class="w-100 mt-2 menu-link" routerLink="/ranking" queryParamsHandling="preserve" (click)="menuOpen = false">{{ 'menuRanking' | translate }}</a>
+      </nav>
+      <section class="settings-section" aria-labelledby="settingsGeneralHeading">
+        <h3 id="settingsGeneralHeading" class="settings-heading">{{ 'generalSettings' | translate }}</h3>
+        <div class="setting-group ms-2">
+          <label class="small text-nowrap mb-0 setting-label" for="colorSchemeInput">{{ 'colorSchemeLabel' | translate }}</label>
+          <select
+            id="colorSchemeInput"
+            cSelect sizing="sm" class="scheme-select"
+            (change)="setColorScheme($event)"
+          >
+            <option value="auto" [selected]="settings.colorScheme.value === 'auto'">{{ 'colorSchemeAuto' | translate }}</option>
+            <option value="dark" [selected]="settings.colorScheme.value === 'dark'">{{ 'colorSchemeOn' | translate }}</option>
+            <option value="light" [selected]="settings.colorScheme.value === 'light'">{{ 'colorSchemeOff' | translate }}</option>
+          </select>
+          <div class="setting-popover">
+            <div class="setting-popover-title">{{ 'colorSchemePopoverTitle' | translate }}</div>
+            <div class="setting-popover-body" [innerHTML]="ts.html('colorSchemePopoverBody')"></div>
+          </div>
+        </div>
+        <div class="setting-group ms-2">
+          <label class="small text-nowrap mb-0 setting-label" for="animationsInput">{{ 'animationsLabel' | translate }}</label>
+          <c-form-check [switch]="true"><input cFormCheckInput role="switch" id="animationsInput" type="checkbox" [checked]="settings.animations.value" (change)="setAnimations($event)" /></c-form-check>
+          <div class="setting-popover">
+            <div class="setting-popover-title">{{ 'animationsPopoverTitle' | translate }}</div>
+            <div class="setting-popover-body" [innerHTML]="ts.html('animationsPopoverBody')"></div>
+          </div>
+        </div>
+        <div class="setting-group ms-2">
+          <label class="small text-nowrap mb-0 setting-label" for="thousandthsInput">{{ (settings.showThousandths.value ? 'thousandthsLabel' : 'hundredthsLabel') | translate }}</label>
+          <c-form-check [switch]="true"><input cFormCheckInput role="switch" id="thousandthsInput" type="checkbox" [checked]="settings.showThousandths.value" (change)="setShowThousandths($event)" /></c-form-check>
+          <div class="setting-popover">
+            <div class="setting-popover-title">{{ 'thousandthsPopoverTitle' | translate }}</div>
+            <div class="setting-popover-body" [innerHTML]="ts.html(settings.showThousandths.value ? 'thousandthsOnBody' : 'thousandthsOffBody')"></div>
+          </div>
+        </div>
+      </section>
+      @if (withMassStart) {
+        <section class="settings-section settings-section-mass" aria-labelledby="settingsMassStartHeading">
+          <h3 id="settingsMassStartHeading" class="settings-heading">{{ 'massStartSettings' | translate }}</h3>
+          <div class="setting-group setting-group-pair ms-1">
+            <label class="small text-nowrap mb-0 setting-label" for="groupThresholdInput">{{ 'maxGapLabel' | translate }}</label>
+            <c-input-group sizing="sm" class="threshold-group">
+              <input
+                id="groupThresholdInput"
+                type="number"
+                min="0" max="10" step="0.5"
+                cFormControl sizing="sm" class="threshold-input"
+                [value]="settings.groupThreshold.value"
+                (change)="setGroupThreshold($event)"
+              />
+              <span cInputGroupText>s</span>
+</c-input-group>
+            <label class="small text-nowrap mb-0 setting-label" for="maxGroupsInput">{{ 'maxGroupsLabel' | translate }}</label>
+            <input
+              id="maxGroupsInput"
+              type="number"
+              min="0" step="1"
+              cFormControl sizing="sm" class="threshold-input"
+              [value]="settings.maxGroups.value"
+              (change)="setMaxGroups($event)"
+            />
+            <div class="setting-popover">
+              <div class="setting-popover-body" [innerHTML]="ts.html('maxGapPopoverBody')"></div>
+              <div class="setting-popover-body" [innerHTML]="ts.html('maxGroupsPopoverBody')"></div>
+            </div>
+          </div>
+          <div class="setting-group ms-2">
+            <label class="small text-nowrap mb-0 setting-label" for="lapVarianceInput">{{ 'lapDeltaLabel' | translate }}</label>
+            <c-input-group sizing="sm" class="threshold-group">
+              <input
+                id="lapVarianceInput"
+                type="number"
+                min="0" max="50" step="1"
+                cFormControl sizing="sm" class="threshold-input"
+                [value]="settings.lapVariance.value"
+                (change)="setLapVariance($event)"
+                (input)="stepLapVariance($event)"
+              />
+              <span cInputGroupText>%</span>
+</c-input-group>
+            <div class="setting-popover">
+              <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
+              <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
+              <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(settings.lapVariance.value))"></div>
+            </div>
+          </div>
+        </section>
+      }
+    </c-offcanvas-body>
+  </c-offcanvas>
   <!-- ===== ERRORS ===== -->
   <div class="px-2 pt-2">
     @for (error of errors$ | async; track $index; let i = $index) {

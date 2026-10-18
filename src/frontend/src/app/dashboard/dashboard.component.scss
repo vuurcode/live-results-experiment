@@ -154,6 +154,13 @@
     border-top: 1px solid var(--cui-border-color);
     padding-top: 0.5rem;
   }
+  // the theme's text colour, which keeps its contrast in the light and the dark theme
+  .menu-link {
+    --cui-btn-color: var(--cui-body-color);
+    --cui-btn-border-color: var(--lr-control-border);
+    --cui-btn-hover-color: var(--cui-body-color);
+    --cui-btn-active-color: var(--cui-body-color);
+  }
   .settings-heading {
     margin: 0;
     font-size: 1.1rem;
