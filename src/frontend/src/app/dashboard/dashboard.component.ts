@@ -1,4 +1,5 @@
 import { findLiveHeat } from '../results/live-heat';
+import { distanceCompleted, hideDisqualifications } from '../results/hide-dq.util';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostBinding, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -125,7 +126,8 @@ export class DashboardComponent implements OnInit {
         if (!distances || distances.length === 0) return [];
         const sorted = [...distances].sort((a, b) => a.eventNumber - b.eventNumber);
         if (this.liveEventNumber === null) this.liveEventNumber = sorted.find((d) => d.isLive)?.eventNumber ?? null;
-        return sorted;
+        // a disqualification shows once the whole distance is completed
+        return sorted.map((d) => (this.liveEventNumber !== null && d.eventNumber < this.liveEventNumber) || distanceCompleted(d) ? d : hideDisqualifications(d));
       }),
     );
     this.view$ = this.sortedDistances$.pipe(
