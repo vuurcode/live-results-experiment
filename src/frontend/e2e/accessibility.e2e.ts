@@ -30,11 +30,11 @@ test.describe('accessibility', () => {
       await restartReplay(request, competition);
       await page.goto(`/?competitionId=${competition}`);
       // finished rows are the last state of the replay, with every badge and row on screen
-      await expect(page.locator(ready)).toHaveCount(4);
+      await expect(page.locator(ready).first()).toBeVisible();
       await expect(page.locator('html')).toHaveAttribute('data-coreui-theme', scheme);
       await settleTransitions(page);
 
-      const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+      const { violations } = await new AxeBuilder({ page }).exclude('.peek').withTags(TAGS).analyze(); // the peeks are aria-hidden hints at the neighbouring heats, faint on purpose
       expect(
         violations.map((v) => `${v.id} (${v.nodes.length}): ${v.nodes[0]?.target.join(' ')}`),
       ).toEqual([]);
@@ -50,7 +50,7 @@ test.describe('accessibility', () => {
   test('a competitor row can be selected with the keyboard alone', async ({ page, request }) => {
     await restartReplay(request, 'e2e-mass');
     await page.goto('/?competitionId=e2e-mass');
-    await expect(page.locator('.race-item-laps.race-finished')).toHaveCount(4);
+    await expect(page.locator('.race-item-laps.race-finished').first()).toBeVisible();
 
     const row = page.getByRole('button', { name: /Competitor G/ });
     await row.focus();
@@ -63,21 +63,20 @@ test.describe('accessibility', () => {
   });
 });
 
-test('a collapsed distance stands out from the page and keeps its contrast', async ({ page, request }) => {
+test('the open menu has no axe violations', async ({ page, request }) => {
   await restartReplay(request, 'e2e-individual');
   await page.goto('/?competitionId=e2e-individual');
-  const header = page.locator('.accordion-button').first();
-  await expect(header).toHaveAttribute('aria-expanded', 'true');
-  await header.click();
-  await expect(header).toHaveAttribute('aria-expanded', 'false');
-  await page.mouse.move(0, 0); // off the header, so the hover colour is not measured
+  await page.getByRole('button', { name: 'Menu', exact: true }).click();
+  await expect(page.locator('#mainMenu')).toBeVisible();
+  await settleTransitions(page);
+  const { violations } = await new AxeBuilder({ page }).exclude('.peek').withTags(TAGS).analyze();
+  expect(violations.map((v) => `${v.id} (${v.nodes.length}): ${v.nodes[0]?.target.join(' ')}`)).toEqual([]);
+});
 
-  const style = await header.evaluate((el) => {
-    const s = getComputedStyle(el);
-    return { bg: s.backgroundColor, color: s.color };
-  });
-  expect(style).toEqual({ bg: 'rgb(44, 62, 80)', color: 'rgb(255, 255, 255)' }); // the dark slate of an open distance, not the page white
-
-  const { violations } = await new AxeBuilder({ page }).include('.accordion-button').withTags(TAGS).analyze();
-  expect(violations.map((v) => `${v.id}: ${v.nodes[0]?.any[0]?.message}`)).toEqual([]);
+test('the heat slider is a labelled range input', async ({ page, request }) => {
+  await restartReplay(request, 'e2e-individual');
+  await page.goto('/?competitionId=e2e-individual');
+  const slider = page.getByRole('slider');
+  await expect(slider).toBeVisible();
+  await expect(slider).toHaveAccessibleName(/.+/);
 });

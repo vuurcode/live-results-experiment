@@ -46,7 +46,8 @@ test.describe('when there is nothing to show', () => {
         });
       });
       await page.goto('/?competitionId=e2e-individual');
-      const notice = page.getByRole('status').filter({ hasText: 'not live yet' });
+      await expect(page.locator('.individual-competitor-card').first()).toBeVisible();
+      const notice = page.getByRole('status').filter({ hasText: 'not live yet' }).first();
       await expect(notice).toBeVisible();
       const results = await new AxeBuilder({ page }).include('.empty-notice').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
       expect(results.violations).toEqual([]);

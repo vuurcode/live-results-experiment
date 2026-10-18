@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { MOCK_URL } from './env';
+import { heatUrl, openMenu, slider } from './slider';
 
 /**
  * Restart a competition's replay from its first sample, so every test starts from the same state.
@@ -39,9 +40,9 @@ test.describe('competition selection', () => {
     const hint = (await page.locator('.competition-hint').boundingBox())!;
     expect(hint.y).toBeGreaterThanOrEqual(select.y + select.height);
     expect(hint.x + hint.width).toBeLessThanOrEqual(400);
-    const cog = (await page.getByRole('button', { name: /^Display/ }).boundingBox())!;
-    expect(Math.abs(cog.y + cog.height / 2 - (select.y + select.height / 2))).toBeLessThanOrEqual(3);
-    expect(Math.abs(cog.height - select.height)).toBeLessThanOrEqual(1);
+    const menu = (await page.getByRole('button', { name: 'Menu', exact: true }).boundingBox())!;
+    expect(Math.abs(menu.y + menu.height / 2 - (select.y + select.height / 2))).toBeLessThanOrEqual(3);
+    expect(Math.abs(menu.height - select.height)).toBeLessThanOrEqual(1);
   });
 
   test('says so when there are no competitions to pick from', async ({ page }) => {
@@ -131,40 +132,50 @@ test.describe('competition selection', () => {
 });
 
 test.describe('individual race distance', () => {
-  test('shows every heat and competitor, and fills in lap times as they arrive', async ({ page, request }) => {
+  test('shows one heat at a time with its competitors, and the slider moves between the heats', async ({ page, request }) => {
     await restartReplay(request, 'e2e-individual');
     await page.goto('/?competitionId=e2e-individual');
 
-    await expect(page.locator('.individual-heat-row')).toHaveCount(2);
-    for (const name of ['Competitor A', 'Competitor B', 'Competitor C', 'Competitor D']) {
+    // following the replay the view ends on the last heat
+    await expect(page.locator('.individual-heat-row')).toHaveCount(1);
+    await expect(slider(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
+    for (const name of ['Competitor C', 'Competitor D']) {
+      await expect(page.locator('.individual-competitor-card', { hasText: name })).toBeVisible();
+    }
+    await expect(page.locator('.individual-competitor-card', { hasText: 'Competitor A' })).toHaveCount(0);
+
+    await slider(page).focus();
+    await page.keyboard.press('Home');
+    await expect(slider(page)).toHaveAttribute('aria-valuetext', /Heat 1$/);
+    for (const name of ['Competitor A', 'Competitor B']) {
       await expect(page.locator('.individual-competitor-card', { hasText: name })).toBeVisible();
     }
     // category and club code sit small below the name
     await expect(page.locator('.individual-competitor-card', { hasText: 'Competitor A' }).locator('.individual-comp-meta')).toHaveText(/\S/);
-    // 4 competitors x 3 laps (200 / 600 / 1000 m) once the whole replay has played
-    await expect(page.locator('.individual-compact-badge')).toHaveCount(12);
-    await expect(page.locator('.compact-dist').filter({ hasText: '1000m' })).toHaveCount(4);
+    // 2 competitors x 3 laps (200 / 600 / 1000 m) once the whole replay has played
+    await expect(page.locator('.individual-compact-badge')).toHaveCount(6);
+    await expect(page.locator('.compact-dist').filter({ hasText: '1000m' })).toHaveCount(2);
   });
 
   test('cards keep their height while lap times arrive, apart from the title growing at the finish', async ({ page, request }) => {
     await restartReplay(request, 'e2e-individual');
-    await page.goto('/?competitionId=e2e-individual');
+    await page.goto(heatUrl('e2e-individual', 'dist-1000', 1));
     await expect(page.locator('.individual-compact-body').first()).toBeVisible();
 
     const heights = new Map<number, Set<string>>();
     let badges = 0;
     let sawEmpty = false;
-    for (let i = 0; i < 200 && badges < 12; i++) {
+    for (let i = 0; i < 200 && badges < 6; i++) {
       const sample = await page.evaluate(() => ({
         badges: document.querySelectorAll('.individual-compact-badge').length,
-        heights: [...document.querySelectorAll('.individual-competitor-card')].map((c) => c.getBoundingClientRect().height.toFixed(1)),
+        heights: [...document.querySelectorAll('.individual-competitor-card')].map((c) => String((c as HTMLElement).offsetHeight)), // layout height: the slide-in of a heat transforms the card
       }));
       badges = sample.badges;
-      sawEmpty ||= sample.badges < 12;
+      sawEmpty ||= sample.badges < 6;
       sample.heights.forEach((h, c) => heights.set(c, (heights.get(c) ?? new Set<string>()).add(h)));
       await page.waitForTimeout(100);
     }
-    expect(badges).toBe(12);
+    expect(badges).toBe(6);
     expect(sawEmpty, 'the test must observe cards before all their times arrive').toBe(true);
     for (const [card, seen] of heights) {
       // arriving times never move a card; only finishing may, when the title gets its second line
@@ -190,25 +201,24 @@ test.describe('live heat', () => {
       live: c.classList.contains('individual-card-live'),
       border: getComputedStyle(c).borderTopColor,
       other: ['race-finished', 'individual-card-pr', 'individual-card-record', 'individual-card-red', 'individual-card-orange'].some((k) => c.classList.contains(k)),
-      badge: !!c.querySelector('.individual-comp-live'),
     })));
     expect(states.some((s) => s.live)).toBe(true);
     for (const s of states) {
-      expect(s.live, JSON.stringify(s)).toBe(!s.other && s.badge);
+      expect(s.live, JSON.stringify(s)).toBe(!s.other);
       if (s.live) expect(s.border).toBe('rgb(220, 53, 69)');
     }
     expect(await page.locator('.individual-card-live').evaluateAll((els) => els.every((c) => c.closest('[data-live]')))).toBe(true);
   });
 
   test('the total counts up to the new time when a lap arrives, not before', async ({ page, request }) => {
-    await restartReplay(request, 'e2e-multi');
-    await page.setViewportSize({ width: 1400, height: 1000 });
-    await page.goto('/?competitionId=e2e-multi');
-    const card = page.locator('[data-live] .individual-card-live:has(.individual-compact-badge)').first();
+    await restartReplay(request, 'e2e-individual');
+    await page.goto(heatUrl('e2e-individual', 'dist-1000', 1)); // heat 1 is where the laps arrive one by one
+    const card = page.locator('.individual-competitor-card', { hasText: 'Competitor A' });
     const total = card.locator('.individual-compact-final .race-time');
     await expect(total).toBeVisible({ timeout: 20_000 });
     const laps = () => card.locator('.individual-compact-badge').count();
     const lapCount = await laps();
+    expect(lapCount, 'the test must start before the last lap').toBeLessThan(3);
     // record every text the total takes from here on, so the count-up is seen whatever the polling moment
     await card.evaluate((c) => {
       const seen: string[] = [];
@@ -225,37 +235,34 @@ test.describe('live heat', () => {
 });
 
 test.describe('snake around the newest lap', () => {
-  // one fixed card: which card comes first changes as the others get their first lap
-  let racer = '';
-  const live = (page: Page) => page.locator('.individual-competitor-card', { hasText: racer }).first();
-  const snake = (page: Page) => live(page).locator('.individual-compact-latest').evaluate((b) => getComputedStyle(b, '::after').animationName);
+  const card = (page: Page) => page.locator('.individual-competitor-card', { hasText: 'Competitor A' });
+  const snake = (page: Page) => card(page).locator('.individual-compact-latest').evaluate((b) => getComputedStyle(b, '::after').animationName);
 
-  test('is drawn when the lap arrives, and not again when the distance is unfolded', async ({ page, request }) => {
-    await restartReplay(request, 'e2e-multi');
-    await page.setViewportSize({ width: 1400, height: 1000 });
-    await page.goto('/?competitionId=e2e-multi');
-    const first = page.locator('[data-live] .individual-card-live:has(.individual-compact-badge) .individual-comp-name').first();
-    await expect(first).toBeVisible({ timeout: 20_000 });
-    racer = ((await first.textContent()) ?? '').replace(/live/i, '').trim();
-    const laps = () => live(page).locator('.individual-compact-badge').count();
+  test('is drawn when the lap arrives, and not again when the heat is visited again', async ({ page, request }) => {
+    await restartReplay(request, 'e2e-individual');
+    await page.goto(heatUrl('e2e-individual', 'dist-1000', 1)); // heat 1 is where the laps arrive one by one
+    const laps = () => card(page).locator('.individual-compact-badge').count();
+    await expect(card(page)).toBeVisible({ timeout: 20_000 });
     const lapCount = await laps();
+    expect(lapCount, 'the test must start before the last lap').toBeLessThan(3);
     await expect.poll(laps, { timeout: 20_000 }).toBeGreaterThan(lapCount);
     await expect.poll(() => snake(page), { timeout: 2_000 }).toMatch(/snakeAround$/); // Angular scopes the keyframes name
 
-    const header = page.locator('[data-live]').locator('xpath=ancestor::c-accordion-item').locator('.accordion-button').first();
-    // fold and unfold in a quiet moment: no lap arrives meanwhile, so any snake would be one replayed by the unfolding
+    // leave the heat and come back in a quiet moment: no lap arrives meanwhile, so any snake would be one replayed by the return
     for (let attempt = 0; ; attempt++) {
       const before = await laps();
       await page.waitForTimeout(1600); // the snake takes 1.4s
-      await header.click();
-      await header.click();
-      await expect(live(page).locator('.individual-compact-latest')).toBeVisible();
+      await slider(page).focus();
+      await page.keyboard.press('ArrowRight');
+      await expect(slider(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
+      await page.keyboard.press('ArrowLeft');
+      await expect(card(page).locator('.individual-compact-latest')).toBeVisible();
       if ((await laps()) === before) break;
-      expect(attempt, 'a quiet moment to unfold in').toBeLessThan(5);
+      expect(attempt, 'a quiet moment to return in').toBeLessThan(5);
     }
     expect(await snake(page)).toBe('none');
     // the ring itself is still there, in its finished state
-    expect(await live(page).locator('.individual-compact-latest').evaluate((b) => getComputedStyle(b, '::after').content)).toBe('""');
+    expect(await card(page).locator('.individual-compact-latest').evaluate((b) => getComputedStyle(b, '::after').content)).toBe('""');
   });
 });
 
@@ -266,7 +273,7 @@ test.describe('dark mode setting', () => {
     const theme = () => page.locator('html').getAttribute('data-coreui-theme');
     await expect.poll(theme).toBe('dark');
 
-    await page.getByRole('button', { name: /Display\/visualization settings/ }).click();
+    await openMenu(page);
     const select = page.getByLabel('Dark mode');
     await expect(select).toHaveValue('auto');
     await select.selectOption({ label: 'Off' });
@@ -279,7 +286,7 @@ test.describe('dark mode setting', () => {
     await page.reload();
     await expect.poll(theme).toBe('dark');
 
-    await page.getByRole('button', { name: /Display\/visualization settings/ }).click();
+    await openMenu(page);
     await page.getByLabel('Dark mode').selectOption({ label: 'Browser default' });
     await expect.poll(theme).toBe('light');
   });
@@ -292,7 +299,7 @@ test.describe('animations setting', () => {
     await page.goto('/?competitionId=e2e-multi');
     await expect(page.locator('html')).toHaveAttribute('data-animations', 'on');
 
-    await page.getByRole('button', { name: /Display\/visualization settings/ }).click();
+    await openMenu(page);
     const toggle = page.getByRole('switch', { name: 'Animations' });
     await expect(toggle).toBeChecked();
     await toggle.uncheck();
@@ -326,42 +333,6 @@ test.describe('mass start', () => {
     await expect(page.locator('.individual-compact-lap .compact-dist').first()).toBeVisible();
     // the distance reached so far sits above the total until the final lap is done
     await expect(page.locator('.individual-compact-final .compact-reached').first()).toBeAttached();
-  });
-
-  test('lap colours (on by default) colour the compact badges by variance against the previous lap', async ({ page, request }) => {
-    await restartReplay(request, 'e2e-individual');
-    await page.goto('/?competitionId=e2e-individual');
-    await page.getByRole('button', { name: /^Display/ }).click(); // the settings start closed
-    const toggle = page.getByRole('switch', { name: 'Lap time diff colours' });
-    await expect(toggle).toBeChecked();
-    await expect(page.locator('.individual-compact-badge').first()).toBeVisible({ timeout: 30000 });
-    await toggle.uncheck();
-    await expect(page.locator('.individual-compact-badge[class*="lap-badge-"]')).toHaveCount(0);
-    await toggle.check();
-    await expect(page.locator('.individual-compact-badge.lap-badge-normal').first()).toBeVisible();
-    // 1000 m opens with a 200 m lap: that lap and the next have nothing fair to differ from (light grey), the third is coloured
-    const lapBadge = (n: number) => page.locator(`.individual-compact-lap:nth-child(${n}) .individual-compact-badge`).first();
-    await expect(lapBadge(2)).toHaveClass(/individual-compact-partial/);
-    await expect(lapBadge(3)).toBeVisible({ timeout: 30000 });
-    await expect(lapBadge(3)).not.toHaveClass(/individual-compact-partial/);
-    // the Lap delta threshold is configurable here too, and only while the colours are on
-    const threshold = page.getByLabel('Lap time diff threshold');
-    await expect(threshold).toBeVisible();
-    // long track defaults to 0.5%, takes one decimal, and its example follows the setting (also while stepping)
-    await expect(threshold).toHaveValue('0.5');
-    const example = page.locator('.settings-panel .setting-popover-example');
-    await expect(example.locator('.popover-badge-grey')).toHaveText('0.5%');
-    await expect(example.locator('.popover-badge-orange')).toHaveText('40.2\u202fs');
-    await expect(example.locator('.popover-badge-purple')).toHaveText('39.8\u202fs');
-    await threshold.press('ArrowUp'); // a step of 0.1 updates the example at once
-    await expect(example.locator('.popover-badge-grey')).toHaveText('0.6%');
-    await threshold.fill('1');
-    await threshold.blur();
-    await expect(example.locator('.popover-badge-grey')).toHaveText('1%');
-    await expect(example.locator('.popover-badge-orange')).toHaveText('40.4\u202fs');
-    await expect(example.locator('.popover-badge-purple')).toHaveText('39.6\u202fs');
-    await toggle.uncheck();
-    await expect(page.getByLabel('Lap time diff threshold')).toBeHidden(); // slid shut
   });
 
   test('ranks competitors and marks them finished', async ({ page, request }) => {
@@ -425,21 +396,26 @@ test('the competition picker replaces the event name, venue first, start time on
   expect(running.trim()).toMatch(/^(🔴 |⚪ )?\d{2}:\d{2}( - \d{2}:\d{2})? · E2E Individual Event \(Mock Ice Rink\)$/);
 });
 
-test('one settings panel holds the general and individual race settings and, in a mass start match, the mass start ones under their own headings', async ({ page, request }) => {
+test('the menu holds the general settings and, in a mass start match, the mass start ones under their own headings', async ({ page, request }) => {
   await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-mass' } });
   await page.goto('/?competitionId=e2e-mass');
-  const display = page.getByRole('button', { name: /^Display/ });
-  await expect(display).toHaveAttribute('aria-expanded', 'false'); // closed on load
-  await expect(page.getByRole('button', { name: /^Mass Start/ })).toHaveCount(0);
-  await display.click();
-  await expect(display).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.getByRole('switch', { name: 'Auto-follow on updates' })).toBeVisible();
-  await expect(page.locator('.settings-heading')).toHaveText(['General', 'Individual race', 'Mass start']);
+  await expect(page.locator('#mainMenu')).toBeHidden(); // closed on load
+  await openMenu(page);
+  await expect(page.locator('#mainMenu')).toBeVisible();
+  await expect(page.locator('.settings-heading')).toHaveText(['General', 'Mass start']);
+  await expect(page.getByLabel('Lap time diff threshold')).toBeVisible();
+  // the threshold takes one decimal and its example follows the setting (also while stepping)
+  const threshold = page.getByLabel('Lap time diff threshold');
+  const example = page.locator('.settings-panel .setting-popover-example');
+  const value = await threshold.inputValue();
+  await threshold.fill('1');
+  await threshold.blur();
+  await expect(example.locator('.popover-badge-grey')).toHaveText('1%');
+  expect(value).not.toBe('1');
 });
 
-test('without a mass start the settings panel has no mass start section', async ({ page }) => {
+test('without a mass start the menu has no mass start section', async ({ page }) => {
   await page.goto('/?competitionId=e2e-individual');
-  await page.getByRole('button', { name: /^Display/ }).click();
-  await expect(page.getByRole('switch', { name: 'Auto-follow on updates' })).toBeVisible();
-  await expect(page.locator('.settings-heading')).toHaveText(['General', 'Individual race']);
+  await openMenu(page);
+  await expect(page.locator('.settings-heading')).toHaveText(['General']);
 });
