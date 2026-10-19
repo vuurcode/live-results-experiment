@@ -12,6 +12,12 @@
   gap: 1rem;
   margin-bottom: 1rem;
 }
+.back-link {
+  --cui-btn-color: var(--cui-body-color);
+  --cui-btn-border-color: var(--lr-control-border);
+  --cui-btn-hover-color: var(--cui-body-color);
+  --cui-btn-active-color: var(--cui-body-color);
+}
 .settings-title {
   font-size: 1.25rem;
   margin: 0;

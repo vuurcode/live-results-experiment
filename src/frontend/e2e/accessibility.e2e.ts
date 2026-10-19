@@ -28,26 +28,30 @@ async function settleTransitions(page: import('@playwright/test').Page) {
 }
 
 test.describe('accessibility', () => {
-  for (const [competition, ready, scheme] of [
-    ['e2e-individual', '.individual-compact-done', 'light'], // finished cards show the total time badge
-    ['e2e-mass', '.race-item-laps.race-finished', 'light'],
-    ['e2e-individual', '.individual-compact-done', 'dark'],
-    ['e2e-mass', '.race-item-laps.race-finished', 'dark'],
-  ] as const) {
-    test(`${competition} (${scheme}): no axe violations once the replay has finished`, async ({ page, request }) => {
-      await page.emulateMedia({ colorScheme: scheme });
-      await restartReplay(request, competition);
-      await page.goto(`/?competitionId=${competition}`);
-      // finished rows are the last state of the replay, with every badge and row on screen
-      await expect(page.locator(ready).first()).toBeVisible();
-      await expect(page.locator('html')).toHaveAttribute('data-coreui-theme', scheme);
-      await settleTransitions(page);
+  // a phone is the main way the dashboard is used, so the narrow widths run next to the wide one
+  for (const width of [320, 390, 1280]) {
+    for (const [competition, ready, scheme] of [
+      ['e2e-individual', '.individual-compact-done', 'light'], // finished cards show the total time badge
+      ['e2e-mass', '.race-item-laps.race-finished', 'light'],
+      ['e2e-individual', '.individual-compact-done', 'dark'],
+      ['e2e-mass', '.race-item-laps.race-finished', 'dark'],
+    ] as const) {
+      test(`${competition} (${scheme}, ${width}px): no axe violations once the replay has finished`, async ({ page, request }) => {
+        await page.emulateMedia({ colorScheme: scheme });
+        await page.setViewportSize({ width, height: 900 });
+        await restartReplay(request, competition);
+        await page.goto(`/?competitionId=${competition}`);
+        // finished rows are the last state of the replay, with every badge and row on screen
+        await expect(page.locator(ready).first()).toBeVisible();
+        await expect(page.locator('html')).toHaveAttribute('data-coreui-theme', scheme);
+        await settleTransitions(page);
 
-      const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
-      expect(
-        violations.map((v) => `${v.id} (${v.nodes.length}): ${v.nodes[0]?.target.join(' ')}`),
-      ).toEqual([]);
-    });
+        const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+        expect(
+          violations.map((v) => `${v.id} (${v.nodes.length}): ${v.nodes[0]?.target.join(' ')} ${v.nodes[0]?.any[0]?.message ?? ''}`),
+        ).toEqual([]);
+      });
+    }
   }
 
   test('the event name is the page heading', async ({ page, request }) => {
@@ -72,7 +76,8 @@ test.describe('accessibility', () => {
   });
 });
 
-test('the open menu has no axe violations', async ({ page, request }) => {
+for (const width of [390, 1280]) test(`the open menu has no axe violations (${width}px)`, async ({ page, request }) => {
+  await page.setViewportSize({ width, height: 900 });
   await restartReplay(request, 'e2e-individual');
   await page.goto('/?competitionId=e2e-individual');
   await page.getByRole('button', { name: 'Menu', exact: true }).click();
@@ -186,3 +191,25 @@ test('in forced colours the slider thumb and the badges are still drawn', async 
   expect(styles.name?.border).toBe('1px');
   expect(styles.lap?.border).toBe('1px');
 });
+
+// The other pages, each in both themes, on the narrowest and a normal phone as well as a wide screen.
+for (const [name, url, ready] of [
+  ['ranking', '/ranking?competitionId=e2e-lanes', '.ranking-table'],
+  ['start list', '/start-list?competitionId=e2e-lanes', '.start-list-heat'],
+  ['settings', '/settings?competitionId=e2e-individual', 'main'],
+] as const) {
+  for (const scheme of ['light', 'dark'] as const) {
+    for (const width of [320, 390, 1280]) {
+      test(`the ${name} page (${scheme}, ${width}px): no axe violations`, async ({ page }) => {
+        await page.emulateMedia({ colorScheme: scheme });
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto(url);
+        await expect(page.locator(ready).first()).toBeVisible({ timeout: 15_000 });
+        await expect(page.locator('html')).toHaveAttribute('data-coreui-theme', scheme);
+        await settleTransitions(page);
+        const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+        expect(violations.map((v) => `${v.id} (${v.nodes.length}): ${v.nodes[0]?.target.join(' ')} ${v.nodes[0]?.any[0]?.message ?? ''}`)).toEqual([]);
+      });
+    }
+  }
+}
