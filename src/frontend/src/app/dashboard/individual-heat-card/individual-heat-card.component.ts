@@ -1,3 +1,4 @@
+import { RouterLink } from '@angular/router';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, Input, inject } from '@angular/core';
 import { BadgeModule, CardModule } from '@coreui/angular';
 import { CompetitorUpdate } from '../../results/data.models';
@@ -12,7 +13,7 @@ import { emptyLaneColor, isIndividualFinished, individualStartDegrees, individua
 @Component({
   selector: 'app-individual-heat-card',
   standalone: true,
-  imports: [BadgeModule, CardModule],
+  imports: [BadgeModule, CardModule, RouterLink],
   templateUrl: './individual-heat-card.component.html',
   styleUrls: ['./individual-heat-card.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

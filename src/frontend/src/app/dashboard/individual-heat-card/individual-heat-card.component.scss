@@ -312,3 +312,15 @@
   .individual-compact-final .individual-lap-time,
   .individual-competitor-card { transition: none; }
 }
+
+/* the name leads to the start list with the name searched */
+a.individual-comp-name-line {
+  color: inherit;
+  text-decoration: none;
+
+  &:hover { text-decoration: underline; }
+  &:focus-visible { outline: 2px solid var(--cui-primary); outline-offset: 2px; }
+}
+
+/* a card without a total time has no finish to caption: the text keeps its room but is not shown */
+.individual-ghost-final .compact-reached { visibility: hidden; }
