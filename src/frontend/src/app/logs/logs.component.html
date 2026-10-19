@@ -15,11 +15,6 @@
           <time class="logs-time" [attr.datetime]="row.entry.at | date: 'yyyy-MM-ddTHH:mm:ss.SSSZZZZZ'">{{ row.entry.at | date: 'HH:mm:ss' }}</time>
           <div class="logs-body">
             <div class="logs-what">
-              @if (row.heatKey) {
-                <a class="logs-heat" routerLink="/" [queryParams]="{ heat: row.heatKey }" queryParamsHandling="merge">{{ row.entry.distanceName }} · {{ 'heatLabel' | translate: { n: row.entry.heat } }}</a>
-              } @else {
-                <span class="logs-heat">{{ row.entry.distanceName }} · {{ 'heatLabel' | translate: { n: row.entry.heat } }}</span>
-              }
               @if (row.entry.past) { <span class="visually-hidden">{{ 'logsPast' | translate }}: </span> }
               <span class="logs-name individual-comp-name-text" [attr.data-lane]="row.entry.lane || null" [style.--lane-color]="row.entry.lane || null">{{ row.entry.name }}</span>
               @if (row.entry.isNew) { <c-badge color="success">{{ 'logsNew' | translate }}</c-badge> }
@@ -44,6 +39,11 @@
               }
             </ul>
           </div>
+          @if (row.heatKey) {
+            <a class="logs-heat" routerLink="/" [queryParams]="{ heat: row.heatKey }" queryParamsHandling="merge">{{ row.entry.distanceName }} · {{ 'heatLabel' | translate: { n: row.entry.heat } }}</a>
+          } @else {
+            <span class="logs-heat">{{ row.entry.distanceName }} · {{ 'heatLabel' | translate: { n: row.entry.heat } }}</span>
+          }
         </li>
       }
     </ol>
