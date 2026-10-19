@@ -5,6 +5,7 @@ example.json
 /.env.prod.local
 /container-data/
 /src/mockserver/data/*
+/src/mockserver/live-results-mockserver
 /session-export/
 /.env.prod
 /agents.local.md
