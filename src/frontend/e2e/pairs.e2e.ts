@@ -24,6 +24,12 @@ test.describe('two-lane competition', () => {
     expect(new Set(colors).size).toBe(2);
     // the peeks hint at the lanes of the heats beside it
     await expect(page.locator('.peek-before .peek-name[data-lane]')).not.toHaveCount(0);
+    // beside a lone skater the badges of the two lanes still sit in their own lanes, not on top of each other
+    for (const side of ['before', 'after']) {
+      const tops = await page.locator(`.peek-${side} .peek-name[data-lane]`).evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
+      expect(tops.length).toBeGreaterThan(1);
+      expect(new Set(tops.map(Math.round)).size).toBe(tops.length);
+    }
   });
 
   test('each peek badge has an arrow below it, centred under the badge and in the middle of its lane, pointing to its heat', async ({ page, request }) => {

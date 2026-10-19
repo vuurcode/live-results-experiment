@@ -95,11 +95,18 @@ export class HeatPeeksComponent implements AfterViewInit {
     const cardWidth = boxes[0].width;
     // the cards of the heat side by side (the four lane view) are as wide as their union
     const shown = Math.round(Math.max(...boxes.map((b) => b.right)) - Math.min(...boxes.map((b) => b.left)));
-    // one box per lane; an empty lane has no name, so it takes the box of the first name on show (the names of a row are level)
+    // one box per lane; an empty lane has no name, so it takes the size and the place in its lane of the first name on show
     const laneCols = [...this.host.querySelectorAll<HTMLElement>('.individual-lane-col')];
     const lanes = laneCols.map((lane) => lane.querySelector<HTMLElement>('.individual-comp-name-text'));
     const first = lanes.find((name) => name !== null);
-    const badges = first ? lanes.map((name, i) => ({ top: this.offsetWithin(name ?? first), height: (name ?? first).offsetHeight, laneTop: this.offsetWithin(laneCols[i]), laneHeight: laneCols[i].offsetHeight })) : [];
+    const firstInLane = first ? this.offsetWithin(first) - this.offsetWithin(laneCols[lanes.indexOf(first)]) : 0;
+    const badges = first
+      ? lanes.map((name, i) => {
+          const laneTop = this.offsetWithin(laneCols[i]);
+          // the badge of an empty lane sits where the first one does within its lane, so the lanes stay apart
+          return { top: name ? this.offsetWithin(name) : laneTop + firstInLane, height: (name ?? first).offsetHeight, laneTop, laneHeight: laneCols[i].offsetHeight };
+        })
+      : [];
     const half = Math.round(cardWidth / 2);
     // the heat on show is centred, so a half takes the room beside it, up to half a card
     const free = (width - shown) / 2 - SIDE_GAP;
