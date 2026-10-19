@@ -191,16 +191,14 @@ export class DashboardComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
-  /** The heat whose lap times updated most recently (the later one when they changed together; the page follows by the same rule), ignoring mass starts; heats that were never timed here are never live. */
+  /** The last timed heat of the last distance that has one, in the order of the event (the page follows by the same rule), ignoring mass starts; a change to an earlier heat never takes it back, and heats that were never timed here are never live. */
   private findActiveHeat(distances: ProcessedDistance[]): { distanceId: string; label: string } | null {
-    let latest = 0;
     let result: { distanceId: string; label: string } | null = null;
     for (const distance of distances) {
       if (distance.isMassStart) continue;
       const groups = this.mergedHeatGroups(distance);
       const live = findLiveHeat(groups);
-      if (live && live.updatedAt >= latest) {
-        latest = live.updatedAt;
+      if (live) {
         result = { distanceId: distance.id, label: groups[live.index].label };
       }
     }

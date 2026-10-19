@@ -8,14 +8,15 @@ export interface LiveHeat {
 }
 
 /**
- * The heat whose lap times changed last (the later heat when they changed together); heats that were never timed
- * here, or hold only competitors who are not on the ice, are never live. Both the live marker and the page's
- * following use this rule, so the page scrolls to the heat it marks.
+ * The last heat, in the order of the event, that has laps timed here: a late change to an earlier heat (a corrected lap
+ * time) never takes the live position back. Heats that were never timed here, or hold only competitors who are not on
+ * the ice, are never live. Both the live marker and the page's following use this rule, so the page scrolls to the heat
+ * it marks.
  */
 export function findLiveHeat(heats: { races: (CompetitorUpdate | null)[] }[]): LiveHeat | null {
   let live: LiveHeat | null = null;
   heats.forEach((heat, index) => heat.races.forEach(race => {
-    if (race?.lapsUpdatedAt && !isNeverLive(race) && race.lapsUpdatedAt >= (live?.updatedAt ?? 0)) {
+    if (race?.lapsUpdatedAt && !isNeverLive(race) && (live?.index !== index || race.lapsUpdatedAt > live.updatedAt)) {
       live = { index, updatedAt: race.lapsUpdatedAt };
     }
   }));
