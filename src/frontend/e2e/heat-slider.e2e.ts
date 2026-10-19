@@ -87,4 +87,30 @@ test.describe('heats to come', () => {
     await expect(card.locator('.individual-ghost-badge').first()).toBeVisible();
     await expect(card.locator('.individual-ghost-hidden')).toHaveCount(0);
   });
+
+  test('a ghost lap badge is empty and hidden from assistive technology, and its place is taken by the real time in the same spot', async ({ page, request }) => {
+    await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-pairs' } });
+    await page.goto(heatUrl('e2e-pairs', 'dist-500', 3));
+    await expect(slider(page)).toHaveAttribute('aria-valuetext', /Heat 3$/, { timeout: 15_000 });
+    const card = page.locator('.individual-competitor-card:not(.individual-lane-placeholder)').first();
+    const laps = card.locator('.individual-comp-body .individual-compact-lap');
+    let schedule: string[] | null = null;
+    let sawReal = false;
+    await expect(async () => {
+      // every lap of the distance is on the card, as a time or as a ghost, in the same order, whatever the moment
+      const snapshot = await laps.evaluateAll((els) =>
+        els.map((el) => ({ distance: el.querySelector('.compact-dist')?.textContent?.trim() ?? '', ghost: el.hasAttribute('aria-hidden'), badge: el.querySelector('c-badge')?.textContent?.replace(/\u00a0/g, '').trim() ?? '' })),
+      );
+      expect(snapshot.length).toBeGreaterThan(0);
+      const distances = snapshot.map((l) => l.distance);
+      schedule ??= distances;
+      expect(distances).toEqual(schedule);
+      for (const lap of snapshot) if (lap.ghost) expect(lap.badge).toBe(''); // a ghost has no text
+      // the times come first and the ghosts after them: a ghost never sits before a time
+      const firstGhost = snapshot.findIndex((l) => l.ghost);
+      if (firstGhost !== -1) expect(snapshot.slice(firstGhost).every((l) => l.ghost)).toBe(true);
+      sawReal ||= snapshot.some((l) => !l.ghost);
+      expect(sawReal).toBe(true);
+    }).toPass({ timeout: 15_000 });
+  });
 });
