@@ -57,4 +57,24 @@ test.describe('start list', () => {
     await expect(page).toHaveURL(/competitionId=e2e-lanes/);
     await expect(page.locator('.individual-heat-row').filter({ has: page.locator('.individual-lane-col:nth-child(4)') }).first()).toBeVisible();
   });
+
+  test('clicking a racer name on the dashboard opens the start list searched for that name', async ({ page }) => {
+    await page.goto('/?competitionId=e2e-lanes');
+    const link = page.locator('a.individual-comp-name-line').first();
+    await expect(link).toBeVisible({ timeout: 15_000 });
+    const name = (await link.innerText()).trim();
+    await link.click();
+    await expect(page).toHaveURL(/start-list/);
+    await expect(page.locator('input[type="search"], input').first()).toHaveValue(name);
+  });
+
+  test('offers the ranking once a heat is done, with the search carried over and highlighted there', async ({ page }) => {
+    await page.goto('/start-list?competitionId=e2e-individual');
+    const link = page.locator('a.ranking-link');
+    await expect(link).toBeVisible({ timeout: 30_000 });
+    await page.locator('#competitorSearch').fill('a');
+    await link.click();
+    await expect(page).toHaveURL(/ranking\?.*q=a/);
+    await expect(page.locator('.ranking-table tbody tr.highlight').first()).toBeVisible();
+  });
 });

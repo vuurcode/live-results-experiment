@@ -6,6 +6,9 @@
   </header>
   @let view = (view$ | async);
   @if (view) {
+    @if (view.anyDone) {
+      <a cButton color="secondary" variant="outline" size="sm" class="ranking-link" routerLink="/ranking" [queryParams]="view.query.trim() ? { q: view.query } : {}" queryParamsHandling="merge">{{ 'startListViewRanking' | translate }}</a>
+    }
     <div class="start-list-choose">
       <label cLabel for="competitorSearch">{{ 'startListSearch' | translate }}</label>
       <div class="start-list-field">

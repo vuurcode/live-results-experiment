@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
 import { AsyncPipe, Location, NgTemplateOutlet } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { BadgeModule, ButtonModule, FormModule } from '@coreui/angular';
 import { BehaviorSubject, combineLatest, map, type Observable } from 'rxjs';
 import { DataService } from '../results/data.service';
@@ -14,6 +14,8 @@ interface StartListView {
   /** The heats grouped by distance, in the order of the event */
   distances: { id: string; name: string; heats: StartListHeat[] }[];
   names: string[];
+  /** At least one heat is done, so there is a ranking to look at */
+  anyDone: boolean;
   query: string;
   /** The one competitor the query matches, when it matches a single name */
   competitor: string | null;
@@ -34,6 +36,7 @@ export class StartListComponent {
   private dataService = inject(DataService);
   private ts = inject(TranslateService);
   private location = inject(Location);
+  private route = inject(ActivatedRoute);
 
   /** Whether the search added a history entry, so that the back gesture clears the search instead of leaving the page. */
   private searchEntry = false;
@@ -63,7 +66,7 @@ export class StartListComponent {
         if (last?.id === heat.distanceId) last.heats.push(heat);
         else grouped.push({ id: heat.distanceId, name: heat.distanceName, heats: [heat] });
       }
-      return { heats, distances: grouped, names, query, competitor, next: competitor ? heatsAhead(all, competitor) : null, matches: (name: string) => !!query.trim() && nameMatches(name, query) };
+      return { heats, distances: grouped, names, anyDone: all.some((heat) => heat.done), query, competitor, next: competitor ? heatsAhead(all, competitor) : null, matches: (name: string) => !!query.trim() && nameMatches(name, query) };
     }),
   );
 
@@ -98,7 +101,13 @@ export class StartListComponent {
     return `start-list-search:${this.dataService.competitionId}`;
   }
 
+  /** The name to search for that a link brought along (?q=), else the search kept for this competition. */
   private storedQuery(): string {
+    const linked = this.route.snapshot.queryParamMap.get('q');
+    if (linked) {
+      try { localStorage.setItem(this.queryKey(), linked); } catch { /* storage unavailable */ }
+      return linked;
+    }
     try { return localStorage.getItem(this.queryKey()) ?? ''; } catch { return ''; }
   }
 

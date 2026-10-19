@@ -1,3 +1,4 @@
+@use '../dashboard/remark-badge';
 :host { display: block; }
 .disclaimer.alert {
   background: var(--lr-warn-bg);
@@ -100,4 +101,50 @@ td.gap-col {
       outline-offset: -2px;
     }
   }
+}
+
+/* the first column is a quiet rank: smaller than the names */
+.ranking-table td.rank-col {
+  font-size: 0.8em;
+}
+
+/* a racer who has not started: the heat to find them in, in the colour of their lane, over the time and gap columns */
+.pending-col {
+  text-align: right;
+}
+
+.heat-badge {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  padding: 0.1em 0.6em;
+  border-radius: 0.5em;
+  background: var(--cui-tertiary-bg);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+
+  &[data-lane='white'] { background: #fff; color: #212529; box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.5); }
+  &[data-lane='yellow'] { background: #ffc107; color: #212529; }
+  &[data-lane='red'] { background: #c93434; }
+  &[data-lane='blue'] { background: #0b5ed7; }
+  &:not([data-lane]) { color: var(--cui-body-color); }
+
+  &:focus-visible {
+    outline: 2px solid var(--cui-primary);
+    outline-offset: 2px;
+  }
+}
+
+.fall-badge {
+  margin-right: 0.4em;
+}
+
+/* the racers the start list was searched for */
+.ranking-table tbody tr.highlight > td {
+  --cui-table-bg-type: color-mix(in srgb, #ffc107 28%, transparent);
+  --cui-table-bg-state: color-mix(in srgb, #ffc107 28%, transparent);
+  background-color: color-mix(in srgb, #ffc107 28%, transparent);
 }

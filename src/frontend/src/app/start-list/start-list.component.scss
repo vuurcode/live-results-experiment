@@ -244,3 +244,11 @@
     outline-offset: 2px;
   }
 }
+
+.ranking-link {
+  --cui-btn-color: var(--cui-body-color);
+  --cui-btn-border-color: var(--lr-control-border);
+  --cui-btn-hover-color: var(--cui-body-color);
+  --cui-btn-active-color: var(--cui-body-color);
+  margin-bottom: 0.75rem;
+}
