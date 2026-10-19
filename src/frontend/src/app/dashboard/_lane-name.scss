@@ -1,0 +1,9 @@
+// The colours of a racer's name badge: the colour of the lane (set as --lane-color), with the text that reads on it.
+.individual-comp-name-text {
+  background: var(--lane-color, transparent);
+  color: #fff;
+}
+.individual-comp-name-text[data-lane='white'],
+.individual-comp-name-text[data-lane='yellow'] { color: #212529; }
+.individual-comp-name-text[data-lane='red'] { background: #c93434; } // white text on it: 5.2:1, pure red gave 4.0:1
+.individual-comp-name-text[data-lane='white'] { box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.5); } // keeps the white badge visible on a light card

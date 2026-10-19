@@ -1,24 +1,8 @@
 @use 'tokens' as *;
+@use 'record-glow';
 
 // Styles that more than one of the dashboard's components need; each component includes them.
 // ===== ANIMATIONS =====
-@keyframes recordGlow { // a pulse around the badge, in the next colour of the rainbow each time; it rests out of sight between two, so the shadow never shrinks back in
-  0%   { box-shadow: 0 0 0 0   rgba(255,59,48, 0.8); }
-  14%  { box-shadow: 0 0 0 6px rgba(255,59,48, 0); }
-  14.01%, 19.99% { box-shadow: 0 0 0 0   rgba(255,59,48, 0); }
-  20%   { box-shadow: 0 0 0 0   rgba(255,204,0, 0.8); }
-  34%  { box-shadow: 0 0 0 6px rgba(255,204,0, 0); }
-  34.01%, 39.98% { box-shadow: 0 0 0 0   rgba(255,204,0, 0); }
-  40%   { box-shadow: 0 0 0 0   rgba(52,199,89, 0.8); }
-  54%  { box-shadow: 0 0 0 6px rgba(52,199,89, 0); }
-  54.01%, 59.98% { box-shadow: 0 0 0 0   rgba(52,199,89, 0); }
-  60%   { box-shadow: 0 0 0 0   rgba(10,132,255, 0.8); }
-  74%  { box-shadow: 0 0 0 6px rgba(10,132,255, 0); }
-  74.01%, 79.99% { box-shadow: 0 0 0 0   rgba(10,132,255, 0); }
-  80%   { box-shadow: 0 0 0 0   rgba(224,64,251, 0.8); }
-  94%  { box-shadow: 0 0 0 6px rgba(224,64,251, 0); }
-  94.01%, 100% { box-shadow: 0 0 0 0   rgba(224,64,251, 0); }
-}
 @keyframes snakeAround {
   from { --snake-angle: 0deg; }
   to   { --snake-angle: var(--arc, 360deg); }

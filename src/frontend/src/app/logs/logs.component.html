@@ -1,0 +1,51 @@
+@let rows = (rows$ | async);
+<app-header />
+<main class="logs">
+  <header class="logs-head">
+    <a cButton color="secondary" variant="outline" size="sm" class="back-link" routerLink="/" queryParamsHandling="preserve">← {{ 'rankingBack' | translate }}</a>
+    <h1 class="logs-title">{{ (eventName$ | async) || ('logsTitle' | translate) }}</h1>
+  </header>
+  <h2 class="logs-subtitle">{{ 'logsTitle' | translate }}</h2>
+  @if (!rows?.length) {
+    <p class="logs-none">{{ 'logsNone' | translate }}</p>
+  } @else {
+    <ol class="logs-list" [attr.aria-label]="'logsTitle' | translate">
+      @for (row of rows; track row.entry.id) {
+        <li class="logs-item" [class.past]="row.entry.past" [attr.data-batch]="'logsUpdate' | translate: { n: row.entry.batch }">
+          <time class="logs-time" [attr.datetime]="row.entry.at | date: 'yyyy-MM-ddTHH:mm:ss.SSSZZZZZ'">{{ row.entry.at | date: 'HH:mm:ss' }}</time>
+          <div class="logs-body">
+            <div class="logs-what">
+              @if (row.heatKey) {
+                <a class="logs-heat" routerLink="/" [queryParams]="{ heat: row.heatKey }" queryParamsHandling="merge">{{ row.entry.distanceName }} · {{ 'heatLabel' | translate: { n: row.entry.heat } }}</a>
+              } @else {
+                <span class="logs-heat">{{ row.entry.distanceName }} · {{ 'heatLabel' | translate: { n: row.entry.heat } }}</span>
+              }
+              @if (row.entry.past) { <span class="visually-hidden">{{ 'logsPast' | translate }}: </span> }
+              <span class="logs-name individual-comp-name-text" [attr.data-lane]="row.entry.lane || null" [style.--lane-color]="row.entry.lane || null">{{ row.entry.name }}</span>
+              @if (row.entry.isNew) { <c-badge color="success">{{ 'logsNew' | translate }}</c-badge> }
+            </div>
+            <ul class="logs-changes">
+              @for (change of row.entry.changes; track $index) {
+                <li>
+                  <span class="logs-field">{{ fieldKey[change.field] | translate: { n: change.n ?? '' } }}</span>:
+                  @if (change.field === 'remark' || change.field === 'status') {
+                    @if (change.from) {
+                      <span class="logs-from">@for (badge of badges(change, change.from); track badge.code) { <c-badge [class]="badge.cssClass">{{ badge.text }}</c-badge> }</span> →
+                    }
+                    @for (badge of badges(change, change.to); track badge.code) { <c-badge [class]="badge.cssClass">{{ badge.text }}</c-badge> }
+                    @if (!change.to) { – }
+                  } @else {
+                    @if (change.from) { <span class="logs-from">{{ change.from }}</span> → }
+                    <span class="logs-to">{{ change.to || '–' }}</span>
+                  }
+                </li>
+              } @empty {
+                <li class="logs-nochange">{{ 'logsNoChange' | translate }}</li>
+              }
+            </ul>
+          </div>
+        </li>
+      }
+    </ol>
+  }
+</main>

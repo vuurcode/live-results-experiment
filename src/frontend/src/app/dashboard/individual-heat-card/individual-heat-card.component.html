@@ -46,7 +46,7 @@
           <div class="individual-comp-header">
             <!-- name badge, with the category name and (club code) small below the name, and the personal best after it -->
             <div class="individual-comp-who">
-              <span class="individual-comp-name"><span class="individual-comp-name-text" [attr.data-lane]="laneColor(race, $index)"><span class="individual-comp-name-line">{{ race.name }}</span>@if (metaLine(race)) { <small class="individual-comp-meta">{{ metaLine(race) }}</small>}</span></span>
+              @if (laneLabel(race, $index); as lane) { <span class="visually-hidden">{{ lane }}: </span> }<span class="individual-comp-name"><span class="individual-comp-name-text" [attr.data-lane]="laneColor(race, $index)"><span class="individual-comp-name-line">{{ race.name }}</span>@if (metaLine(race)) { <small class="individual-comp-meta">{{ metaLine(race) }}</small>}</span></span>
               @if (race.personal_record) {
                 <span class="individual-pb-current"><span class="individual-pb-current-label">{{ ts.t(isPbImproved(race) ? 'pbPreviousLabel' : 'pbCurrentLabel') }}</span><c-badge class="individual-split-badge" [class.individual-pb-beaten]="isPbImproved(race)" [attr.title]="isPbImproved(race) ? ts.t('pbImprovedTitle') : null">{{ splitFormattedTime(truncateLapTime(race.personal_record, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(race.personal_record, decimals(race)))[1] }}</small></c-badge></span>
               }

@@ -1,0 +1,128 @@
+@use '../dashboard/remark-badge';
+@use '../dashboard/lane-name';
+
+:host { display: block; }
+
+.logs {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.logs-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.logs-title {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.logs-subtitle {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
+.logs-none {
+  color: var(--cui-secondary-color);
+}
+
+.back-link {
+  --cui-btn-color: var(--cui-body-color);
+  --cui-btn-border-color: var(--lr-control-border);
+  --cui-btn-hover-color: var(--cui-body-color);
+  --cui-btn-active-color: var(--cui-body-color);
+}
+
+.logs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.logs-item {
+  position: relative;
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.5rem 0.5rem;
+  border-bottom: 1px solid var(--cui-border-color);
+
+  /* an update to a heat that was over: a correction, so the row is marked */
+  &.past {
+    background: color-mix(in srgb, #ffc107 16%, transparent);
+  }
+
+  /* under the time, where no text is: the number of the update, faint */
+  &::after {
+    content: attr(data-batch) / '';
+    position: absolute;
+    left: 0.5rem;
+    white-space: nowrap;
+    bottom: 0.3rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: color-mix(in srgb, var(--cui-body-color) 22%, transparent);
+    pointer-events: none;
+  }
+}
+
+.logs-time {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--cui-secondary-color);
+}
+
+.logs-body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.logs-what {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+}
+
+.logs-name {
+  padding: 0.1em 0.6em;
+  border-radius: 0.5em;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.logs-heat {
+  font-weight: 600;
+  color: inherit;
+}
+
+a.logs-heat {
+  text-decoration: underline;
+}
+
+.logs-changes {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.logs-from {
+  color: var(--cui-secondary-color);
+  text-decoration: line-through;
+}
+
+.logs-changes c-badge {
+  font-size: 0.75rem !important;
+  vertical-align: baseline;
+}
+
+.logs-field,
+.logs-nochange {
+  color: var(--cui-secondary-color);
+}

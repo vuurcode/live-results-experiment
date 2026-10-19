@@ -16,6 +16,7 @@ import {
 } from './data.models';
 import { recomputePositions, recomputeGroups, resolveRaces } from './standings.util';
 import { FeedStatus, TodayCompetition } from './data.models';
+import { diffUpdate, entriesOfToday, isPastHeat, loadEventLog, saveEventLog, type LogEntry } from './event-log.util';
 import { competitionIdFromSearch, withCompetitionId, withResume } from './competition.util';
 
 export interface BackendStatus {
@@ -25,6 +26,12 @@ export interface BackendStatus {
   errorMessage?: string | null;
 }
 
+/** How long after `status` (ms) the messages still build the page up rather than report events, unless the page resumed. */
+const INITIAL_WINDOW_MS = 2000;
+/** How many events the log keeps. */
+const LOG_LIMIT = 500;
+/** Updates less than this apart (ms) belong to the same poll of the data source. */
+const BATCH_GAP_MS = 250;
 /** How long a lost connection stays unreported, so a quick reconnect shows no error. */
 const LOST_ERROR_GRACE_MS = 3000;
 /** Close code the backend uses to refuse a connection that names no valid competition. */
@@ -93,6 +100,15 @@ export class DataService {
   /** The data source's state as reported by the backend; null until it has answered. */
   feed$ = this.feedSubject.asObservable();
 
+  /** Every competitor_update received, newest first, up to LOG_LIMIT; kept in the browser for the rest of the day. */
+  private eventLogSubject = new BehaviorSubject<LogEntry[]>(loadEventLog(this.competitionId, Date.now()));
+  eventLog$ = this.eventLogSubject.asObservable();
+  private pendingLog: LogEntry[] = [];
+  private logCounter = (this.eventLogSubject.value[0]?.id ?? -1) + 1;
+  private logBatch = this.eventLogSubject.value[0]?.batch ?? 0;
+  private logSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastLogAt = 0;
+
   private errorsSubject = new BehaviorSubject<string[]>([]);
   errors$ = this.errorsSubject.asObservable();
   private displayedGroupsSubject = new BehaviorSubject<Map<string, StandingsGroup[]>>(new Map());
@@ -115,6 +131,9 @@ export class DataService {
   private resumePoint: { epoch: string; seq: number } | null = null;
   /** The status message of a connection whose replay is still arriving: `left` more messages to go. */
   private awaiting: { epoch: string; seq: number; left: number } | null = null;
+  /** Messages that build the page up from nothing (the replay, or the data of a room opened anew, sent right after `status`): the starting point, not events for the log. */
+  private initialMessages = new WeakSet<BackendMessage>();
+  private initialUntil = 0;
 
   private noCompetition = false;
   private ngZone = inject(NgZone);
@@ -125,6 +144,7 @@ export class DataService {
     // A page restored from the back/forward cache comes back with a dead socket and stale results; load it afresh.
     window.addEventListener('pageshow', (e) => { if (e.persisted) window.location.reload(); });
     document.addEventListener('visibilitychange', () => this.onVisibilityChange());
+    window.addEventListener('pagehide', () => { if (this.logSaveTimer) this.saveLog(); });
     window.addEventListener('online', () => this.resume());
     // changing how mass starts group shows at once
     merge(this.settings.groupThreshold.changes$.pipe(skip(1)), this.settings.maxGroups.changes$.pipe(skip(1)))
@@ -232,12 +252,14 @@ export class DataService {
   private track(msg: BackendMessage) {
     if (msg.type === 'status') {
       const { epoch, seq, following } = msg.data;
+      const resumed = this.resumePoint !== null && this.resumePoint.epoch === epoch;
       this.resumePoint = null;
       this.awaiting = epoch !== undefined && seq !== undefined ? { epoch, seq, left: following ?? 0 } : null;
-    } else if (this.awaiting) {
-      this.awaiting.left--;
-    } else if (this.resumePoint && msg.seq !== undefined && msg.seq > this.resumePoint.seq) {
-      this.resumePoint.seq = msg.seq;
+      this.initialUntil = resumed ? 0 : Date.now() + INITIAL_WINDOW_MS;
+    } else {
+      if (Date.now() < this.initialUntil) this.initialMessages.add(msg);
+      if (this.awaiting) this.awaiting.left--;
+      else if (this.resumePoint && msg.seq !== undefined && msg.seq > this.resumePoint.seq) this.resumePoint.seq = msg.seq;
     }
     if (this.awaiting && this.awaiting.left <= 0) {
       this.resumePoint = { epoch: this.awaiting.epoch, seq: this.awaiting.seq };
@@ -299,7 +321,7 @@ export class DataService {
       case 'distance_meta':
         return this.applyDistanceMeta(msg.data);
       case 'competitor_update':
-        return this.applyCompetitorUpdate(msg.data);
+        return this.applyCompetitorUpdate(msg.data, !this.initialMessages.has(msg));
       default:
         return false;
     }
@@ -345,8 +367,9 @@ export class DataService {
     return true;
   }
 
-  private applyCompetitorUpdate(comp: CompetitorUpdate): boolean {
+  private applyCompetitorUpdate(comp: CompetitorUpdate, log = true): boolean {
     comp.lastUpdated = Date.now();
+    if (log) this.logUpdate(comp);
     let distComps = this.competitorMap.get(comp.distance_id);
     if (!distComps) { distComps = new Map(); this.competitorMap.set(comp.distance_id, distComps); }
 
@@ -401,6 +424,30 @@ export class DataService {
     return true;
   }
 
+  /** Writes the log a moment after the last update, and when the page goes away, rather than on every update. */
+  private scheduleLogSave(): void {
+    if (this.logSaveTimer) return;
+    this.logSaveTimer = setTimeout(() => this.saveLog(), 1000);
+  }
+
+  private saveLog(): void {
+    if (this.logSaveTimer) clearTimeout(this.logSaveTimer);
+    this.logSaveTimer = null;
+    saveEventLog(this.competitionId, this.eventLogSubject.value);
+  }
+
+  private logUpdate(comp: CompetitorUpdate): void {
+    const prev = this.competitorMap.get(comp.distance_id)?.get(comp.id);
+    const now = Date.now();
+    if (now - this.lastLogAt > BATCH_GAP_MS) this.logBatch++;
+    this.lastLogAt = now;
+    this.pendingLog.push({
+      id: this.logCounter++, batch: this.logBatch, at: now, distanceId: comp.distance_id, distanceName: this.distanceMap.get(comp.distance_id)?.name ?? '',
+      raceId: comp.id, heat: comp.heat, name: comp.name, lane: comp.lane,
+      past: isPastHeat(this.competitorMap.get(comp.distance_id)?.values() ?? [], comp.heat), isNew: !prev, changes: diffUpdate(prev, comp),
+    });
+  }
+
   private recomputeGroups(dist: ProcessedDistance) {
     dist.standingsGroups = recomputeGroups(
       dist.processedRaces,
@@ -437,6 +484,11 @@ export class DataService {
     const distances = Array.from(this.distanceMap.values())
       .sort((a, b) => b.eventNumber - a.eventNumber);
     this.processedDataSubject.next(distances);
+    if (this.pendingLog.length > 0) {
+      this.eventLogSubject.next(entriesOfToday([...this.pendingLog.reverse(), ...this.eventLogSubject.value], Date.now()).slice(0, LOG_LIMIT));
+      this.pendingLog = [];
+      this.scheduleLogSave();
+    }
   }
 
 

@@ -34,3 +34,15 @@ export function isNeverLive(race: { invalid_reason?: string | null; remark?: str
   const codes = [race.invalid_reason, ...(race.remark?.trim().split(/\s+/) ?? [])];
   return codes.some(c => !!c && NEVER_LIVE_CODES.has(c.toUpperCase()));
 }
+
+/** CSS class for the badge of a remark (PR and the records → purple, the records also pulse, else orange). */
+export function remarkBadgeClass(remark: string): string {
+  const v = remark.toUpperCase();
+  if (RECORD_CODES.has(v)) return 'individual-badge-purple individual-badge-record';
+  return v === RaceCode.PersonalRecord ? 'individual-badge-purple' : 'individual-badge-orange';
+}
+
+/** CSS class for the badge of an invalid reason (DQ → red, else orange). */
+export function invalidBadgeClass(reason: string): string {
+  return reason.toUpperCase() === RaceCode.Disqualified ? 'individual-badge-red' : 'individual-badge-orange';
+}

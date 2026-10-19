@@ -15,6 +15,20 @@ export interface Translations {
   rankingTime: string;
   rankingGap: string;
   rankingLive: string;
+  menuLogs: string;
+  logsTitle: string;
+  logsNone: string;
+  logsNew: string;
+  logsNoChange: string;
+  logsPast: string; // said before the name of a skater whose update is about a heat that was over
+  logsUpdate: string; // contains {n}: the number of the batch of updates that arrived together
+  logsFieldHeat: string;
+  logsFieldLane: string;
+  logsFieldLap: string;
+  logsFieldTime: string;
+  logsFieldRank: string;
+  logsFieldStatus: string;
+  logsFieldRemark: string;
   menuStartList: string;
   menuMain: string;
   menuSettings: string;
@@ -106,6 +120,10 @@ export interface Translations {
   lapStepLabel: string; // contains {n}
   announceFinished: string; // contains {name} and {time}; read out by a screen reader when a skater finishes
   announceFinishedMany: string; // contains {n}
+  laneWhite: string; // the lane of a skater, said by a screen reader on the card; the lanes are told apart by colour
+  laneRed: string;
+  laneYellow: string;
+  laneBlue: string;
   // Race events
   lapCompleted: string;
   finished: string;

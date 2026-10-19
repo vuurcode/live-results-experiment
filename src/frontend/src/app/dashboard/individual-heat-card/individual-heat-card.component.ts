@@ -3,7 +3,7 @@ import { BadgeModule, CardModule } from '@coreui/angular';
 import { CompetitorUpdate } from '../../results/data.models';
 import { TranslateService, TranslationKey } from '../../i18n/translate.service';
 import { parseSeconds, sameHundredths, formatDurationSeconds, truncateLapTime, splitFormattedTime, isRecentUpdate } from '../../results/time.util';
-import { isNeverLive, GHOST_HIDING_CODES, NO_TIME_CODES, RaceCode, RECORD_CODES, RECORD_PRIORITY } from '../../results/race-codes';
+import { invalidBadgeClass, isNeverLive, remarkBadgeClass, GHOST_HIDING_CODES, NO_TIME_CODES, RaceCode, RECORD_CODES, RECORD_PRIORITY } from '../../results/race-codes';
 import { categoryName } from '../../results/category.util';
 import { emptyLaneColor, isIndividualFinished, individualStartDegrees, individualFinishAngle, individualRaceComplete, individualPrComparison as individualPrComparisonUtil } from '../../results/heats.util';
 
@@ -290,6 +290,12 @@ export class IndividualHeatCardComponent {
     return race?.lane ?? emptyLaneColor(this.races, slot, this.laneColors);
   }
 
+  /** The lane of a card for a screen reader ("Red lane"): the lanes are told apart by their colour, which is no use unseen. */
+  protected laneLabel(race: CompetitorUpdate, slot: number): string | null {
+    const key = { white: 'laneWhite', red: 'laneRed', yellow: 'laneYellow', blue: 'laneBlue' }[this.laneColor(race, slot) ?? ''] as 'laneWhite' | 'laneRed' | 'laneYellow' | 'laneBlue' | undefined;
+    return key ? this.ts.t(key) : null;
+  }
+
   /** Category name and club code for under the name: "Women Juniors A1 (CLF4)", or whichever of the two there is. */
   protected metaLine(race: CompetitorUpdate): string {
     const name = this.categoryFullName(race.category);
@@ -332,17 +338,8 @@ export class IndividualHeatCardComponent {
     return code === RaceCode.PersonalRecord ? this.ts.t('remarkShortPb') : code;
   }
 
-  /** CSS class for the remark badge (PR and the records → purple, the records also pulse, else orange). */
-  protected remarkBadgeClass(remark: string): string {
-    const v = remark.toUpperCase();
-    if (RECORD_CODES.has(v)) return 'individual-badge-purple individual-badge-record';
-    return v === RaceCode.PersonalRecord ? 'individual-badge-purple' : 'individual-badge-orange';
-  }
-
-  /** CSS class for the invalid_reason badge (DQ → red, else orange). */
-  protected invalidBadgeClass(reason: string): string {
-    return reason.toUpperCase() === RaceCode.Disqualified ? 'individual-badge-red' : 'individual-badge-orange';
-  }
+  protected remarkBadgeClass = remarkBadgeClass;
+  protected invalidBadgeClass = invalidBadgeClass;
 
   /**
    * Compares the competitor's total time against their personal best once

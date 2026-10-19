@@ -197,14 +197,17 @@ test('in forced colours the slider thumb and the badges are still drawn', async 
 for (const [name, url, ready] of [
   ['ranking', '/ranking?competitionId=e2e-lanes', '.ranking-table'],
   ['start list', '/start-list?competitionId=e2e-lanes', '.start-list-heat'],
+  ['logs', '/logs?competitionId=e2e-pairs', '.logs-changes c-badge.individual-badge-orange'],
   ['settings', '/settings?competitionId=e2e-individual', 'main'],
 ] as const) {
   for (const scheme of ['light', 'dark'] as const) {
     for (const width of [320, 390, 1280]) {
-      test(`the ${name} page (${scheme}, ${width}px): no axe violations`, async ({ page }) => {
+      test(`the ${name} page (${scheme}, ${width}px): no axe violations`, async ({ page, request }) => {
         await page.emulateMedia({ colorScheme: scheme });
         await page.setViewportSize({ width, height: 900 });
         await page.goto(url);
+        // the log lists what arrives after the page opened, so let the replay play again
+        if (name === 'logs') await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-pairs' } });
         await expect(page.locator(ready).first()).toBeVisible({ timeout: 15_000 });
         await expect(page.locator('html')).toHaveAttribute('data-coreui-theme', scheme);
         await settleTransitions(page);
@@ -223,6 +226,9 @@ test('a heat is a list with one item per skater, and a status such as DNF is on 
   // the DNF of the second skater is a remark and the reason of the race; one badge says it
   const card = page.getByRole('listitem').filter({ hasText: 'Competitor B' });
   await expect(card.locator('c-badge', { hasText: /^DNF$/ })).toHaveCount(1, { timeout: 15_000 });
+  // the lane is told by colour on screen, so it is also in the text of the item
+  const items = page.getByRole('list', { name: /^Heat 1$/ }).getByRole('listitem');
+  for (let i = 0; i < 2; i++) await expect(items.nth(i)).toContainText(/(White|Red|Yellow|Blue) lane/);
   // a lane without a skater is no list item
   expect(await page.getByRole('list', { name: /^Heat 1$/ }).locator('[role=listitem]').count()).toBe(2);
 });

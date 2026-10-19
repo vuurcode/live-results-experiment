@@ -1,5 +1,7 @@
 @use '../tokens' as *;
 @use '../shared';
+@use '../remark-badge';
+@use '../lane-name';
 
 // ===== TIMED DISTANCES =====
 // Plain heat row — no border/background, just a label + cards below
@@ -55,20 +57,6 @@
     justify-self: center;
   }
 }
-.individual-badge-purple,
-.individual-badge-red,
-.individual-badge-orange {
-  font-size: 0.6em !important;
-  flex-shrink: 0;
-  white-space: nowrap;
-  color: #fff !important;
-}
-.individual-badge-purple { background-color: #6f42c1 !important; } // white: 6.5:1
-.individual-badge-record { animation: recordGlow 7.5s infinite; } // keeps the purple of the record badges, with the rainbow pulse around it
-@media (prefers-reduced-motion: reduce) { .individual-badge-record { animation: none; } }
-:host-context([data-animations='off']) .individual-badge-record { animation: none; }
-.individual-badge-red    { background-color: #c93434 !important; } // white: 5.2:1 (pure red gave 4.0:1)
-.individual-badge-orange { background-color: #fd7e14 !important; color: #212529 !important; } // dark text: 6.0:1 (white gave 2.6:1)
 // Card title: badge + name + Finished badge inline after name
 .individual-comp-title { display: flex; flex-direction: column; } // the header fills the title, which is as tall as the tallest of its row
 .individual-comp-header {
@@ -104,8 +92,6 @@
   overflow: hidden;
   padding: 0.15em 0.7em;
   border-radius: 0.5em;
-  background: var(--lane-color, transparent);
-  color: #fff;
 }
 .individual-comp-name-line {
   display: block;
@@ -114,10 +100,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.individual-comp-name-text[data-lane='white'],
-.individual-comp-name-text[data-lane='yellow'] { color: #212529; }
-.individual-comp-name-text[data-lane='red'] { background: #c93434; } // white text on it: 5.2:1, pure red gave 4.0:1
-.individual-comp-name-text[data-lane='white'] { box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.5); } // keeps the white badge visible on a light card
 .individual-comp-meta {
   display: block;
   text-align: center;
