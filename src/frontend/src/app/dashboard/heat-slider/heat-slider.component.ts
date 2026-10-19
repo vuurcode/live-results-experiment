@@ -26,6 +26,9 @@ const ZOOM_ANIM_MS = 1000;
 /** The width of a character of the small distance texts, in px, and the room kept between two texts. */
 const TEXT_CHAR_PX = 5.4;
 const TEXT_GAP_PX = 6;
+/** The browser storage key that remembers the slide hint was shown, and how long it stays up, in ms. */
+const HINT_KEY = 'sliderHintSeen';
+const HINT_MS = 10_000;
 /** The track's thumb size in px: the markers sit inside it, so the bar's ends are half a thumb in. */
 const THUMB_PX = 24;
 
@@ -77,14 +80,40 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     cancelAnimationFrame(this.slideFrame);
     this.resizeObserver?.disconnect();
     if (this.lingerTimer !== null) clearTimeout(this.lingerTimer);
+    if (this.hintTimer !== null) clearTimeout(this.hintTimer);
   }
 
   ngOnChanges(): void {
     this.startIntro();
+    this.startHint();
     if (this.liveIndex === this.seenLive && this.steps.length === this.seenCount) return; // another input changing must not cut a glide short
     this.glide = this.liveIndex > this.seenLive && this.steps.length === this.seenCount;
     this.seenLive = this.liveIndex;
     this.seenCount = this.steps.length;
+  }
+
+  /** A hint, shown once on a narrow screen to someone who has not moved the slider yet, that the bar can be slid. */
+  protected hintShown = false;
+  private hintDone = false;
+  private hintTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private startHint(): void {
+    if (this.hintDone || this.steps.length < 2 || !(this.narrow?.matches ?? false)) return;
+    this.hintDone = true;
+    try { if (localStorage.getItem(HINT_KEY)) return; } catch { /* storage blocked: the hint shows on every visit */ }
+    this.hintShown = true;
+    this.hintTimer = setTimeout(() => this.dismissHint(), HINT_MS);
+  }
+
+  /** The viewer has used the slider, or the hint has been up long enough: it is not shown again. */
+  private dismissHint(): void {
+    if (this.hintTimer !== null) clearTimeout(this.hintTimer);
+    this.hintTimer = null;
+    this.hintDone = true;
+    if (!this.hintShown) return;
+    this.hintShown = false;
+    try { localStorage.setItem(HINT_KEY, '1'); } catch { /* nothing to remember it in */ }
+    this.cdr.markForCheck();
   }
 
   private startIntro(): void {
@@ -126,7 +155,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
 
   /**
    * Held on a narrow screen, the bar zooms in on a window of heats around the thumb, so a heat is wide enough to
-   * land on; the whole event stays visible as a mini-map above it.
+   * read; the whole event stays visible as a mini-map below it, which takes the gestures: the zoomed bar is only drawn.
    */
   protected get zoomed(): boolean {
     return this.zoomHeld && this.zoomable;
@@ -370,6 +399,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   }
 
   protected goLive(): void {
+    this.dismissHint();
     this.wantsLive = true;
     this.positionChange.emit(null);
   }
@@ -387,6 +417,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   }
 
   protected onInput(event: Event): void {
+    this.dismissHint();
     if (this.zoomed) {
       (event.target as HTMLInputElement).value = String(this.value); // the zoomed thumb moves by the drag below, not by the input's own scale
       return;
@@ -418,7 +449,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   private zoomHeld = false;
   private lingerTimer: ReturnType<typeof setTimeout> | null = null;
 
-  /** Where the pointer and the thumb were when the zoom began; the drag moves the thumb from there, one heat per window step. */
+  /** Where the pointer and the thumb were when the zoom began; the drag moves the thumb from there, over the scale of the mini-map. */
   private lastX = 0;
   private anchorX = 0;
   private anchorValue = 0;
@@ -427,6 +458,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   protected miniDragging = false;
 
   protected miniDown(event: PointerEvent): void {
+    this.dismissHint();
     if (this.steps.length < 2 || event.button > 0) return;
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     this.miniDragging = true;
@@ -461,6 +493,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   }
 
   protected startDrag(event: PointerEvent): void {
+    this.dismissHint();
     this.dragging = true;
     this.lastX = event.clientX;
     this.holdTimer = setTimeout(() => {
@@ -513,10 +546,10 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     if (!this.dragging) return;
     this.lastX = event.clientX;
     if (!this.zoomed) return;
-    const track = this.host.nativeElement.querySelector('.track');
-    const width = track?.getBoundingClientRect().width ?? 0;
+    // the zoomed bar is only drawn: a drag moves the thumb as one on the mini-map does, over the scale of the whole event
+    const width = this.host.nativeElement.querySelector('.minimap')?.getBoundingClientRect().width ?? 0;
     if (width === 0) return;
-    const value = Math.min(this.last, Math.max(0, this.anchorValue + Math.round(((event.clientX - this.anchorX) / width) * (ZOOM_STEPS - 1))));
+    const value = Math.min(this.last, Math.max(0, this.anchorValue + Math.round(((event.clientX - this.anchorX) / width) * this.last)));
     if (value === this.value) return;
     this.previewIndex = value;
     this.choose(value);
@@ -543,6 +576,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   /** Scrolling over the slider moves the thumb: down and right go to later heats. Small trackpad deltas add up to a step; one step per event, however far it scrolled. */
   protected onWheel(event: WheelEvent): void {
     if (this.steps.length < 2 || this.dragging) return;
+    this.dismissHint();
     event.preventDefault();
     this.lingerZoom();
     const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;

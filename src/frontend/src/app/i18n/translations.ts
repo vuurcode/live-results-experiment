@@ -89,6 +89,7 @@ export interface Translations {
   sliderLabel: string;
   sliderMore: string;   // contains {n}
   sliderYou: string;    // the label under the slider thumb when it is not on the live heat
+  sliderHint: string;   // the hint, shown once on a narrow screen, that the slider can be slid
   sliderEnd: string;    // the label at the right end of the slider
   peekStart: string;    // the grey hint left of the first heat of a distance
   peekEnd: string;      // the grey hint right of the last heat of a distance

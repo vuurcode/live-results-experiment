@@ -89,6 +89,7 @@ export const en: Translations = {
   sliderMore: '+{n} more',
   sliderYou: 'You are viewing',
   sliderEnd: 'End',
+  sliderHint: 'Slide to browse the heats',
   peekStart: 'Start of distance',
   peekEnd: 'End of distance',
   futureLap: 'Future lap',

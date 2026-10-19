@@ -89,6 +89,7 @@ export const it: Translations = {
   sliderMore: '+{n} altri',
   sliderYou: 'Stai guardando',
   sliderEnd: 'Fine',
+  sliderHint: 'Scorri per sfogliare le batterie',
   peekStart: 'Inizio della distanza',
   peekEnd: 'Fine della distanza',
   futureLap: 'Giro futuro',

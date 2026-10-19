@@ -89,6 +89,7 @@ export const nb: Translations = {
   sliderMore: '+{n} til',
   sliderYou: 'Du ser på',
   sliderEnd: 'Slutt',
+  sliderHint: 'Skyv for å bla gjennom heatene',
   peekStart: 'Start på distansen',
   peekEnd: 'Slutt på distansen',
   futureLap: 'Kommende runde',

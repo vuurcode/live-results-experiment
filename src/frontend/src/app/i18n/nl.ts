@@ -89,6 +89,7 @@ export const nl: Translations = {
   sliderMore: '+{n} meer',
   sliderYou: 'Je bekijkt nu',
   sliderEnd: 'Einde',
+  sliderHint: 'Schuif om door de ritten te bladeren',
   peekStart: 'Begin afstand',
   peekEnd: 'Einde afstand',
   futureLap: 'Toekomstige ronde',

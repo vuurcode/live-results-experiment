@@ -59,6 +59,27 @@ test.describe('heat slider', () => {
     expect(await page.locator('.mark-tick').count()).toBeGreaterThan(0);
   });
 
+  test('a narrow screen hints once that the bar can be slid, until it is used', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.goto('/?competitionId=e2e-pairs');
+    const hint = page.locator('.slide-hint');
+    await expect(hint).toHaveText('Slide to browse the heats', { timeout: 15_000 });
+    await expect(hint).toBeVisible();
+    await slider(page).focus();
+    await page.keyboard.press('Home');
+    await expect(hint).toHaveCount(0);
+    await page.reload();
+    await expect(slider(page)).toBeVisible({ timeout: 15_000 });
+    await expect(hint).toHaveCount(0);
+  });
+
+  test('a wide screen shows no slide hint', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/?competitionId=e2e-pairs');
+    await expect(slider(page)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.slide-hint')).toHaveCount(0);
+  });
+
   test('the slider fits the screen without horizontal scroll', async ({ page }) => {
     for (const width of [320, 390, 1280]) {
       await page.setViewportSize({ width, height: 800 });
