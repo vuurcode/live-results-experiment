@@ -1,13 +1,13 @@
 :host { display: block; }
 .peeks { position: relative; }
 .peek-current { min-width: 0; } // the full row wide, so the lane bands run across it; the cards centre themselves
-// the halves are pinned to the sides of the screen with a little space, faint and out of the way of pointers; the whole card is hinted at by its name badges alone
+// the halves are pinned to the sides of the screen with a little space, faint and out of the way of pointers; the whole card is hinted at by its name badges alone.
+// They are faint by a tinted background, not by opacity, which would take the contrast out of the text.
 .peek {
   position: absolute;
   top: 0;
   bottom: 0;
   overflow: hidden;
-  opacity: 0.35;
   pointer-events: none;
 }
 .peek-before { left: 1rem; } // SIDE_GAP in the component
@@ -18,8 +18,8 @@
   box-sizing: border-box;
   padding: 0.15em 0.7em;
   border-radius: 0.5em;
-  background: var(--lane, #6c757d);
-  color: #fff;
+  background: color-mix(in srgb, var(--lane, #6c757d) 30%, transparent);
+  color: var(--lr-text);
   white-space: nowrap;
   overflow: hidden;
 }
@@ -65,8 +65,8 @@
   stroke-linejoin: round;
   opacity: 0.6;
 }
-.peek-name[data-lane='white'] { --lane: white; color: #212529; box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.5); }
-.peek-name[data-lane='yellow'] { --lane: yellow; color: #212529; }
+.peek-name[data-lane='white'] { --lane: white; box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.5); }
+.peek-name[data-lane='yellow'] { --lane: yellow; }
 .peek-name[data-lane='red'] { --lane: #c93434; }
 .peek-name[data-lane='blue'] { --lane: blue; }
 .peek-name[data-lane='orange'] { --lane: orange; }

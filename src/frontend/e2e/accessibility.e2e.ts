@@ -43,7 +43,7 @@ test.describe('accessibility', () => {
       await expect(page.locator('html')).toHaveAttribute('data-coreui-theme', scheme);
       await settleTransitions(page);
 
-      const { violations } = await new AxeBuilder({ page }).exclude('.peek').withTags(TAGS).analyze(); // the peeks are aria-hidden hints at the neighbouring heats, faint on purpose
+      const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
       expect(
         violations.map((v) => `${v.id} (${v.nodes.length}): ${v.nodes[0]?.target.join(' ')}`),
       ).toEqual([]);
@@ -78,7 +78,7 @@ test('the open menu has no axe violations', async ({ page, request }) => {
   await page.getByRole('button', { name: 'Menu', exact: true }).click();
   await expect(page.locator('#mainMenu')).toBeVisible();
   await settleTransitions(page);
-  const { violations } = await new AxeBuilder({ page }).exclude('.peek').withTags(TAGS).analyze();
+  const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
   expect(violations.map((v) => `${v.id} (${v.nodes.length}): ${v.nodes[0]?.target.join(' ')}`)).toEqual([]);
 });
 
