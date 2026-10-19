@@ -1,0 +1,1075 @@
+{
+ "id": "e2e-long-event",
+ "name": "E2E Long Event",
+ "isInternational": false,
+ "success": true,
+ "errorMessage": null,
+ "errorMode": 0,
+ "resultUrl": null,
+ "distances": [
+  {
+   "id": "dist-500",
+   "name": "500 meter",
+   "eventNumber": 1.0,
+   "isLive": true,
+   "races": [
+    {
+     "id": "r1",
+     "competitor": {
+      "id": "c1",
+      "name": "Skater 1",
+      "startNumber": "1",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 1,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.2000000",
+       "lapTime": "00:00:10.2000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r2",
+     "competitor": {
+      "id": "c2",
+      "name": "Skater 2",
+      "startNumber": "2",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 1,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.2000000",
+       "lapTime": "00:00:10.2000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r3",
+     "competitor": {
+      "id": "c3",
+      "name": "Skater 3",
+      "startNumber": "3",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 2,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.3000000",
+       "lapTime": "00:00:10.3000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r4",
+     "competitor": {
+      "id": "c4",
+      "name": "Skater 4",
+      "startNumber": "4",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 2,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.3000000",
+       "lapTime": "00:00:10.3000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r5",
+     "competitor": {
+      "id": "c5",
+      "name": "Skater 5",
+      "startNumber": "5",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 3,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.4000000",
+       "lapTime": "00:00:10.4000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r6",
+     "competitor": {
+      "id": "c6",
+      "name": "Skater 6",
+      "startNumber": "6",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 3,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.4000000",
+       "lapTime": "00:00:10.4000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r7",
+     "competitor": {
+      "id": "c7",
+      "name": "Skater 7",
+      "startNumber": "7",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 4,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.5000000",
+       "lapTime": "00:00:10.5000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r8",
+     "competitor": {
+      "id": "c8",
+      "name": "Skater 8",
+      "startNumber": "8",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 4,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.5000000",
+       "lapTime": "00:00:10.5000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r9",
+     "competitor": {
+      "id": "c9",
+      "name": "Skater 9",
+      "startNumber": "9",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 5,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.6000000",
+       "lapTime": "00:00:10.6000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r10",
+     "competitor": {
+      "id": "c10",
+      "name": "Skater 10",
+      "startNumber": "10",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 5,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.6000000",
+       "lapTime": "00:00:10.6000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r11",
+     "competitor": {
+      "id": "c11",
+      "name": "Skater 11",
+      "startNumber": "11",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 6,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.7000000",
+       "lapTime": "00:00:10.7000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r12",
+     "competitor": {
+      "id": "c12",
+      "name": "Skater 12",
+      "startNumber": "12",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 6,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.7000000",
+       "lapTime": "00:00:10.7000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r13",
+     "competitor": {
+      "id": "c13",
+      "name": "Skater 13",
+      "startNumber": "13",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 7,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.8000000",
+       "lapTime": "00:00:10.8000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r14",
+     "competitor": {
+      "id": "c14",
+      "name": "Skater 14",
+      "startNumber": "14",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 7,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.8000000",
+       "lapTime": "00:00:10.8000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r15",
+     "competitor": {
+      "id": "c15",
+      "name": "Skater 15",
+      "startNumber": "15",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 8,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.9000000",
+       "lapTime": "00:00:10.9000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r16",
+     "competitor": {
+      "id": "c16",
+      "name": "Skater 16",
+      "startNumber": "16",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 8,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.9000000",
+       "lapTime": "00:00:10.9000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r17",
+     "competitor": {
+      "id": "c17",
+      "name": "Skater 17",
+      "startNumber": "17",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 9,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.1000000",
+       "lapTime": "00:00:10.1000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r18",
+     "competitor": {
+      "id": "c18",
+      "name": "Skater 18",
+      "startNumber": "18",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 9,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.1000000",
+       "lapTime": "00:00:10.1000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r19",
+     "competitor": {
+      "id": "c19",
+      "name": "Skater 19",
+      "startNumber": "19",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 10,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.2000000",
+       "lapTime": "00:00:10.2000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r20",
+     "competitor": {
+      "id": "c20",
+      "name": "Skater 20",
+      "startNumber": "20",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 10,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.2000000",
+       "lapTime": "00:00:10.2000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r21",
+     "competitor": {
+      "id": "c21",
+      "name": "Skater 21",
+      "startNumber": "21",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 11,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.3000000",
+       "lapTime": "00:00:10.3000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r22",
+     "competitor": {
+      "id": "c22",
+      "name": "Skater 22",
+      "startNumber": "22",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 11,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.3000000",
+       "lapTime": "00:00:10.3000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r23",
+     "competitor": {
+      "id": "c23",
+      "name": "Skater 23",
+      "startNumber": "23",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 12,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.4000000",
+       "lapTime": "00:00:10.4000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r24",
+     "competitor": {
+      "id": "c24",
+      "name": "Skater 24",
+      "startNumber": "24",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 12,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:43.0000000",
+     "personalRecord": "00:00:43.0000000",
+     "laps": [
+      {
+       "time": "00:00:10.4000000",
+       "lapTime": "00:00:10.4000000"
+      },
+      {
+       "time": "00:00:43.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
+    },
+    {
+     "id": "r25",
+     "competitor": {
+      "id": "c25",
+      "name": "Skater 25",
+      "startNumber": "25",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 13,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r26",
+     "competitor": {
+      "id": "c26",
+      "name": "Skater 26",
+      "startNumber": "26",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 13,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r27",
+     "competitor": {
+      "id": "c27",
+      "name": "Skater 27",
+      "startNumber": "27",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 14,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r28",
+     "competitor": {
+      "id": "c28",
+      "name": "Skater 28",
+      "startNumber": "28",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 14,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r29",
+     "competitor": {
+      "id": "c29",
+      "name": "Skater 29",
+      "startNumber": "29",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 15,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r30",
+     "competitor": {
+      "id": "c30",
+      "name": "Skater 30",
+      "startNumber": "30",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 15,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r31",
+     "competitor": {
+      "id": "c31",
+      "name": "Skater 31",
+      "startNumber": "31",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 16,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r32",
+     "competitor": {
+      "id": "c32",
+      "name": "Skater 32",
+      "startNumber": "32",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 16,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r33",
+     "competitor": {
+      "id": "c33",
+      "name": "Skater 33",
+      "startNumber": "33",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 17,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r34",
+     "competitor": {
+      "id": "c34",
+      "name": "Skater 34",
+      "startNumber": "34",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 17,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r35",
+     "competitor": {
+      "id": "c35",
+      "name": "Skater 35",
+      "startNumber": "35",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 18,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r36",
+     "competitor": {
+      "id": "c36",
+      "name": "Skater 36",
+      "startNumber": "36",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 18,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r37",
+     "competitor": {
+      "id": "c37",
+      "name": "Skater 37",
+      "startNumber": "37",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 19,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r38",
+     "competitor": {
+      "id": "c38",
+      "name": "Skater 38",
+      "startNumber": "38",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 19,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r39",
+     "competitor": {
+      "id": "c39",
+      "name": "Skater 39",
+      "startNumber": "39",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 20,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r40",
+     "competitor": {
+      "id": "c40",
+      "name": "Skater 40",
+      "startNumber": "40",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "IFX"
+     },
+     "heat": 20,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    }
+   ]
+  }
+ ]
+}
