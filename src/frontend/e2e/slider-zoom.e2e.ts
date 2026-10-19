@@ -15,6 +15,18 @@ test.describe('a long event', () => {
     await expect(page.locator('.live-pill')).toHaveAttribute('aria-pressed', 'true');
   });
 
+  test('the Live and You pills never cover each other, near or far apart', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    for (const heat of [13, 14, 18]) {
+      await page.goto(heatUrl(COMPETITION, 'dist-500', heat));
+      await expect(page.locator('.you-pill')).toBeVisible({ timeout: 15_000 });
+      await page.waitForTimeout(600);
+      const [live, you] = await Promise.all(['.live-pill', '.you-pill'].map((selector) => page.locator(selector).boundingBox()));
+      const apart = live!.x + live!.width <= you!.x || you!.x + you!.width <= live!.x || live!.y + live!.height <= you!.y || you!.y + you!.height <= live!.y;
+      expect(apart, `heat ${heat}`).toBe(true);
+    }
+  });
+
   test('on a narrow screen the zoomed bar is only drawn and the overview below it takes the gestures', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
     await page.goto(`/?competitionId=${COMPETITION}`);

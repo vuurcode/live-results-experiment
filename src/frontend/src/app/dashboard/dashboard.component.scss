@@ -137,6 +137,16 @@
 :host ::ng-deep .step-view.slide-from-right :is(.individual-heat-label, .individual-competitor-card, .peek) { animation: slideFromRight 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
 :host ::ng-deep .step-view.slide-from-left :is(.individual-heat-label, .individual-competitor-card, .peek) { animation: slideFromLeft 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
 // the cards travel the whole width, as if dragged along by the slider
+// The swipe hint: the heat swings left and right like a card being dragged, a few times.
+:host ::ng-deep .step-view.swipe-hint :is(.individual-competitor-card, .peek) { animation: swipeHint 2.4s ease-in-out 0.4s 4; }
+@keyframes swipeHint {
+  0%, 100% { transform: none; }
+  25% { transform: translateX(-2.5rem) rotate(-3deg); }
+  75% { transform: translateX(2.5rem) rotate(3deg); }
+}
+@media (prefers-reduced-motion: reduce) { :host ::ng-deep .step-view.swipe-hint :is(.individual-competitor-card, .peek) { animation: none; } }
+:host-context([data-animations='off']) ::ng-deep .step-view.swipe-hint :is(.individual-competitor-card, .peek) { animation: none; }
+
 @keyframes slideFromRight { from { opacity: 0.2; transform: translateX(100%) rotate(2deg); } }
 @keyframes slideFromLeft { from { opacity: 0.2; transform: translateX(-100%) rotate(-2deg); } }
 @media (prefers-reduced-motion: reduce) { :host ::ng-deep .step-view * { animation: none !important; } }

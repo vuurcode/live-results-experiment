@@ -91,6 +91,13 @@ export class DashboardComponent implements OnInit {
   protected liveEventNumber: number | null = null;
   /** Mass start competitors the viewer follows; several can be selected at once. A new set on every change, for the OnPush rows. */
   protected selectedRaceIds: ReadonlySet<string> = new Set();
+  /** The swipe hint of the slider is up: the heats swing to and fro to show they can be swiped. */
+  protected swipeHint = false;
+  protected setSwipeHint(on: boolean): void {
+    this.swipeHint = on;
+    this.cdr.markForCheck();
+  }
+
   protected activeHeatKey: { distanceId: string; label: string } | null = null;
 
   /** The step the viewer slid to; null follows the live heat. */

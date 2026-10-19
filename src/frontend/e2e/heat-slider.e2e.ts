@@ -63,11 +63,14 @@ test.describe('heat slider', () => {
     await page.setViewportSize({ width: 390, height: 800 });
     await page.goto('/?competitionId=e2e-pairs');
     const hint = page.locator('.slide-hint');
-    await expect(hint).toHaveText('Slide to browse the heats', { timeout: 15_000 });
+    await expect(hint).toContainText('Swipe left or right to change heat', { timeout: 15_000 });
     await expect(hint).toBeVisible();
+    // the heat swings to and fro while the hint is up
+    await expect(page.locator('.step-view.swipe-hint .individual-competitor-card').first()).toHaveCSS('animation-name', /swipeHint$/);
     await slider(page).focus();
     await page.keyboard.press('Home');
     await expect(hint).toHaveCount(0);
+    await expect(page.locator('.step-view.swipe-hint')).toHaveCount(0);
     await page.reload();
     await expect(slider(page)).toBeVisible({ timeout: 15_000 });
     await expect(hint).toHaveCount(0);

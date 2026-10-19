@@ -26,6 +26,8 @@ const ZOOM_ANIM_MS = 1000;
 /** The width of a character of the small distance texts, in px, and the room kept between two texts. */
 const TEXT_CHAR_PX = 5.4;
 const TEXT_GAP_PX = 6;
+/** The px between the Live and You markers below which their pills would cover each other, so the You pill takes a second row. */
+const PILLS_APART_PX = 150;
 /** The browser storage key that remembers the slide hint was shown, and how long it stays up, in ms. */
 const HINT_KEY = 'sliderHintSeen';
 const HINT_MS = 10_000;
@@ -59,6 +61,8 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   private seenLive = 0;
   private seenCount = 0;
   @Output() positionChange = new EventEmitter<number | null>();
+  /** Whether the swipe hint is up, so the page can show the heats sliding to and fro with it. */
+  @Output() hintChange = new EventEmitter<boolean>();
 
   private trackWidth = 0;
   private resizeObserver: ResizeObserver | null = null;
@@ -85,6 +89,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
 
   ngOnChanges(): void {
     this.startIntro();
+    if (this.hintShown && this.position !== this.hintPosition) this.dismissHint(); // the viewer swiped to another heat
     this.startHint();
     if (this.liveIndex === this.seenLive && this.steps.length === this.seenCount) return; // another input changing must not cut a glide short
     this.glide = this.liveIndex > this.seenLive && this.steps.length === this.seenCount;
@@ -92,9 +97,10 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     this.seenCount = this.steps.length;
   }
 
-  /** A hint, shown once on a narrow screen to someone who has not moved the slider yet, that the bar can be slid. */
+  /** A hint, shown once on a narrow screen to someone who has not moved the slider yet, that the heats can be swiped (and the bar slid). */
   protected hintShown = false;
   private hintDone = false;
+  private hintPosition: number | null = null;
   private hintTimer: ReturnType<typeof setTimeout> | null = null;
 
   private startHint(): void {
@@ -102,6 +108,8 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     this.hintDone = true;
     try { if (localStorage.getItem(HINT_KEY)) return; } catch { /* storage blocked: the hint shows on every visit */ }
     this.hintShown = true;
+    this.hintPosition = this.position;
+    Promise.resolve().then(() => this.hintChange.emit(true)); // not while the page is being checked
     this.hintTimer = setTimeout(() => this.dismissHint(), HINT_MS);
   }
 
@@ -112,6 +120,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     this.hintDone = true;
     if (!this.hintShown) return;
     this.hintShown = false;
+    this.hintChange.emit(false);
     try { localStorage.setItem(HINT_KEY, '1'); } catch { /* nothing to remember it in */ }
     this.cdr.markForCheck();
   }
@@ -264,7 +273,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
 
   /** Which way the Live and You labels of the mini-map lean so they do not cover each other: apart when the dots are close. */
   protected get miniLean(): { live: string; you: string } {
-    const close = Math.abs(this.miniLive - this.miniValue) * this.trackWidth < 48;
+    const close = Math.abs(this.miniLive - this.miniValue) * this.trackWidth < 120;
     if (!close) return { live: '', you: '' };
     return this.miniValue < this.miniLive ? { live: 'lean-right', you: 'lean-left' } : { live: 'lean-left', you: 'lean-right' };
   }
@@ -376,6 +385,12 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   protected get liveText(): string {
     const numbers = this.heatNumbers(this.liveIndex);
     return [this.ts.t('badgeLive'), numbers.map((n) => `#${n}`).join('/')].filter(Boolean).join(' ');
+  }
+
+  /** Whether the You pill goes on a row of its own, because the Live pill is too near for both to fit side by side. */
+  protected get youStacked(): boolean {
+    if (this.live || this.trackWidth === 0 || !this.inWindow(this.liveIndex)) return false;
+    return Math.abs(this.fraction(this.value) - this.fraction(this.liveIndex)) * (this.trackWidth - THUMB_PX) < PILLS_APART_PX;
   }
 
   /** The text of the viewing label: You are viewing, with the number of the viewed heat, or both numbers of a quartet. */

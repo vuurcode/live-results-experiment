@@ -13,6 +13,16 @@ async function restartReplay(request: APIRequestContext, competition: string): P
   await new Promise((resolve) => setTimeout(resolve, 800));
 }
 
+test.describe('cards without a time', () => {
+  test('do not caption the empty total as a finished result', async ({ page, request }) => {
+    await restartReplay(request, 'e2e-individual');
+    await page.goto('/?competitionId=e2e-individual');
+    const ghost = page.locator('.individual-ghost-final .compact-reached').first();
+    await expect(ghost).toBeAttached({ timeout: 15_000 });
+    await expect(ghost).toBeHidden();
+  });
+});
+
 test.describe('competition selection', () => {
   test('follows the competition named in the page URL', async ({ page, request }) => {
     await restartReplay(request, 'e2e-mass');
@@ -388,7 +398,7 @@ test.describe('mass start', () => {
 test('lists the competitions of today and opens the chosen one', async ({ page }) => {
   await page.goto('/?competitionId=e2e-individual');
   const select = page.getByLabel('Competitions today');
-  await expect(select.locator('option')).toHaveCount(6); // the six fixture competitions; the mock's other-day and other-venue entries are filtered out
+  await expect(select.locator('option')).toHaveCount(7); // the seven fixture competitions; the mock's other-day and other-venue entries are filtered out
   await expect(select).toHaveValue('e2e-individual');
   await select.selectOption('e2e-mass');
   await page.waitForURL(/competitionId=e2e-mass/);

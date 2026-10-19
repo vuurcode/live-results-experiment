@@ -18,13 +18,13 @@
       }
       @let view = view$ | async;
       @if (view; as v) {
-        <app-heat-slider class="heat-slider-host" [steps]="v.steps" [liveIndex]="v.live" [position]="position" (positionChange)="setPosition($event, v)" />
+        <app-heat-slider class="heat-slider-host" [steps]="v.steps" [liveIndex]="v.live" [position]="position" (positionChange)="setPosition($event, v)" (hintChange)="setSwipeHint($event)" />
         @let step = selectedStep(v);
         @for (distance of v.distances; track distance.id) {
           @if (step && distance.id === step.distanceId) {
             <!-- a new element per step, so the slide-in plays again whenever the step changes -->
             @for (current of [step]; track current.key) {
-            <section class="step-view" [class.slide-from-left]="slideFrom === 'left'" [class.slide-from-right]="slideFrom === 'right'" [attr.data-distance-body]="distance.id" [attr.aria-label]="distance.name">
+            <section class="step-view" [class.swipe-hint]="swipeHint" [class.slide-from-left]="slideFrom === 'left'" [class.slide-from-right]="slideFrom === 'right'" [attr.data-distance-body]="distance.id" [attr.aria-label]="distance.name">
               @if (distance.isMassStart) {
                 <h2 class="distance-title d-flex align-items-center gap-2 flex-wrap">
                   @if (distance.isLive) {
