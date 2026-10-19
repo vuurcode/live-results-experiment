@@ -179,6 +179,12 @@ html {
     transition: none !important;
   }
 }
+// Forced colours (Windows high contrast) drop backgrounds, so a badge needs an outline to stay a badge; the lane colour of a
+// name badge is what tells the lanes apart, so it keeps its own colours.
+@media (forced-colors: active) {
+  .individual-split-badge, .individual-comp-name-text, .peek-name, .individual-watermark { border: 1px solid CanvasText; }
+  .individual-comp-name-text { forced-color-adjust: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation: none !important;

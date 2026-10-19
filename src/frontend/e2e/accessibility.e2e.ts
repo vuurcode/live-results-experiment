@@ -164,3 +164,25 @@ test('text spacing set by the visitor causes no horizontal scroll and no clipped
   const { scrollWidth, clientWidth } = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
   expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
 });
+
+test('in forced colours the slider thumb and the badges are still drawn', async ({ page, request }) => {
+  await restartReplay(request, 'e2e-pairs');
+  await page.emulateMedia({ forcedColors: 'active' });
+  await page.setViewportSize({ width: 1400, height: 800 });
+  await page.goto('/?competitionId=e2e-pairs');
+  await expect(page.locator('.individual-competitor-card').first()).toBeVisible();
+  const styles = await page.evaluate(() => {
+    const of = (selector: string) => {
+      const el = document.querySelector(selector);
+      if (!el) return null;
+      const css = getComputedStyle(el);
+      return { border: css.borderTopWidth, background: css.backgroundColor, canvas: getComputedStyle(document.body).backgroundColor };
+    };
+    return { thumb: of('.thumb-dot'), name: of('.individual-comp-name-text'), lap: of('.individual-split-badge') };
+  });
+  // the thumb has a colour of its own (not the page's), the badges an outline
+  expect(styles.thumb && styles.thumb.background !== styles.thumb.canvas).toBe(true);
+  expect(styles.thumb?.border).toBe('2px');
+  expect(styles.name?.border).toBe('1px');
+  expect(styles.lap?.border).toBe('1px');
+});

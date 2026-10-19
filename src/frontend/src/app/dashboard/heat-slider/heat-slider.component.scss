@@ -326,6 +326,11 @@ $pill-shift: translateX(calc(-1 * (clamp(0, (var(--at) - 0.15) / 0.7, 1) * (100%
   pointer-events: none;
   &.at-live { background: $live; animation: glowRed 1.5s infinite; } // red on the live heat, pulsing like the Live badge
 }
+// Forced colours (Windows high contrast) drop every background: the thumb and the marker lines are drawn in system colours instead.
+@media (forced-colors: active) {
+  .thumb-dot { forced-color-adjust: none; background: Highlight; border: 2px solid CanvasText; box-sizing: border-box; }
+  .mark-live, .you-line { forced-color-adjust: none; background: CanvasText; }
+}
 // Off the live heat the thumb has a line and a label under it like the live marker, in green and still.
 .you-line, .you-pill {
   position: absolute;
