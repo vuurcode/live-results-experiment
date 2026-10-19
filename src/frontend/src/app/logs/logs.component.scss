@@ -26,6 +26,12 @@
   margin: 0 0 0.5rem;
 }
 
+.logs-disclaimer {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  color: var(--cui-secondary-color);
+}
+
 .logs-none {
   color: var(--cui-secondary-color);
 }
@@ -55,11 +61,11 @@
     background: color-mix(in srgb, #ffc107 16%, transparent);
   }
 
-  /* under the time, where no text is: the number of the update, faint */
+  /* at the bottom right of the row: the number of the update, faint */
   &::after {
     content: attr(data-batch) / '';
     position: absolute;
-    left: 0.5rem;
+    right: 0.5rem;
     white-space: nowrap;
     bottom: 0.3rem;
     font-size: 0.7rem;

@@ -17,6 +17,7 @@ export const en: Translations = {
   menuLogs: 'Logs',
   logsTitle: 'Logs',
   logsNone: 'No events yet',
+  logsDisclaimer: 'Only the updates this device received while the match was open in the dashboard; earlier changes are not included.',
   logsNew: 'New',
   logsNoChange: 'No change',
   logsPast: 'Earlier heat',

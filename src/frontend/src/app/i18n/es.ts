@@ -17,6 +17,7 @@ export const es: Translations = {
   menuLogs: 'Registro',
   logsTitle: 'Registro',
   logsNone: 'Aún no hay eventos',
+  logsDisclaimer: 'Solo los cambios que este dispositivo recibió mientras la competición estaba abierta en el panel; los anteriores no se incluyen.',
   logsNew: 'Nuevo',
   logsNoChange: 'Sin cambios',
   logsPast: 'Serie anterior',

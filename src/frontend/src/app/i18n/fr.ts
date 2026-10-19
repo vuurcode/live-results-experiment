@@ -17,6 +17,7 @@ export const fr: Translations = {
   menuLogs: 'Journal',
   logsTitle: 'Journal',
   logsNone: 'Aucun événement pour l’instant',
+  logsDisclaimer: 'Uniquement les mises à jour reçues par cet appareil pendant que la compétition était ouverte dans le tableau de bord ; les changements antérieurs n’y figurent pas.',
   logsNew: 'Nouveau',
   logsNoChange: 'Aucun changement',
   logsPast: 'Course précédente',

@@ -6,6 +6,7 @@
     <h1 class="logs-title">{{ (eventName$ | async) || ('logsTitle' | translate) }}</h1>
   </header>
   <h2 class="logs-subtitle">{{ 'logsTitle' | translate }}</h2>
+  <p class="logs-disclaimer">{{ 'logsDisclaimer' | translate }}</p>
   @if (!rows?.length) {
     <p class="logs-none">{{ 'logsNone' | translate }}</p>
   } @else {

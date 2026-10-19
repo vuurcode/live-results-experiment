@@ -17,6 +17,7 @@ export const de: Translations = {
   menuLogs: 'Protokoll',
   logsTitle: 'Protokoll',
   logsNone: 'Noch keine Ereignisse',
+  logsDisclaimer: 'Nur die Updates, die dieses Gerät empfangen hat, während der Wettkampf im Dashboard geöffnet war; frühere Änderungen fehlen.',
   logsNew: 'Neu',
   logsNoChange: 'Keine Änderung',
   logsPast: 'Früherer Lauf',

@@ -17,6 +17,7 @@ export const it: Translations = {
   menuLogs: 'Registro',
   logsTitle: 'Registro',
   logsNone: 'Nessun evento per ora',
+  logsDisclaimer: 'Solo gli aggiornamenti ricevuti da questo dispositivo mentre la gara era aperta nella dashboard; le modifiche precedenti non sono incluse.',
   logsNew: 'Nuovo',
   logsNoChange: 'Nessun cambiamento',
   logsPast: 'Batteria precedente',

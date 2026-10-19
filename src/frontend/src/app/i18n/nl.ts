@@ -17,6 +17,7 @@ export const nl: Translations = {
   menuLogs: 'Logboek',
   logsTitle: 'Logboek',
   logsNone: 'Nog geen gebeurtenissen',
+  logsDisclaimer: 'Alleen de updates die dit apparaat heeft ontvangen terwijl de wedstrijd in het dashboard openstond; eerdere wijzigingen ontbreken.',
   logsNew: 'Nieuw',
   logsNoChange: 'Geen wijziging',
   logsPast: 'Eerdere rit',

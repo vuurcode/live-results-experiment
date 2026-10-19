@@ -18,6 +18,7 @@ export interface Translations {
   menuLogs: string;
   logsTitle: string;
   logsNone: string;
+  logsDisclaimer: string; // the log holds only what this device received while the match was open
   logsNew: string;
   logsNoChange: string;
   logsPast: string; // said before the name of a skater whose update is about a heat that was over
