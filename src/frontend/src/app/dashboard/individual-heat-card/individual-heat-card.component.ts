@@ -176,6 +176,11 @@ export class IndividualHeatCardComponent {
     return remark.trim().split(/\s+/);
   }
 
+  /** The code is a remark of the race already: its badge is shown once, not again as the invalid reason. */
+  protected isRemarked(race: CompetitorUpdate, code: string): boolean {
+    return this.splitRemarks(race.remark).some((r) => r.toUpperCase() === code.toUpperCase());
+  }
+
   /** The remark codes that mark the card: a manual time (MT) only says how the time was taken, so the card shows the time and the PR status as usual. */
   private markingCodes(remark: string | null): string[] {
     return this.splitRemarks(remark).map(v => v.toUpperCase()).filter(v => v !== RaceCode.ManualTime);

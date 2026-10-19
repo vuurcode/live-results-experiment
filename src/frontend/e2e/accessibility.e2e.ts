@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { MOCK_URL } from './env';
+import { heatUrl } from './slider';
 
 // Same rule set as .claude/skills/accessibility/scripts/axe-scan.mjs
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
@@ -213,3 +214,15 @@ for (const [name, url, ready] of [
     }
   }
 }
+
+test('a heat is a list with one item per skater, and a status such as DNF is on the card once', async ({ page, request }) => {
+  await restartReplay(request, 'e2e-pairs');
+  await page.goto(heatUrl('e2e-pairs', 'dist-500', 1));
+  await expect(page.getByRole('list', { name: /^Heat 1$/ })).toBeVisible();
+  await expect(page.getByRole('list', { name: /^Heat 1$/ }).getByRole('listitem')).toHaveCount(2);
+  // the DNF of the second skater is a remark and the reason of the race; one badge says it
+  const card = page.getByRole('listitem').filter({ hasText: 'Competitor B' });
+  await expect(card.locator('c-badge', { hasText: /^DNF$/ })).toHaveCount(1, { timeout: 15_000 });
+  // a lane without a skater is no list item
+  expect(await page.getByRole('list', { name: /^Heat 1$/ }).locator('[role=listitem]').count()).toBe(2);
+});
