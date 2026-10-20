@@ -10,11 +10,17 @@ describe('swipeDirection', () => {
   });
 
   it('a short stroke is no swipe, however flat', () => {
-    expect(swipeDirection(at(200, 400, 0), at(150, 400, 100), 390)).toBe(0);
+    expect(swipeDirection(at(200, 400, 0), at(150, 400, 160), 390)).toBe(0);
   });
 
   it('a stroke shorter than a quarter of the screen is no swipe', () => {
-    expect(swipeDirection(at(300, 400, 0), at(210, 400, 100), 600)).toBe(0);
+    expect(swipeDirection(at(300, 400, 0), at(210, 400, 300), 600)).toBe(0);
+  });
+
+  it('a short but fast flick is a swipe, a short and slower stroke is not', () => {
+    expect(swipeDirection(at(300, 400, 0), at(240, 402, 80), 600)).toBe(1);
+    expect(swipeDirection(at(240, 400, 0), at(300, 402, 80), 600)).toBe(-1);
+    expect(swipeDirection(at(300, 400, 0), at(240, 402, 200), 600)).toBe(0);
   });
 
   it('a diagonal stroke, as made when scrolling, is no swipe', () => {
