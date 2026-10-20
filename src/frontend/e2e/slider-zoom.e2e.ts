@@ -44,6 +44,47 @@ test.describe('a long event', () => {
     expect(room.padding).toBeLessThanOrEqual(room.slider + 20);
   });
 
+  test('on a narrow screen the slider is compact, full size while the viewer moves it by hand and for a moment after', async ({ page }) => {
+    await page.setViewportSize({ width: 412, height: 915 });
+    await page.goto(`/?competitionId=${COMPETITION}`);
+    await expect(slider(page)).toBeVisible({ timeout: 15_000 });
+    const host = page.locator('.heat-slider-host');
+    const mainPadding = () => page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('main')!).paddingBottom));
+    await expect(page.locator('.heat-slider.compact')).toBeVisible();
+    await expect(page.locator('.live-pill')).toBeHidden();
+    const compact = (await host.boundingBox())!.height;
+    // the live heat moving on by itself leaves it compact
+    await page.waitForTimeout(3500);
+    await expect(page.locator('.heat-slider.compact')).toBeVisible();
+    expect(await mainPadding()).toBeLessThanOrEqual(compact + 20);
+    const scrolls = () => page.evaluate(() => document.documentElement.scrollHeight > innerHeight);
+    expect(await scrolls()).toBe(false);
+    await slider(page).focus();
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.locator('.heat-slider.compact')).toHaveCount(0);
+    await expect(page.locator('.live-pill')).toBeVisible();
+    await expect.poll(async () => (await host.boundingBox())!.height).toBeGreaterThan(compact + 20);
+    expect(await mainPadding()).toBeGreaterThanOrEqual((await host.boundingBox())!.height);
+    // left alone for a moment, it folds back
+    await expect(page.locator('.heat-slider.compact')).toBeVisible({ timeout: 5000 });
+    await expect.poll(async () => (await host.boundingBox())!.height).toBeLessThan(compact + 20);
+    expect(await scrolls()).toBe(false);
+  });
+
+  test('the You pill stays on screen while the slider is compact', async ({ page }) => {
+    await page.setViewportSize({ width: 412, height: 915 });
+    await page.goto(`/?competitionId=${COMPETITION}`);
+    await expect(slider(page)).toBeVisible({ timeout: 15_000 });
+    await slider(page).focus();
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.locator('.you-pill')).toBeVisible();
+    await expect(page.locator('.heat-slider.compact')).toBeVisible({ timeout: 5000 });
+    await page.waitForTimeout(500);
+    const you = (await page.locator('.you-pill').boundingBox())!;
+    const host = (await page.locator('.heat-slider-host').boundingBox())!;
+    expect(you.y + you.height).toBeLessThanOrEqual(Math.min(915, host.y + host.height));
+  });
+
   test('on a narrow screen the zoomed bar is only drawn and the overview below it takes the gestures', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
     await page.goto(`/?competitionId=${COMPETITION}`);

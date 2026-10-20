@@ -1,4 +1,4 @@
-<div class="heat-slider" [class.dragging]="grown" [class.pressed]="dragging" [class.following]="position === null" [class.glide]="glide" [class.intro-start]="intro === 'start'" [class.intro-go]="intro === 'go'" [class.zoomed]="zoomed" [class.zoom-clip]="zoomAmount > 0" [class.mini]="miniShown" (wheel)="onWheel($event)">
+<div class="heat-slider" [class.dragging]="grown" [class.pressed]="dragging" [class.following]="position === null" [class.glide]="glide" [class.intro-start]="intro === 'start'" [class.intro-go]="intro === 'go'" [class.zoomed]="zoomed" [class.zoom-clip]="zoomAmount > 0" [class.mini]="miniShown" [class.compact]="compact" (wheel)="onWheel($event)">
   @if (preview; as step) {
     <div class="heat-preview" role="presentation" [style.left.%]="previewFraction * 100" [style.transform]="'translateX(-' + previewFraction * 100 + '%)'">
       <div class="heat-preview-title">{{ step.label || step.distanceName }}</div>
@@ -19,7 +19,7 @@
     <div class="slide-hint" aria-hidden="true"><span class="slide-hint-arrow">←</span>{{ 'sliderHint' | translate }}<span class="slide-hint-arrow">→</span></div>
   }
   <div class="d-flex align-items-center gap-3">
-    <div class="track flex-grow-1" [class.you-stacked]="youStacked" [style.--lines]="numberLines">
+    <div class="track flex-grow-1" [class.you-stacked]="youStacked" [class.has-you]="!live" [style.--lines]="numberLines">
       <span class="bar" aria-hidden="true"></span>
       @for (index of ticks; track index) {
         @if (ticksShown && inWindow(index)) {

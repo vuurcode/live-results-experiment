@@ -31,6 +31,8 @@ const PILLS_APART_PX = 150;
 /** The browser storage key that remembers the slide hint was shown, and how long it stays up, in ms. */
 const HINT_KEY = 'sliderHintSeen';
 const HINT_MS = 10_000;
+/** How long a narrow screen's slider stays full size after the viewer last moved it, in ms. */
+const IDLE_MS = 2000;
 /** The track's thumb size in px: the markers sit inside it, so the bar's ends are half a thumb in. */
 const THUMB_PX = 24;
 
@@ -85,16 +87,59 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     this.resizeObserver?.disconnect();
     if (this.lingerTimer !== null) clearTimeout(this.lingerTimer);
     if (this.hintTimer !== null) clearTimeout(this.hintTimer);
+    if (this.idleTimer !== null) clearTimeout(this.idleTimer);
   }
 
   ngOnChanges(): void {
     this.startIntro();
+    if (this.steps.length >= 2 && this.basePosition === undefined) {
+      this.basePosition = this.position;
+      this.engaged = this.position !== null; // a heat chosen by link starts with the full slider, until the viewer has used it
+    } else if (this.basePosition !== undefined && this.position !== this.basePosition) {
+      this.basePosition = this.position;
+      this.touched(); // the viewer swiped the heats to another
+    }
     if (this.hintShown && this.position !== this.hintPosition) this.dismissHint(); // the viewer swiped to another heat
     this.startHint();
     if (this.liveIndex === this.seenLive && this.steps.length === this.seenCount) return; // another input changing must not cut a glide short
     this.glide = this.liveIndex > this.seenLive && this.steps.length === this.seenCount;
     this.seenLive = this.liveIndex;
     this.seenCount = this.steps.length;
+  }
+
+  /** The position when the heats first showed; a position that differs later was chosen by the viewer. */
+  private basePosition: number | null | undefined;
+  /** The viewer has moved the slider or the heats by hand, lately. A heat that goes live by itself does not count. */
+  private engaged = false;
+  private idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** A manual move: the slider is full size, and folds back to compact once the viewer has left it alone for a while. */
+  private touched(): void {
+    this.engaged = true;
+    this.cdr.markForCheck();
+    if (this.idleTimer !== null) clearTimeout(this.idleTimer);
+    this.idleTimer = setTimeout(() => this.fold(), IDLE_MS);
+  }
+
+  private fold(): void {
+    this.idleTimer = null;
+    if (this.dragging || this.miniDragging || this.zoomHeld || this.lingerTimer !== null) {
+      this.idleTimer = setTimeout(() => this.fold(), IDLE_MS); // still in use
+      return;
+    }
+    this.engaged = false;
+    this.cdr.markForCheck();
+  }
+
+  /** A narrow screen shows the slider compact, just the bar without the texts and pills under it, except for a while after the viewer moved it by hand. */
+  protected get compact(): boolean {
+    return !this.engaged && !this.dragging && (this.narrow?.matches ?? false) && this.steps.length > 1;
+  }
+
+  /** The viewer's own move on the slider. */
+  private engage(): void {
+    this.touched();
+    this.dismissHint();
   }
 
   /** A hint, shown once on a narrow screen to someone who has not moved the slider yet, that the heats can be swiped (and the bar slid). */
@@ -387,9 +432,9 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     return [this.ts.t('badgeLive'), numbers.map((n) => `#${n}`).join('/')].filter(Boolean).join(' ');
   }
 
-  /** Whether the You pill goes on a row of its own, because the Live pill is too near for both to fit side by side. */
+  /** Whether the You pill goes on a row of its own, because the Live pill is too near for both to fit side by side; the compact slider has no Live pill. */
   protected get youStacked(): boolean {
-    if (this.live || this.trackWidth === 0 || !this.inWindow(this.liveIndex)) return false;
+    if (this.live || this.compact || this.trackWidth === 0 || !this.inWindow(this.liveIndex)) return false;
     return Math.abs(this.fraction(this.value) - this.fraction(this.liveIndex)) * (this.trackWidth - THUMB_PX) < PILLS_APART_PX;
   }
 
@@ -414,7 +459,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   }
 
   protected goLive(): void {
-    this.dismissHint();
+    this.engage();
     this.wantsLive = true;
     this.positionChange.emit(null);
   }
@@ -427,12 +472,13 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
 
   /** The viewer moved the thumb onto a step; held, the position stays a number even on the live heat. */
   private choose(value: number): void {
+    this.touched();
     this.wantsLive = value === this.liveIndex;
     this.positionChange.emit(!this.dragging && this.wantsLive ? null : value);
   }
 
   protected onInput(event: Event): void {
-    this.dismissHint();
+    this.engage();
     if (this.zoomed) {
       (event.target as HTMLInputElement).value = String(this.value); // the zoomed thumb moves by the drag below, not by the input's own scale
       return;
@@ -473,7 +519,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   protected miniDragging = false;
 
   protected miniDown(event: PointerEvent): void {
-    this.dismissHint();
+    this.engage();
     if (this.steps.length < 2 || event.button > 0) return;
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     this.miniDragging = true;
@@ -508,7 +554,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   }
 
   protected startDrag(event: PointerEvent): void {
-    this.dismissHint();
+    this.engage();
     this.dragging = true;
     this.lastX = event.clientX;
     this.holdTimer = setTimeout(() => {
@@ -591,7 +637,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   /** Scrolling over the slider moves the thumb: down and right go to later heats. Small trackpad deltas add up to a step; one step per event, however far it scrolled. */
   protected onWheel(event: WheelEvent): void {
     if (this.steps.length < 2 || this.dragging) return;
-    this.dismissHint();
+    this.engage();
     event.preventDefault();
     this.lingerZoom();
     const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;

@@ -525,3 +525,9 @@ $pill-shift: translateX(calc(-1 * (clamp(0, (var(--at) - 0.15) / 0.7, 1) * (100%
 .zoomed .mark.mark-record.mark-fault { height: calc((0.9rem + (var(--thumb) + var(--grow)) / 2) / 2); }
 .mark-record.mark-record-live.mark-fault { height: 0.5rem; top: -0.6rem; }
 .zoomed .mark.mark-record.mark-record-live.mark-fault { height: 0.5rem; top: -0.6rem; }
+
+// Compact, until the viewer moves the slider by hand: on a narrow screen only the bar with the live heat, so the heats get the room; the texts and the Live pill come with the first touch.
+@media (max-width: 767.98px) {
+  .compact .track { margin-top: 0.9rem; &:not(.has-you) { --rest: 0.3rem; } } // off the live heat the You pill still hangs under the bar
+  .compact :is(.mark-text, .live-pill) { display: none; }
+}
