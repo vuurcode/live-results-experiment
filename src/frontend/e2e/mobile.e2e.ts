@@ -110,6 +110,21 @@ test.describe('swiping between heats', () => {
     await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
   });
 
+  test('sliding the slider names the heat it goes to on the watermark', async ({ page }) => {
+    await page.goto(heatUrl('e2e-pairs', 'dist-500', 2));
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/, { timeout: 15_000 });
+    const box = (await heat(page).boundingBox())!;
+    await page.mouse.move(box.x + box.width * 0.2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.9, box.y + box.height / 2, { steps: 8 });
+    const mark = page.locator('.swipe-target');
+    await expect(mark).toBeVisible();
+    await expect(page.locator('.swipe-target-arrow')).toHaveText('→');
+    await expect(mark).toContainText(/Heat \d+/);
+    await page.mouse.up();
+    await expect(mark).toHaveCount(0);
+  });
+
   test('dragging past the first heat marks Start, past the last End', async ({ page }) => {
     await page.goto(heatUrl('e2e-pairs', 'dist-500', 1));
     await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 1$/, { timeout: 15_000 });

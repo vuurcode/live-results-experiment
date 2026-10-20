@@ -65,6 +65,14 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   @Output() positionChange = new EventEmitter<number | null>();
   /** Whether the swipe hint is up, so the page can show the heats sliding to and fro with it. */
   @Output() hintChange = new EventEmitter<boolean>();
+  /** The heat the thumb is being dragged to, with the way it went; null when the drag ends. The page names the heat on its watermark, as for a swipe. */
+  @Output() scrubChange = new EventEmitter<{ index: number; direction: -1 | 1 } | null>();
+  private scrubDirection: -1 | 1 = 1;
+
+  private scrub(value: number): void {
+    if (value !== this.value) this.scrubDirection = value > this.value ? 1 : -1;
+    this.scrubChange.emit({ index: value, direction: this.scrubDirection });
+  }
 
   private trackWidth = 0;
   private resizeObserver: ResizeObserver | null = null;
@@ -473,6 +481,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   /** The viewer moved the thumb onto a step; held, the position stays a number even on the live heat. */
   private choose(value: number): void {
     this.touched();
+    if (this.dragging) this.scrub(value);
     this.wantsLive = value === this.liveIndex;
     this.positionChange.emit(!this.dragging && this.wantsLive ? null : value);
   }
@@ -534,6 +543,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     if (rect.width === 0) return;
     const value = Math.round(Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)) * this.last);
     if (value === this.value) return;
+    this.scrub(value);
     this.wantsLive = value === this.liveIndex;
     this.positionChange.emit(value);
     this.cdr.markForCheck();
@@ -542,6 +552,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   protected miniUp(): void {
     if (!this.miniDragging) return;
     this.miniDragging = false;
+    this.scrubChange.emit(null);
     this.positionChange.emit(this.wantsLive ? null : this.value);
     if (this.zoomHeld) {
       this.lingerTimer = setTimeout(() => {
@@ -587,6 +598,7 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     if (!this.dragging) return;
     const held = this.value;
     this.dragging = false;
+    this.scrubChange.emit(null);
     this.expanded = false;
     if (this.holdTimer !== null) clearTimeout(this.holdTimer);
     if (this.zoomTimer !== null) clearTimeout(this.zoomTimer);

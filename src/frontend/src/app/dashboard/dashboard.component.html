@@ -25,7 +25,7 @@
       }
       @let view = view$ | async;
       @if (view; as v) {
-        <app-heat-slider class="heat-slider-host" [steps]="v.steps" [liveIndex]="v.live" [position]="position" (positionChange)="setPosition($event, v)" (hintChange)="setSwipeHint($event)" />
+        <app-heat-slider class="heat-slider-host" [steps]="v.steps" [liveIndex]="v.live" [position]="position" (positionChange)="setPosition($event, v)" (hintChange)="setSwipeHint($event)" (scrubChange)="scrub($event, v)" />
         @let step = selectedStep(v);
         @for (distance of v.distances; track distance.id) {
           @if (step && distance.id === step.distanceId) {

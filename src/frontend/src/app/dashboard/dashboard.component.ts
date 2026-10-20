@@ -331,6 +331,15 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
     this.cdr.markForCheck();
   }
 
+  /** The slider is dragged to a heat: the watermark names it, on the side the thumb is going to. */
+  protected scrub(move: { index: number; direction: -1 | 1 } | null, view: { steps: HeatStep[] }): void {
+    const step = move ? view.steps[move.index] : undefined;
+    if (!move || !step || !this.narrow?.matches || !this.animates()) return this.hideTarget(); // like the swipe, on narrow screens with animations
+    const lane = this.host.nativeElement.querySelector('.individual-competitor-card')?.getBoundingClientRect();
+    this.swipeTarget = { side: move.direction === 1 ? 'right' : 'left', label: step.label || step.distanceName, progress: 1, top: Math.round(lane ? lane.top : window.innerHeight / 2) };
+    this.cdr.markForCheck();
+  }
+
   private hideTarget(): void {
     if (this.swipeTarget === null) return;
     this.swipeTarget = null;
