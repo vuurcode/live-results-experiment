@@ -23,13 +23,15 @@
           [class.individual-card-red]="individualCardVariant(race) === 'red'"
           [class.individual-card-orange]="individualCardVariant(race) === 'orange'"
           [class.individual-card-no-time]="watermarkCentered(race)"
+          [class.individual-card-status]="ghostsHidden(race)"
           [class.individual-card-settling]="settling(race)"
+          [class.individual-watermark-away]="away.has(race.id)"
         >
         <!-- Card title: the full name, with the status and PB badges on a line below; the watermark sits at its bottom -->
         <div class="individual-comp-title" [attr.data-watermark]="individualWatermarkText(race)">
           @if (individualCardVariant(race) === 'pr') {
             @let prCmp = distanceMeters ? individualPrComparison(race, distanceMeters) : null;
-            <div class="individual-watermark individual-watermark-pr" aria-hidden="true">
+            <div class="individual-watermark individual-watermark-pr" aria-hidden="true" (click)="moveAway(race.id)">
               <div class="individual-watermark-text">{{ ts.t('remarkNewPb') }}</div>
               @if (prCmp) {
                 <div>{{ prCmp.faster ? '-' : '+' }} {{ splitFormattedTime(truncateLapTime(prCmp.diff, decimals(race)))[0] }}<small class="individual-watermark-decimal">{{ splitFormattedTime(truncateLapTime(prCmp.diff, decimals(race)))[1] }}</small></div>
@@ -40,8 +42,11 @@
             <!-- slower than the personal best: the difference as an orange watermark -->
             @let slowCmp = individualPrComparison(race, distanceMeters);
             @if (slowCmp && !slowCmp.faster) {
-              <div class="individual-watermark individual-watermark-slower" aria-hidden="true">+ {{ splitFormattedTime(truncateLapTime(slowCmp.diff, decimals(race)))[0] }}<small class="individual-watermark-decimal">{{ splitFormattedTime(truncateLapTime(slowCmp.diff, decimals(race)))[1] }}</small></div>
+              <div class="individual-watermark individual-watermark-slower" aria-hidden="true" (click)="moveAway(race.id)">+ {{ splitFormattedTime(truncateLapTime(slowCmp.diff, decimals(race)))[0] }}<small class="individual-watermark-decimal">{{ splitFormattedTime(truncateLapTime(slowCmp.diff, decimals(race)))[1] }}</small></div>
             }
+          }
+          @if (individualWatermarkText(race); as note) {
+            <div class="individual-watermark individual-watermark-code" aria-hidden="true" (click)="moveAway(race.id)">{{ note }}</div>
           }
           <div class="individual-comp-header">
             <!-- name badge, with the category name and (club code) small below the name, and the personal best after it -->
@@ -54,11 +59,11 @@
             <!-- top right: the race badges, with the total time against the right edge -->
             <div class="individual-comp-right">
               <div class="individual-comp-badges">
-                @for (remarkCode of splitRemarks(race.remark); track remarkCode) {
-                  <c-badge [class]="remarkBadgeClass(remarkCode)" [title]="individualLabelTitle(remarkCode)">{{ remarkBadgeText(remarkCode) }}</c-badge>
+                @for (remarkCode of badgeRemarks(race.remark); track remarkCode) {
+                  <c-badge [class]="remarkBadgeClass(remarkCode)" [class.individual-status-badge]="isStatusCode(remarkCode)" [title]="individualLabelTitle(remarkCode)">{{ remarkBadgeText(remarkCode) }}</c-badge>
                 }
                 @if (race.invalid_reason && !isRemarked(race, race.invalid_reason)) {
-                  <c-badge [class]="invalidBadgeClass(race.invalid_reason)" [title]="individualLabelTitle(race.invalid_reason)">{{ race.invalid_reason }}</c-badge>
+                  <c-badge [class]="invalidBadgeClass(race.invalid_reason)" [class.individual-status-badge]="isStatusCode(race.invalid_reason)" [title]="individualLabelTitle(race.invalid_reason)">{{ race.invalid_reason }}</c-badge>
                 }
               </div>
               @let totalTime = compactTotalTime(race);
@@ -79,9 +84,9 @@
           </div>
         </div>
         <!-- Card body: the lap times as badges on one row (wrapping for many laps), each with its distance above -->
-        <div class="individual-comp-body individual-compact-body">
+        <div class="individual-comp-body individual-compact-body" appLapFold>
           @for (lap of race.lap_times; track $index; let last = $last) {
-            <span class="individual-compact-lap">
+            <span class="individual-compact-lap" [class.individual-lap-latest]="last">
               <span class="compact-dist">{{ lapSchedule[$index] }}m</span>
               <c-badge class="individual-split-badge individual-compact-badge" [style.--lap-fraction]="lapFraction($index)" [style.--ring-from]="ringFinish" [attr.title]="compactBadgeTitle(race, $index)" [class.individual-compact-latest]="last && !compactDone(race)" [class.individual-compact-ringed]="true" [class.individual-snake-fresh]="last && snakeFresh(race)">{{ splitFormattedTime(truncateLapTime(lap, 1))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(lap, 1))[1] }}</small></c-badge>
             </span>

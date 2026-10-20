@@ -1,19 +1,21 @@
+import { LapFoldDirective } from './lap-fold.directive';
 import { RouterLink } from '@angular/router';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, Input, inject } from '@angular/core';
 import { BadgeModule, CardModule } from '@coreui/angular';
 import { CompetitorUpdate } from '../../results/data.models';
 import { TranslateService, TranslationKey } from '../../i18n/translate.service';
 import { parseSeconds, sameHundredths, formatDurationSeconds, truncateLapTime, splitFormattedTime, isRecentUpdate } from '../../results/time.util';
-import { invalidBadgeClass, isNeverLive, remarkBadgeClass, GHOST_HIDING_CODES, NO_TIME_CODES, RaceCode, RECORD_CODES, RECORD_PRIORITY } from '../../results/race-codes';
+import { invalidBadgeClass, isNeverLive, remarkBadgeClass, GHOST_HIDING_CODES, NO_TIME_CODES, RaceCode, RECORD_CODES, RECORD_PRIORITY, topAchievementOnly } from '../../results/race-codes';
 import { categoryName } from '../../results/category.util';
 import { emptyLaneColor, isIndividualFinished, individualStartDegrees, individualFinishAngle, individualRaceComplete, individualPrComparison as individualPrComparisonUtil } from '../../results/heats.util';
 
-/** The usual lane colours by slot, for lanes no competitor has shown a colour for yet. */
+/** How long a tapped watermark stays out of the way, in ms. */
+const WATERMARK_AWAY_MS = 5000;
 
 @Component({
   selector: 'app-individual-heat-card',
   standalone: true,
-  imports: [BadgeModule, CardModule, RouterLink],
+  imports: [BadgeModule, CardModule, RouterLink, LapFoldDirective],
   templateUrl: './individual-heat-card.component.html',
   styleUrls: ['./individual-heat-card.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -22,6 +24,17 @@ export class IndividualHeatCardComponent {
   protected ts = inject(TranslateService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
   private cdr = inject(ChangeDetectorRef);
+
+  /** The ids of the racers whose watermark was tapped: it is out of the way for a few seconds, to read what is behind it. */
+  protected away = new Set<string>();
+
+  protected moveAway(id: string): void {
+    this.away = new Set(this.away).add(id);
+    setTimeout(() => {
+      this.away = new Set([...this.away].filter((away) => away !== id));
+      this.cdr.markForCheck();
+    }, WATERMARK_AWAY_MS);
+  }
 
   @Input({ required: true }) label!: string;
   @Input() maxLanes = 0;
@@ -182,6 +195,11 @@ export class IndividualHeatCardComponent {
     return this.splitRemarks(race.remark).some((r) => r.toUpperCase() === code.toUpperCase());
   }
 
+  /** The remarks shown as badges: of the records and the personal record only the most significant. */
+  protected badgeRemarks(remark: string | null): string[] {
+    return topAchievementOnly(this.splitRemarks(remark));
+  }
+
   /** The remark codes that mark the card: a manual time (MT) only says how the time was taken, so the card shows the time and the PR status as usual. */
   private markingCodes(remark: string | null): string[] {
     return this.splitRemarks(remark).map(v => v.toUpperCase()).filter(v => v !== RaceCode.ManualTime);
@@ -222,6 +240,11 @@ export class IndividualHeatCardComponent {
   /** A live card has the live border, unless the card already has a border of its own (a personal best, a record, a fall ...). */
   protected liveBorder(race: CompetitorUpdate): boolean {
     return this.showLive(race) && this.individualCardVariant(race) === null;
+  }
+
+  /** DNS, DQ and WDR: the racer has no time, so on a narrow screen the badge takes the place of the total time's. */
+  protected isStatusCode(code: string): boolean {
+    return GHOST_HIDING_CODES.has(code.toUpperCase());
   }
 
   /** True for a race that did not start, was disqualified or withdrew: its placeholder badges are not shown (their room is kept). */

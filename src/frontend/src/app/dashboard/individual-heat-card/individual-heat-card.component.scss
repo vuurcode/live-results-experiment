@@ -62,7 +62,7 @@
 .individual-comp-header {
   flex: 1 1 auto;
   display: flex;
-  align-items: flex-end; // the name and the code badges sit on the bottom line with the total time
+  align-items: stretch; // the name and the code badges are as tall as the total time's badge (see --total-caption-h)
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.4rem 1rem; // the same side padding as the card body below
@@ -74,7 +74,7 @@
 // The name badge with the personal best after it
 .individual-comp-who {
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   flex: 1 1 0;
   min-width: 0;
   gap: 0.5rem;
@@ -92,6 +92,14 @@
   overflow: hidden;
   padding: 0.15em 0.7em;
   border-radius: 0.5em;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+// the total time has a small caption above its badge; the name and the code badges leave that room, so their bottoms and heights line up with the badge
+.individual-comp-header { --total-caption-h: 0.85rem; }
+.individual-comp-header:has(.individual-compact-final) {
+  .individual-comp-who, .individual-comp-badges { margin-top: var(--total-caption-h); }
 }
 .individual-comp-name-line {
   display: block;
@@ -113,7 +121,7 @@
 .individual-comp-right {
   display: flex;
   flex: 0 0 auto;
-  align-items: flex-end;
+  align-items: stretch;
   justify-content: flex-end;
   gap: 0.5rem;
   max-width: 60%;
@@ -123,13 +131,15 @@
   flex: 0 1 auto;
   flex-wrap: wrap;
   justify-content: flex-end;
-  align-items: flex-end;
+  align-items: stretch;
   gap: 0.3rem;
-  > c-badge { display: inline-flex; align-items: center; }
+  > c-badge { display: inline-flex; align-items: center; justify-content: center; }
   // larger than the lap badges, for readability
   .individual-badge-purple, .individual-badge-red, .individual-badge-orange, .individual-finished-badge {
     font-size: 0.8rem !important;
     min-height: 1.6rem;
+    min-width: 3.2rem; // the codes (DNS, DQ, TRC, ...) are all as wide as one another, and wider when their text is
+    justify-content: center;
   }
 }
 // Opaque gray split-time badge prepended before the cumulative time in individual race lap rows
@@ -185,6 +195,7 @@
   color: transparent;
   &.individual-ghost-total { font-size: 1.5rem; padding: 0.25em 0.6em; min-width: 4.5rem; } // the size of the total badge it stands in for
 }
+.laps-folded .individual-compact-lap:not(.individual-lap-latest) { display: none; } // see LapFoldDirective
 .individual-compact-lap {
   width: 100%; // the column's width: the badge below sizes against it
   display: inline-flex;
@@ -251,6 +262,9 @@
   // the caption sits at the bottom inside the total's badge, in the badge's own colours
   .compact-pb { display: block; align-self: center; text-align: center; }
   .individual-compact-final .individual-lap-time { display: inline-flex; flex-direction: column; align-items: flex-end; }
+  // a racer without a time shows the status badge, as big as the total time's badge, instead of the empty placeholder
+  .individual-ghost-final.individual-ghost-hidden { display: none; }
+  .individual-comp-badges .individual-status-badge { font-size: 1.5rem !important; min-height: 0; min-width: 4.5rem; padding: 0.25em 0.6em; }
   .individual-ghost-total { flex-direction: column; .compact-pb { color: var(--lr-text-meta); } }
   .individual-pb-current {
     position: absolute;
@@ -270,8 +284,8 @@
   justify-items: center;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.4rem 1rem; // roomier than the plain body: the single row already saves a lot of height
-  min-height: 4.4rem; // a card without laps yet keeps its height (also once the distances and the total are there)
+  padding: 0.3rem 1rem;
+  min-height: 4.3rem; // a card without laps yet keeps its height (also once the distances and the total are there)
 }
 
 .individual-comp-body {

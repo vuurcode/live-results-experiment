@@ -27,11 +27,8 @@ test.describe('card watermark placement', () => {
   // The diff to the personal best is dead centre in the title from 768px and hangs at its bottom right below that.
   // A remark note sits in the top right of the title; with four lanes in a row a card without a time (here a DNF) has it dead centre in the whole card.
   // the note stamps in (grows to its place) once the final lap has settled: measure it when that has finished
-  async function stamped(card: import('@playwright/test').Locator, pseudo?: '::before') {
-    await expect.poll(() => card.evaluate((c, ps) => {
-      const el = ps ? c.querySelector('.individual-comp-title')! : c.querySelector('.individual-watermark')!;
-      return getComputedStyle(el, ps ?? null).scale;
-    }, pseudo), { timeout: 15_000 }).toBe('none');
+  async function stamped(card: import('@playwright/test').Locator) {
+    await expect.poll(() => card.evaluate((c) => getComputedStyle(c.querySelector('.individual-watermark')!).scale), { timeout: 15_000 }).toBe('none');
   }
 
   interface Placement { dx: number; dy: number; rightGap: number; topGap: number; bottomGap: number }
@@ -57,24 +54,25 @@ test.describe('card watermark placement', () => {
     return placement!;
   }
 
-  // the label of a card without a time is a pseudo-element: its computed position is relative to what it is placed against
+  // the label of a card without a time is placed against the card: its computed position is relative to what it is placed against
   async function noTimePlacement(page: import('@playwright/test').Page, width: number) {
     await page.setViewportSize({ width, height: 1000 });
     await page.goto(heatUrl('e2e-lanes', 'dist-500', 1));
     const card = page.locator('.individual-competitor-card.individual-card-no-time', { hasText: 'Competitor B' });
     await expect(card).toBeVisible({ timeout: 15_000 });
-    await stamped(card, '::before');
+    await stamped(card);
     return card.evaluate((c) => {
-      const cs = getComputedStyle(c.querySelector('.individual-comp-title')!, '::before');
+      const cs = getComputedStyle(c.querySelector('.individual-watermark-code')!);
       const r = c.getBoundingClientRect();
       return { left: cs.left, right: cs.right, top: cs.top, cardWidth: r.width, cardHeight: r.height };
     });
   }
 
-  test('320px: a PB watermark hangs at the bottom right of the title', async ({ page }) => {
+  test('320px: a PB watermark sits at the right, in the bottom part of the card', async ({ page }) => {
     const o = await pbPlacement(page, 320);
     expect(o.rightGap).toBeLessThan(40);
-    expect(Math.abs(o.bottomGap)).toBeLessThan(30);
+    // the note sits in the bottom part of the card, below the title
+    expect(o.bottomGap).toBeLessThan(0);
   });
 
   for (const width of [768, FOUR_LANES_MIN - 1, FOUR_LANES_MIN, 2560]) {
@@ -84,6 +82,17 @@ test.describe('card watermark placement', () => {
       expect(Math.abs(o.dy)).toBeLessThan(4);
     });
   }
+
+  test('a tap on a watermark clears it for five seconds', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto(heatUrl('e2e-lanes', 'dist-500', 1));
+    const card = page.locator('.individual-competitor-card.individual-card-no-time', { hasText: 'Competitor B' });
+    await stamped(card);
+    const mark = card.locator('.individual-watermark');
+    await mark.click({ force: true });
+    await expect(mark).toHaveCSS('opacity', '0');
+    await expect(mark).toHaveCSS('opacity', '1', { timeout: 7000 });
+  });
 
   test(`${FOUR_LANES_MIN - 1}px: the watermark of a card without a time sits in the top right of the title`, async ({ page }) => {
     const o = await noTimePlacement(page, FOUR_LANES_MIN - 1);
@@ -170,8 +179,8 @@ test.describe('card content is never clipped', () => {
       await expect(cards).toHaveCount(4);
       const clipped = await cards.evaluateAll((els) => els.filter((c) => {
         const content = [...c.children].reduce((sum, child) => sum + child.getBoundingClientRect().height, 0);
-        // the watermark hangs below the title on purpose: only the real content has to fit
-        const overflows = (child: Element) => [...child.querySelectorAll('*')].some((el) => !el.closest('.individual-watermark') && el.getBoundingClientRect().bottom > child.getBoundingClientRect().bottom + 1);
+        // the watermark hangs below the title on purpose, and the previous PB badge is visually hidden on a narrow screen: only the real content has to fit
+        const overflows = (child: Element) => [...child.querySelectorAll('*')].some((el) => !el.closest('.individual-watermark, .individual-pb-current') && el.getBoundingClientRect().bottom > child.getBoundingClientRect().bottom + 1);
         return content > c.getBoundingClientRect().height + 1 || [...c.children].some(overflows);
       }).length);
       expect(clipped).toBe(0);
@@ -188,4 +197,26 @@ test('a finished race shows no rings around its laps, a running one keeps them o
   await expect.poll(async () => (await ring(finished)).every((o) => o === '0')).toBe(true);
   const running = page.locator('.individual-competitor-card:not(.race-finished):has(.individual-compact-latest)').first();
   if (await running.count()) expect((await ring(running)).every((o) => o === '1')).toBe(true);
+});
+
+test.describe('lap times over more than one row', () => {
+  test('only the latest shows until a tap shows all of them for five seconds', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 900 });
+    await page.goto(heatUrl('e2e-lanes', 'dist-500', 1));
+    const body = page.locator('.individual-compact-body').first();
+    await expect(body).toBeVisible({ timeout: 15_000 });
+    // no fixture race is long enough to wrap: add laps to the first card until it needs more rows
+    await body.evaluate((b) => {
+      const laps = [...b.querySelectorAll('.individual-compact-lap')];
+      laps.forEach((lap) => lap.classList.remove('individual-lap-latest'));
+      const template = laps[0];
+      for (let i = 0; i < 12; i++) b.appendChild(template.cloneNode(true));
+      b.lastElementChild!.classList.add('individual-lap-latest');
+    });
+    const visible = () => body.evaluate((b) => [...b.querySelectorAll('.individual-compact-lap')].filter((lap) => getComputedStyle(lap).display !== 'none').length);
+    await expect.poll(visible).toBe(1);
+    await body.click();
+    await expect.poll(visible).toBeGreaterThan(10);
+    await expect.poll(visible, { timeout: 8000 }).toBe(1);
+  });
 });

@@ -213,19 +213,20 @@
     .individual-watermark-decimal { font-size: 0.65em; }
   }
   // A card has one watermark: the remark (a fall, TRC, ...) wins over the diff to the personal best.
-  .individual-comp-title[data-watermark] .individual-watermark { display: none; }
-  .individual-comp-title[data-watermark]::before {
+  .individual-comp-title[data-watermark] .individual-watermark:not(.individual-watermark-code) { display: none; }
+  .individual-watermark.individual-watermark-code {
     @include card-watermark(clamp(0.7rem, calc(3.5vw / var(--card-lanes, 1)), 1.2rem));
-    content: attr(data-watermark);
     overflow-wrap: anywhere;
     white-space: pre-line; // keeps the explicit line break (TRC + category name) but wraps long labels inside the card
   }
-  // A remark note of a card with a time hangs under the total time, against the right edge, at every width.
-  &:not(.individual-card-no-time) .individual-comp-title[data-watermark]::before {
-    top: calc(100% - 0.4rem);
-    right: 0.6rem;
-    left: auto;
-    transform: rotate(-6deg);
+  // A remark note of a card with a time hangs under the total time, against the right edge; a narrow screen places it below.
+  @media (min-width: 768px) {
+    &:not(.individual-card-no-time) .individual-watermark-code {
+      top: calc(100% - 0.4rem);
+      right: 0.6rem;
+      left: auto;
+      transform: rotate(-6deg);
+    }
   }
   // On a narrow screen the notes sit in the bottom part of the card (the lap times), centred vertically against the right edge,
   // clear of the name and the total time in the title. The card is a grid, so a note placed in its second row takes that row as
@@ -233,7 +234,7 @@
   @media (max-width: 767.98px) {
     .individual-comp-title { position: static; }
     .individual-watermark,
-    .individual-comp-title[data-watermark]::before,
+    .individual-watermark-code,
     .individual-watermark.individual-watermark-slower,
     .individual-watermark.individual-watermark-pr {
       grid-row: 2;
@@ -243,33 +244,48 @@
       height: fit-content;
       transform: rotate(-6deg);
     }
+    // a racer without a time has the status badge in the title and the note in the middle of the lap row
+    &.individual-card-status {
+      .individual-watermark,
+      .individual-watermark-code { inset: 0; margin-inline: auto; width: fit-content; }
+    }
   }
   // The result's note stamps in once the snake around the final lap has finished and the total has counted up: it grows
   // from smaller and transparent to its place and colour. `scale` is a property of its own, so the placement transforms stay.
-  .individual-watermark, .individual-comp-title[data-watermark]::before {
+  .individual-watermark, .individual-watermark-code {
     transition: opacity 0.9s ease-out, scale 0.9s cubic-bezier(0.2, 0.9, 0.3, 1);
     @media (prefers-reduced-motion: reduce) { transition: none; }
   }
+  // a tap on a watermark clears it for a while, to read what is behind it
+  .individual-watermark, .individual-watermark.individual-watermark-code { pointer-events: auto; cursor: pointer; }
+  &.individual-watermark-away .individual-watermark, &.individual-watermark-away .individual-watermark.individual-watermark-code { opacity: 0; pointer-events: none; transition-duration: 0.2s; }
   &.individual-card-settling {
-    .individual-watermark, .individual-comp-title[data-watermark]::before { opacity: 0; scale: 0.5; }
+    .individual-watermark, .individual-watermark-code { opacity: 0; scale: 0.5; }
   }
   &.individual-card-pr {
     border: 2px solid var(--lr-accent);
-    .individual-comp-title::before { color: var(--lr-accent-text); }
+    .individual-watermark-code { color: var(--lr-accent-text); }
   }
   &.individual-card-record {
     border: 4px solid var(--lr-accent);
     animation: recordGlow 7.5s infinite; // the border stays purple; the rainbow pulses outwards around the card
+    // the watermark of a record is purple and pulses like the record badges
+    .individual-watermark-code {
+      color: var(--lr-accent-text);
+      animation: recordGlow 7.5s infinite;
+      @media (prefers-reduced-motion: reduce) { animation: none; }
+      :host-context([data-animations='off']) & { animation: none; }
+    }
   }
   // DQ / DNF / Fall etc. are marked by the border, watermark and badge, not by fading the card:
   // the old card-wide opacity 0.7 made every badge and grey label on these cards fail contrast.
   &.individual-card-red {
     border: 2px solid var(--lr-fall);
-    .individual-comp-title::before { color: var(--lr-fall-text); }
+    .individual-watermark-code { color: var(--lr-fall-text); }
   }
   &.individual-card-orange {
     border: 2px solid var(--lr-warn);
-    .individual-comp-title::before { color: var(--lr-warn-text); }
+    .individual-watermark-code { color: var(--lr-warn-text); }
   }
 }
 .individual-split-badge.individual-compact-badge {
