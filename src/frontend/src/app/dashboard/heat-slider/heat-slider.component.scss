@@ -394,6 +394,7 @@ $pill-shift: translateX(calc(-1 * (clamp(0, (var(--at) - 0.15) / 0.7, 1) * (100%
   font-weight: 600;
   line-height: 1.3;
 }
+.pill-eye { width: 1em; height: 1em; margin-right: 0.25em; vertical-align: -0.12em; }
 // The live line, pill and dot, and a thumb on them, glide when the live heat advances; when heats come or go, the markers jump with the ticks.
 .glide .live-pill { transition: top 0.25s, left 0.6s ease; }
 .glide .mark-live { transition: height 0.25s, top 0.25s, left 0.6s ease; }
@@ -528,6 +529,14 @@ $pill-shift: translateX(calc(-1 * (clamp(0, (var(--at) - 0.15) / 0.7, 1) * (100%
 
 // Compact, until the viewer moves the slider by hand: on a narrow screen only the bar with the live heat, so the heats get the room; the texts and the Live pill come with the first touch.
 @media (max-width: 767.98px) {
-  .compact .track { margin-top: 0.9rem; &:not(.has-you) { --rest: 0.3rem; } } // off the live heat the You pill still hangs under the bar
-  .compact :is(.mark-text, .live-pill) { display: none; }
+  .compact .track { margin-top: 0.4rem; &:not(.has-you) { --rest: 0.3rem; } } // off the live heat the You pill still hangs under the bar
+  .compact :is(.mark-distance, .live-pill) { display: none; } // no distance lines or names: only the heat ticks and the bar remain
+  .compact .mark { top: -0.3rem; height: calc(0.3rem + (var(--thumb) + var(--bar)) / 2 + var(--grow) - var(--gap)); }
+}
+
+// A mouse held on the slider on a wide screen leaves the live markers alone: they neither pulse nor glide, and the Live pill
+// takes no click or hover while the thumb is dragged past it.
+@media (min-width: 768px) {
+  .heat-slider.pressed :is(.live-pill, .mark-live, .live-dot, .thumb-dot.at-live) { animation: none; transition: none; }
+  .heat-slider.pressed .live-pill { pointer-events: none; }
 }

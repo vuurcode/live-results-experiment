@@ -10,13 +10,7 @@
   </div>
   <!-- ===== MAIN CONTENT ===== -->
   <div class="visually-hidden" aria-live="polite" aria-atomic="true">{{ announcement }}</div>
-  @if (swipeTarget; as target) {
-    <!-- a mark at the side the next heat comes from while the finger drags: the arrow and the number of the heat -->
-    <div class="swipe-target" [class.swipe-target-left]="target.side === 'left'" [style.opacity]="target.progress * 0.95" [style.top.px]="target.top" aria-hidden="true">
-      <span class="swipe-target-arrow">{{ target.side === 'left' ? '←' : '→' }}</span>
-      <span class="swipe-target-label">{{ target.label }}</span>
-    </div>
-  }
+  <app-heat-marks />
   <main class="flex-grow-1 px-2 pb-4 main-clip" (touchstart)="swipeStart($event)" (touchmove)="swipeMove($event)" (touchend)="swipeEnd($event)" (touchcancel)="swipeCancel()">
     @if ((sortedDistances$ | async)?.length) {
       @let liveFeed = dataService.feed$ | async;
@@ -31,7 +25,7 @@
           @if (step && distance.id === step.distanceId) {
             <!-- a new element per step, so the slide-in plays again whenever the step changes -->
             @for (current of [step]; track current.key) {
-            <section class="step-view" [class.swipe-hint]="swipeHint" [class.slide-from-left]="slideFrom === 'left'" [class.slide-from-right]="slideFrom === 'right'" [attr.data-distance-body]="distance.id" [attr.aria-label]="distance.name">
+            <section class="step-view" [class.swipe-hint]="swipeHint" [class.slide-from-left]="slideFrom === 'left'" [class.slide-from-right]="slideFrom === 'right'" [class.slide-alt]="slideAlt" [attr.data-distance-body]="distance.id" [attr.aria-label]="distance.name">
               @if (distance.isMassStart) {
                 <h2 class="distance-title d-flex align-items-center gap-2 flex-wrap">
                   @if (distance.isLive) {

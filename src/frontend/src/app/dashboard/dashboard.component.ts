@@ -1,7 +1,7 @@
 import { findLiveHeat } from '../results/live-heat';
 import { newFinishers } from '../results/finish-announce.util';
 import { distanceCompleted, hideDisqualifications } from '../results/hide-dq.util';
-import { AfterViewChecked, ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostBinding, OnInit, inject } from '@angular/core';
+import { AfterViewChecked, ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostBinding, OnInit, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
@@ -13,6 +13,7 @@ import { Observable, combineLatest, concat, map, of, startWith, switchMap, tap, 
 import { TranslateService, TranslationKey } from '../i18n/translate.service';
 import { TranslatePipe } from '../i18n/translate.pipe';
 import { HeaderComponent } from '../header/header.component';
+import { HeatMarksComponent } from './heat-marks/heat-marks.component';
 import { swipeDirection, type SwipePoint } from './swipe.util';
 import { MassStartTimelineComponent } from './mass-start-timeline/mass-start-timeline.component';
 import { IndividualHeatCardComponent } from './individual-heat-card/individual-heat-card.component';
@@ -64,6 +65,7 @@ import { raceListAnimation, raceListKey } from './dashboard.animations';
     MassStartRaceRowComponent,
     HeatPeeksComponent,
     HeatSliderComponent,
+    HeatMarksComponent,
     HeaderComponent,
   ],
   templateUrl: './dashboard.component.html',
@@ -230,6 +232,7 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
 
   /** Where the shown heat comes in from: opposite to the way the slider moved, as if the slider drags the heats along. */
   protected slideFrom: 'left' | 'right' | null = null;
+  protected slideAlt = false;
 
   private liveKey: string | null = null;
 
@@ -291,6 +294,29 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
     else if (this.position === null && steps.length > 0) this.setPosition(null, { steps, live: 0 }); // a remembered heat that is gone
   }
 
+  @ViewChild(HeatMarksComponent) private marks?: HeatMarksComponent;
+
+  /** The slider is dragged: its marks name the heat under the thumb while it is down and for a moment after. */
+  protected scrub(move: { index: number } | null, view: { steps: HeatStep[]; live: number }): void {
+    if (move) {
+      this.scrubbed = move.index;
+      this.marks?.hold(move.index, view);
+    } else if (this.scrubbed !== null) {
+      // a mouse is still on the slider and sees the heat there, so only a finger lingers on the marks
+      if (this.mouse?.matches) this.marks?.dismiss();
+      else this.marks?.land(this.scrubbed, view);
+      this.scrubbed = null;
+    }
+  }
+
+  private scrubbed: number | null = null;
+  private mouse = typeof matchMedia === 'function' ? matchMedia('(pointer: fine)') : null;
+
+  /** The index of the heat on show in a view of the steps. */
+  private shownIndex(view: { steps: HeatStep[]; live: number } | null): number {
+    return view ? (this.position === null ? view.live : Math.min(this.position, view.steps.length - 1)) : 0;
+  }
+
   private swipeView: { steps: HeatStep[]; live: number } | null = null;
   private swipeFrom: SwipePoint | null = null;
   private narrow = typeof matchMedia === 'function' ? matchMedia('(max-width: 767.98px)') : null;
@@ -308,42 +334,8 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
     const dx = event.touches[0].clientX - from.x;
     const dy = event.touches[0].clientY - from.y;
     if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    this.showTarget(dx);
+    if (this.swipeView) this.marks?.pull(dx, this.shownIndex(this.swipeView), this.swipeView);
     this.dragViews(`translateX(${dx * 0.4}px) rotate(${Math.max(-4, Math.min(4, dx / 60))}deg)`, '');
-  }
-
-  /** The heat a swipe this far sideways would go to, named at the side it comes from: a swipe to the left brings the next heat in from the right. */
-  protected swipeTarget: { side: 'left' | 'right'; label: string; progress: number; top: number } | null = null;
-
-  private showTarget(dx: number): void {
-    const view = this.swipeView;
-    const current = view ? (this.position === null ? view.live : Math.min(this.position, view.steps.length - 1)) : 0;
-    const step = view?.steps[current + (dx < 0 ? 1 : -1)];
-    // past the first or last heat the mark says so: there is nowhere to go
-    const label = step ? step.label : this.ts.t(dx < 0 ? 'sliderEnd' : 'sliderStart');
-    const progress = Math.min(1, Math.abs(dx) / 120);
-    // level with the top lane, where the cards are, so the mark covers as little of them as possible
-    const lane = this.host.nativeElement.querySelector('.individual-competitor-card')?.getBoundingClientRect();
-    const top = Math.round(lane ? lane.top : window.innerHeight / 2);
-    const next = view ? { side: dx < 0 ? 'right' as const : 'left' as const, label, progress, top } : null;
-    if (next?.top === this.swipeTarget?.top && next?.side === this.swipeTarget?.side && next?.label === this.swipeTarget?.label && next?.progress === this.swipeTarget?.progress) return;
-    this.swipeTarget = next;
-    this.cdr.markForCheck();
-  }
-
-  /** The slider is dragged to a heat: the watermark names it, on the side the thumb is going to. */
-  protected scrub(move: { index: number; direction: -1 | 1 } | null, view: { steps: HeatStep[] }): void {
-    const step = move ? view.steps[move.index] : undefined;
-    if (!move || !step || !this.narrow?.matches || !this.animates()) return this.hideTarget(); // like the swipe, on narrow screens with animations
-    const lane = this.host.nativeElement.querySelector('.individual-competitor-card')?.getBoundingClientRect();
-    this.swipeTarget = { side: move.direction === 1 ? 'right' : 'left', label: step.label || step.distanceName, progress: 1, top: Math.round(lane ? lane.top : window.innerHeight / 2) };
-    this.cdr.markForCheck();
-  }
-
-  private hideTarget(): void {
-    if (this.swipeTarget === null) return;
-    this.swipeTarget = null;
-    this.cdr.markForCheck();
   }
 
   private animates(): boolean {
@@ -363,7 +355,7 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
     const from = this.swipeFrom;
     this.swipeFrom = null;
     this.dragViews('', 'transform 0.2s ease-out');
-    this.hideTarget();
+    this.marks?.clear();
     const view = this.swipeView;
     if (!from || !view || event.touches.length > 0 || event.changedTouches.length !== 1) return;
     const touch = event.changedTouches[0];
@@ -373,19 +365,20 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
     const target = current + direction;
     if (target < 0 || target >= view.steps.length) return;
     this.setPosition(target === view.live ? null : target, view);
+    this.marks?.land(target, view);
     this.cdr.markForCheck();
   }
 
   protected swipeCancel(): void {
     this.swipeFrom = null;
     this.dragViews('', 'transform 0.2s ease-out');
-    this.hideTarget();
+    this.marks?.clear();
   }
 
-  /** A stroke that starts on the slider, a form control or something that scrolls sideways by itself belongs to that element. */
+  /** A stroke that starts on the slider, a form control (not a link or button: a heat's names are links) or something that scrolls sideways by itself belongs to that element. */
   private swipeStartsOnPage(target: EventTarget | null): boolean {
     for (let element = target instanceof Element ? target : null; element; element = element.parentElement) {
-      if (element.matches('app-heat-slider, input, select, textarea, button, a, [role="slider"]')) return false;
+      if (element.matches('app-heat-slider, input, select, textarea, [role="slider"]')) return false;
       if (element.scrollWidth > element.clientWidth + 1 && ['auto', 'scroll'].includes(getComputedStyle(element).overflowX)) return false;
     }
     return true;
@@ -396,7 +389,10 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
     this.positionKey = position === null ? null : DashboardComponent.stepKey(view.steps[Math.min(position, view.steps.length - 1)]);
     const index = (p: number | null) => (p === null ? view.live : Math.min(p, view.steps.length - 1));
     const [from, to] = [index(this.position), index(position)];
-    if (to !== from) this.slideFrom = to > from ? 'right' : 'left';
+    if (to !== from) {
+      this.slideFrom = to > from ? 'right' : 'left';
+      this.slideAlt = !this.slideAlt; // another animation name, so a second swipe the same way restarts the slide at once
+    }
     this.position = position;
     this.storePositionKey(this.positionKey);
   }

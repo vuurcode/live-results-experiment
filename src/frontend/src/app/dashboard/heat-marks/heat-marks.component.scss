@@ -1,0 +1,62 @@
+// Fixed to the screen, so only the host's contents matter to the page's layout.
+:host { display: contents; }
+
+// A big mark on a solid background, over the page, never in the way of a touch.
+.heat-mark {
+  position: fixed;
+  right: 0.5rem;
+  z-index: 1016; // over the cards, their watermarks and the slider, under the top bar
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  pointer-events: none;
+  color: var(--cui-body-color);
+  font-weight: 800;
+  text-align: center;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--lr-control-border);
+  border-radius: 0.75rem;
+  background: var(--cui-body-bg);
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.25);
+  &.heat-mark-left { right: auto; left: 0.5rem; }
+  &.heat-mark-center { right: auto; left: 50%; transform: translateX(-50%); }
+}
+.heat-mark-fading { animation: heatMarkFade 1s ease-in forwards; }
+@keyframes heatMarkFade { 0%, 60% { opacity: 0.95; } 100% { opacity: 0; } }
+.heat-mark-arrow { font-size: 3rem; line-height: 1; }
+.heat-mark-label { font-size: 1.1rem; }
+.heat-mark-eye { width: 3rem; height: 3rem; } // the eye is as tall as the arrows beside it
+// The live heat has the live red border, pulsing outwards like the Live badge; a fading mark keeps pulsing while it fades.
+.heat-mark-live {
+  border-color: var(--lr-live);
+  animation: glowRed 1.5s infinite;
+  &.heat-mark-fading { animation: heatMarkFade 1s ease-in forwards, glowRed 1.5s infinite; }
+}
+@keyframes glowRed {
+  0%   { box-shadow: 0 0 0 0   rgba(176, 42, 55, 0.7); }
+  70%  { box-shadow: 0 0 0 6px rgba(176, 42, 55, 0); }
+  100% { box-shadow: 0 0 0 0   rgba(176, 42, 55, 0); }
+}
+// The heat on show, when it is the live one: red all through, the eye replaced by the pulsing dot of the live markers.
+.heat-mark-center.heat-mark-live { background: var(--lr-live); color: #fff; }
+.heat-mark-dot {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  &::after {
+    content: '';
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 50%;
+    background: #fff;
+    animation: dotPulse 1.5s infinite;
+  }
+}
+@keyframes dotPulse {
+  0%   { box-shadow: 0 0 0 0   rgba(255, 255, 255, 0.7); }
+  70%  { box-shadow: 0 0 0 0.6rem rgba(255, 255, 255, 0); }
+  100% { box-shadow: 0 0 0 0   rgba(255, 255, 255, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .heat-mark-dot::after { animation: none; } }

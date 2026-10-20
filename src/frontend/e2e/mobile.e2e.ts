@@ -88,11 +88,57 @@ test.describe('swiping between heats', () => {
     await swipe(page, [340, 400], [60, 405]);
     await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 3$/);
     await expect(page.locator('.step-view.slide-from-right')).toHaveCount(1);
-    await expect(card).toHaveCSS('animation-name', /slideFromRight$/);
+    await expect(card).toHaveCSS('animation-name', /slideFromRight2?$/);
     await swipe(page, [60, 400], [340, 395]);
     await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
     await expect(page.locator('.step-view.slide-from-left')).toHaveCount(1);
-    await expect(card).toHaveCSS('animation-name', /slideFromLeft$/);
+    await expect(card).toHaveCSS('animation-name', /slideFromLeft2?$/);
+  });
+
+  test('the heat landed on stays named in the middle for a moment', async ({ page }) => {
+    await page.goto(heatUrl('e2e-pairs', 'dist-500', 2));
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/, { timeout: 15_000 });
+    await swipe(page, [340, 400], [60, 405]);
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 3$/);
+    const mark = page.locator('.heat-mark-center');
+    await expect(mark).toContainText('Heat 3');
+    await expect(mark.locator('.heat-mark-eye, .heat-mark-dot')).toBeVisible(); // the dot instead of the eye on the live heat
+    const sideBox = (await page.locator('.heat-mark:not(.heat-mark-center)').first().boundingBox())!;
+    expect((await mark.boundingBox())!.height).toBeCloseTo(sideBox.height, 0);
+    const sides = page.locator('.heat-mark:not(.heat-mark-center)');
+    await expect(sides).toHaveCount(2);
+    await expect(sides.first()).toContainText('Heat 2');
+    await expect(sides.nth(1)).toContainText(/Heat 4|End/);
+    await expect(page.locator('.heat-mark')).toHaveCount(0, { timeout: 3000 });
+  });
+
+  test('the mark of the live heat has the live border, the marks of the other heats do not', async ({ page }) => {
+    await page.goto(heatUrl('e2e-long', 'dist-500', 11));
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 11$/, { timeout: 15_000 });
+    await swipe(page, [340, 400], [60, 405]);
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 12$/);
+    await expect(page.locator('.heat-mark-center')).toHaveClass(/heat-mark-live/);
+    await expect(page.locator('.heat-mark:not(.heat-mark-center)').first()).not.toHaveClass(/heat-mark-live/);
+  });
+
+  test('quick swipes in a row each move a heat', async ({ page }) => {
+    await page.goto(heatUrl('e2e-pairs', 'dist-500', 1));
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 1$/, { timeout: 15_000 });
+    await swipe(page, [340, 400], [230, 402], 60);
+    await swipe(page, [340, 400], [230, 402], 60);
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 3$/);
+    await swipe(page, [230, 400], [340, 398], 60);
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
+  });
+
+  test('a swipe that starts on a name link still moves the heat', async ({ page }) => {
+    await page.goto(heatUrl('e2e-individual', 'dist-500', 1));
+    const link = page.locator('a.individual-comp-name-line').first();
+    await expect(link).toBeVisible({ timeout: 15_000 });
+    const box = (await link.boundingBox())!;
+    const before = await heat(page).getAttribute('aria-valuetext');
+    await swipe(page, [box.x + box.width / 2 - 40, box.y + box.height / 2], [box.x + box.width / 2 + 120, box.y + box.height / 2], 120);
+    await expect(heat(page)).not.toHaveAttribute('aria-valuetext', before!);
   });
 
   test('the heat follows the finger while it drags and springs back when released short', async ({ page }) => {
@@ -101,28 +147,46 @@ test.describe('swiping between heats', () => {
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 300, y: 400 }] });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 240, y: 402 }] });
+    await page.waitForTimeout(500); // slow, so the release is no flick
     await expect(page.locator('.step-view').first()).toHaveCSS('transform', /matrix/);
-    await expect(page.locator('.swipe-target')).toContainText('Heat 3');
-    await expect(page.locator('.swipe-target-arrow')).toHaveText('→');
+    await expect(page.locator('.heat-mark:not(.heat-mark-center)')).toContainText('Heat 3');
+    await expect(page.locator('.heat-mark:not(.heat-mark-center) .heat-mark-arrow')).toHaveText('→');
+    await expect(page.locator('.heat-mark-center')).toContainText('Heat 2');
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect(page.locator('.step-view').first()).toHaveCSS('transform', 'none');
-    await expect(page.locator('.swipe-target')).toHaveCount(0);
+    await expect(page.locator('.heat-mark')).toHaveCount(0);
     await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
   });
 
-  test('sliding the slider names the heat it goes to on the watermark', async ({ page }) => {
+  test('sliding the slider names the heat it is on, and the heats around it', async ({ page }) => {
     await page.goto(heatUrl('e2e-pairs', 'dist-500', 2));
     await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/, { timeout: 15_000 });
     const box = (await heat(page).boundingBox())!;
     await page.mouse.move(box.x + box.width * 0.2, box.y + box.height / 2);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width * 0.9, box.y + box.height / 2, { steps: 8 });
-    const mark = page.locator('.swipe-target');
-    await expect(mark).toBeVisible();
-    await expect(page.locator('.swipe-target-arrow')).toHaveText('→');
-    await expect(mark).toContainText(/Heat \d+/);
+    const middle = page.locator('.heat-mark-center');
+    await expect(middle).toContainText(/Heat \d+/);
+    const here = (await middle.innerText()).trim();
+    const sides = page.locator('.heat-mark:not(.heat-mark-center)');
+    await expect(sides).toHaveCount(2);
+    for (const side of await sides.all()) expect(await side.innerText()).not.toContain(here);
     await page.mouse.up();
-    await expect(mark).toHaveCount(0);
+    await expect(page.locator('.heat-mark')).toHaveCount(0, { timeout: 3000 });
+  });
+
+  test('the marks stay below the top bar and on screen when the page is scrolled', async ({ page }) => {
+    await page.goto(heatUrl('e2e-pairs', 'dist-500', 2));
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/, { timeout: 15_000 });
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 300, y: 400 }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 240, y: 402 }] });
+    const box = (await page.locator('.heat-mark-center').boundingBox())!;
+    const bar = (await page.locator('.topbar').boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(bar.y + bar.height);
+    expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   });
 
   test('dragging past the first heat marks Start, past the last End', async ({ page }) => {
@@ -131,11 +195,11 @@ test.describe('swiping between heats', () => {
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 200, y: 400 }] });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 260, y: 402 }] });
-    const mark = page.locator('.swipe-target');
+    const mark = page.locator('.heat-mark:not(.heat-mark-center)');
     await expect(mark).toContainText('Start');
-    await expect(page.locator('.swipe-target-arrow')).toHaveText('←');
+    await expect(page.locator('.heat-mark:not(.heat-mark-center) .heat-mark-arrow')).toHaveText('✕');
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await expect(mark).toHaveCount(0);
+    await expect(page.locator('.heat-mark')).toHaveCount(0);
     await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 1$/);
   });
 

@@ -50,11 +50,11 @@
         }
       }
     @if (steps.length > 1 && inWindow(liveIndex)) {
-      <button type="button" class="live-pill" [class.is-live]="live" [attr.aria-pressed]="live" [style.--at]="fraction(liveIndex)" (click)="goLive()">{{ liveText }}</button>
+      <button type="button" class="live-pill" [class.is-live]="live" [attr.aria-pressed]="live" [style.--at]="fraction(liveIndex)" (click)="goLive()">@if (live) { <svg class="pill-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7.5 11-7.5S23 12 23 12s-4 7.5-11 7.5S1 12 1 12z"/><circle cx="12" cy="12" r="3.5"/></svg> }{{ liveText }}</button>
     }
     @if (steps.length > 1 && !live) {
       <span class="you-line" [class.stacked]="youStacked" aria-hidden="true" [style.--at]="fraction(value)"></span>
-      <span class="you-pill" [class.stacked]="youStacked" aria-hidden="true" [style.--at]="fraction(value)">{{ youText }}</span>
+      <span class="you-pill" [class.stacked]="youStacked" aria-hidden="true" [style.--at]="fraction(value)"><svg class="pill-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7.5 11-7.5S23 12 23 12s-4 7.5-11 7.5S1 12 1 12z"/><circle cx="12" cy="12" r="3.5"/></svg>{{ youText }}</span>
     }
     @if (miniShown) {
       <span class="minimap" [class.minimap-drag]="miniDragging" aria-hidden="true" (pointerdown)="miniDown($event)" (pointermove)="miniMove($event)" (pointerup)="miniUp()" (pointercancel)="miniUp()">

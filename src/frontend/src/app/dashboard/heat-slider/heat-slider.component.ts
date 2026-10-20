@@ -65,13 +65,11 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
   @Output() positionChange = new EventEmitter<number | null>();
   /** Whether the swipe hint is up, so the page can show the heats sliding to and fro with it. */
   @Output() hintChange = new EventEmitter<boolean>();
-  /** The heat the thumb is being dragged to, with the way it went; null when the drag ends. The page names the heat on its watermark, as for a swipe. */
-  @Output() scrubChange = new EventEmitter<{ index: number; direction: -1 | 1 } | null>();
-  private scrubDirection: -1 | 1 = 1;
+  /** The heat the thumb is being dragged to; null when the drag ends. The page names the heat on its watermark, as for a swipe. */
+  @Output() scrubChange = new EventEmitter<{ index: number } | null>();
 
   private scrub(value: number): void {
-    if (value !== this.value) this.scrubDirection = value > this.value ? 1 : -1;
-    this.scrubChange.emit({ index: value, direction: this.scrubDirection });
+    this.scrubChange.emit({ index: value });
   }
 
   private trackWidth = 0;

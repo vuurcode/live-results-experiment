@@ -134,8 +134,10 @@
 // The heats are dragged along by the slider: sliding to the right brings the next heat in from the right.
 .main-clip { overflow-x: clip; }
 // the lane bands stay where they are; only the labels, cards and hints slide
-:host ::ng-deep .step-view.slide-from-right :is(.individual-heat-label, .individual-competitor-card, .peek) { animation: slideFromRight 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
-:host ::ng-deep .step-view.slide-from-left :is(.individual-heat-label, .individual-competitor-card, .peek) { animation: slideFromLeft 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
+:host ::ng-deep .step-view.slide-from-right :is(.individual-heat-label, .individual-competitor-card, .peek) { animation: slideFromRight 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+:host ::ng-deep .step-view.slide-from-left :is(.individual-heat-label, .individual-competitor-card, .peek) { animation: slideFromLeft 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+:host ::ng-deep .step-view.slide-alt.slide-from-right :is(.individual-heat-label, .individual-competitor-card, .peek) { animation-name: slideFromRight2; }
+:host ::ng-deep .step-view.slide-alt.slide-from-left :is(.individual-heat-label, .individual-competitor-card, .peek) { animation-name: slideFromLeft2; }
 // the cards travel the whole width, as if dragged along by the slider
 // The swipe hint: the heat swings left and right like a card being dragged, a few times.
 :host ::ng-deep .step-view.swipe-hint :is(.individual-competitor-card, .peek) { animation: swipeHint 2.4s ease-in-out 0.4s 4; }
@@ -149,6 +151,8 @@
 
 @keyframes slideFromRight { from { opacity: 0.2; transform: translateX(100%) rotate(2deg); } }
 @keyframes slideFromLeft { from { opacity: 0.2; transform: translateX(-100%) rotate(-2deg); } }
+@keyframes slideFromRight2 { from { opacity: 0.2; transform: translateX(100%) rotate(2deg); } }
+@keyframes slideFromLeft2 { from { opacity: 0.2; transform: translateX(-100%) rotate(-2deg); } }
 @media (prefers-reduced-motion: reduce) { :host ::ng-deep .step-view * { animation: none !important; } }
 
 // The slider sits at the bottom of the screen, where the thumb is in easy reach; the page leaves room for it.
@@ -165,25 +169,14 @@
 }
 .main-clip { padding-bottom: calc(var(--slider-h, 9rem) + 1rem) !important; } // the slider's own height, measured, and a little air
 
-// The watermark of the heat a swipe goes to: big and on a solid background at the side it comes from, over the page, never in the way of a touch.
-.swipe-target {
-  position: fixed;
-  right: 0.5rem;
-  z-index: 5;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  pointer-events: none;
-  color: var(--cui-body-color);
-  font-weight: 800;
-  text-align: center;
-  padding: 0.4rem 0.75rem;
-  border: 1px solid var(--lr-control-border);
-  border-radius: 0.75rem;
-  background: var(--cui-body-bg);
-  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.25);
-  &.swipe-target-left { right: auto; left: 0.5rem; }
+// While heats are named by marks the cards fold to their titles, lose their watermarks, and sit
+// below the marks, so a name is quickly found. The fold and the unfold are eased.
+.individual-competitors-row { transition: padding-top 0.3s ease; }
+:host ::ng-deep .individual-comp-body { max-height: 40rem; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease, min-height 0.3s ease, opacity 0.2s ease; }
+:host-context([data-heat-marks]) ::ng-deep {
+  // only the first pair of a quartet makes room for the marks; the second follows directly below it
+  app-individual-heat-card:first-child .individual-competitors-row { padding-top: 7rem; }
+  .individual-comp-body { max-height: 0; min-height: 0 !important; padding-block: 0 !important; opacity: 0; }
+  .individual-watermark, .individual-comp-title[data-watermark]::before { display: none !important; }
 }
-.swipe-target-arrow { font-size: 3rem; line-height: 1; }
-.swipe-target-label { font-size: 1.1rem; }
+@media (prefers-reduced-motion: reduce) { :host ::ng-deep .individual-comp-body, .individual-competitors-row { transition: none; } }
