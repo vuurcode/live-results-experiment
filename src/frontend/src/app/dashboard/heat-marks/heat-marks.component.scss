@@ -25,7 +25,7 @@
 .heat-mark-fading { animation: heatMarkFade 1s ease-in forwards; }
 @keyframes heatMarkFade { 0%, 60% { opacity: 0.95; } 100% { opacity: 0; } }
 .heat-mark-arrow { font-size: 3rem; line-height: 1; }
-.heat-mark-label { font-size: 1.1rem; }
+.heat-mark-label { font-size: 1.1rem; white-space: nowrap; }
 .heat-mark-eye { width: 3rem; height: 3rem; } // the eye is as tall as the arrows beside it
 // The live heat has the live red border, pulsing outwards like the Live badge; a fading mark keeps pulsing while it fades.
 .heat-mark-live {

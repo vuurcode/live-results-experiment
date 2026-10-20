@@ -178,7 +178,7 @@ test.describe('swiping between heats', () => {
   test('the marks stay below the top bar and on screen when the page is scrolled', async ({ page }) => {
     await page.goto(heatUrl('e2e-pairs', 'dist-500', 2));
     await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/, { timeout: 15_000 });
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.evaluate(() => document.querySelector('main')!.scrollTo(0, 1e6));
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 300, y: 400 }] });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 240, y: 402 }] });

@@ -44,7 +44,7 @@ test.describe('pinned titles', () => {
     const strip = page.locator('.groups-strip').first();
     await expect(strip).toBeVisible({ timeout: 15_000 });
     await page.waitForTimeout(1500); // the badges settle on their lines
-    await page.evaluate(() => window.scrollTo(0, 150));
+    await page.evaluate(() => document.querySelector('main')!.scrollTo(0, 150));
     await page.waitForTimeout(300);
     const box = (await strip.boundingBox())!;
     const barBottom = await page.evaluate(() => document.querySelector('.topbar')!.getBoundingClientRect().bottom);

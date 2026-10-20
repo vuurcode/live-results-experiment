@@ -3,14 +3,16 @@ import { SettingsService } from '../../settings/settings.service';
 import { TranslateService, TranslationKey } from '../../i18n/translate.service';
 import type { HeatStep } from '../heat-steps';
 
-/** The px a mark and the slider below it need under the mark's top edge. */
-const MARK_ROOM = 220;
+/** The height of a mark in px, and the air kept between it and the cards pushed below it. */
+const MARK_HEIGHT = 100;
+const MARK_GAP = 8;
 /** How long a heat stays named after it was landed on, in ms. */
 const LANDED_MS = 1000;
 /** The sideways pull, in px, at which a swipe mark is fully shown. */
 const FULL_PULL_PX = 120;
 /** Set on the page while marks show: the cards fold to their titles and make room below the marks (see the heat card styles). */
 const MARKS_ATTRIBUTE = 'data-heat-marks';
+const PUSH_PROPERTY = '--marks-push';
 
 /** The heats on offer: the steps and the index of the live one. */
 interface HeatView {
@@ -97,8 +99,8 @@ export class HeatMarksComponent {
     this.pulled = state.pulled;
     this.around = state.around;
     this.fading = state.fading;
-    // the cards move down for the marks, so the spot is taken once, before they do
-    if (!document.documentElement.hasAttribute(MARKS_ATTRIBUTE)) this.top = this.markTop();
+    // the cards move down for the marks, so the spot and the room are taken once, before they do
+    if (!document.documentElement.hasAttribute(MARKS_ATTRIBUTE)) this.place();
     document.documentElement.setAttribute(MARKS_ATTRIBUTE, '');
     this.cdr.markForCheck();
   }
@@ -115,6 +117,7 @@ export class HeatMarksComponent {
 
   private release(): void {
     document.documentElement.removeAttribute(MARKS_ATTRIBUTE);
+    document.documentElement.style.removeProperty(PUSH_PROPERTY);
   }
 
   private stop(): void {
@@ -132,14 +135,21 @@ export class HeatMarksComponent {
     return { label: step ? step.label || step.distanceName : this.ts.t(edgeKey), edge: !step, live: !!step && index === view.live };
   }
 
+  /** A long label (a heat 100 or more, a distance name) is set smaller, to stay inside its mark. */
+  protected labelSize(label: string): number {
+    return label.length > 9 ? 0.75 : label.length > 7 ? 0.9 : 1.1;
+  }
+
   /**
-   * Where the marks sit, in px from the top of the screen: level with the top lane as it stands unscrolled, so they cover as
-   * little of the cards as possible, and never under the top bar or off the bottom, wherever the page is scrolled to.
+   * The marks sit right under the top bar, over the name of the heat and the distance (which they repeat), wherever the page is
+   * scrolled to. The first lane is pushed down to just under them, when it is not already.
    */
-  private markTop(): number {
+  private place(): void {
     const bar = parseFloat(document.documentElement.style.getPropertyValue('--topbar-h')) || 48;
-    const lane = document.querySelector('.individual-competitor-card')?.getBoundingClientRect();
-    const unscrolled = lane ? lane.top + window.scrollY : window.innerHeight / 2;
-    return Math.round(Math.min(Math.max(unscrolled, bar + 8), window.innerHeight - MARK_ROOM));
+    this.top = Math.round(bar + 8);
+    // the row, not the card: the row neither slides in nor tilts, and its top does not move with the push easing in or out
+    const row = document.querySelector('.individual-competitors-row');
+    const push = row ? Math.max(0, this.top + MARK_HEIGHT + MARK_GAP - row.getBoundingClientRect().top) : 0;
+    document.documentElement.style.setProperty(PUSH_PROPERTY, `${Math.round(push)}px`);
   }
 }

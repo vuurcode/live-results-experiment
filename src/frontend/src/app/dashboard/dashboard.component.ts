@@ -1,7 +1,7 @@
 import { findLiveHeat } from '../results/live-heat';
 import { newFinishers } from '../results/finish-announce.util';
 import { distanceCompleted, hideDisqualifications } from '../results/hide-dq.util';
-import { AfterViewChecked, ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostBinding, OnInit, ViewChild, inject } from '@angular/core';
+import { AfterViewChecked, ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostBinding, HostListener, OnInit, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
@@ -151,17 +151,56 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
   /** Keeps the room the page leaves under the heats equal to the height of the slider that is fixed over it. */
   private sliderObserver: ResizeObserver | null = null;
   private observedSlider: Element | null = null;
+  private observedView: Element | null = null;
 
   ngAfterViewChecked(): void {
     const slider = this.host.nativeElement.querySelector('.heat-slider-host');
-    if (slider === this.observedSlider || typeof ResizeObserver === 'undefined') return;
+    const view = this.host.nativeElement.querySelector('.step-view');
+    if ((slider === this.observedSlider && view === this.observedView) || typeof ResizeObserver === 'undefined') return;
     this.observedSlider = slider;
+    this.observedView = view;
     this.sliderObserver ??= new ResizeObserver(() => {
       const height = this.observedSlider?.getBoundingClientRect().height;
       if (height) this.host.nativeElement.style.setProperty('--slider-h', `${Math.ceil(height)}px`);
+      this.fitSlider();
     });
     this.sliderObserver.disconnect();
     if (slider) this.sliderObserver.observe(slider);
+    if (view) this.sliderObserver.observe(view);
+  }
+
+  @HostListener('window:resize')
+  protected onResize(): void {
+    this.fitSlider();
+  }
+
+  /**
+   * On a narrow screen the compact slider takes the room the heats leave at the bottom of the screen, up to the room the full
+   * slider takes. The room is measured from the end of the heats, not from the page, which the slider's own height shapes.
+   */
+  /** Where the heats end, from the top of the page as if it were not scrolled (the heats scroll in `main`). */
+  private contentEnd(view: Element): number {
+    const main = this.host.nativeElement.querySelector('main');
+    return view.getBoundingClientRect().bottom + (main?.scrollTop ?? 0);
+  }
+
+  private fitSlider(): void {
+    const slider = this.observedSlider as HTMLElement | null;
+    const view = this.observedView;
+    if (!slider || !view) return;
+    const extra = parseFloat(slider.style.getPropertyValue('--slider-extra')) || 0;
+    const natural = slider.getBoundingClientRect().height - extra;
+    // short of room: the heading texts shrink a little. Counted with them at full size, so shrinking does not undo itself.
+    this.host.nativeElement.removeAttribute('data-tight');
+    const full = this.contentEnd(view);
+    this.host.nativeElement.toggleAttribute('data-tight', full + natural + SLIDER_AIR > window.innerHeight);
+    const compact = !!slider.querySelector('.heat-slider.compact');
+    let next = 0;
+    if (compact && matchMedia('(max-width: 767.98px)').matches) {
+      const contentEnd = this.contentEnd(view);
+      next = Math.round(Math.max(0, Math.min(SLIDER_FULL_HEIGHT - natural, window.innerHeight - contentEnd - natural - SLIDER_AIR)));
+    }
+    if (next !== extra) slider.style.setProperty('--slider-extra', `${next}px`);
   }
 
   ngOnInit() {
@@ -335,7 +374,7 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
     const dy = event.touches[0].clientY - from.y;
     if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
     if (this.swipeView) this.marks?.pull(dx, this.shownIndex(this.swipeView), this.swipeView);
-    this.dragViews(`translateX(${dx * 0.4}px) rotate(${Math.max(-4, Math.min(4, dx / 60))}deg)`, '');
+    this.dragViews(`translateX(${dx * 0.4}px)`, '');
   }
 
   private animates(): boolean {
@@ -518,6 +557,10 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
   }
 }
 
+/** The height, in px, of the full slider on a narrow screen (measured): the compact slider never grows past it. */
+const SLIDER_FULL_HEIGHT = 128;
+/** The air, in px, left between the heats and the slider when it takes room. */
+const SLIDER_AIR = 16;
 const DISCONNECT_GRACE_MS = 3000;
 /** The least time between two messages of the live region. */
 const ANNOUNCE_EVERY_MS = 4000;

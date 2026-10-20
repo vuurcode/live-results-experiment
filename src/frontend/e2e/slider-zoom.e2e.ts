@@ -56,18 +56,20 @@ test.describe('a long event', () => {
     // the live heat moving on by itself leaves it compact
     await page.waitForTimeout(3500);
     await expect(page.locator('.heat-slider.compact')).toBeVisible();
-    expect(await mainPadding()).toBeLessThanOrEqual(compact + 20);
-    const scrolls = () => page.evaluate(() => document.documentElement.scrollHeight > innerHeight);
+    expect(await mainPadding()).toBeLessThanOrEqual(130 + 20); // the compact slider takes spare room, up to the size of the full one
+    const scrolls = () => page.evaluate(() => (() => { const main = document.querySelector('main')!; return main.scrollHeight > main.clientHeight || document.documentElement.scrollHeight > innerHeight; })());
     expect(await scrolls()).toBe(false);
     await slider(page).focus();
     await page.keyboard.press('ArrowLeft');
     await expect(page.locator('.heat-slider.compact')).toHaveCount(0);
     await expect(page.locator('.live-pill')).toBeVisible();
-    await expect.poll(async () => (await host.boundingBox())!.height).toBeGreaterThan(compact + 20);
-    expect(await mainPadding()).toBeGreaterThanOrEqual((await host.boundingBox())!.height);
+    // the compact slider may have taken spare room already: the full one is at least as tall
+    await expect.poll(async () => (await host.boundingBox())!.height).toBeGreaterThanOrEqual(compact);
+    const full = (await host.boundingBox())!.height;
+    expect(await mainPadding()).toBeGreaterThanOrEqual(full);
     // left alone for a moment, it folds back
     await expect(page.locator('.heat-slider.compact')).toBeVisible({ timeout: 5000 });
-    await expect.poll(async () => (await host.boundingBox())!.height).toBeLessThan(compact + 20);
+    await expect.poll(async () => (await host.boundingBox())!.height).toBeLessThanOrEqual(full + 1);
     expect(await scrolls()).toBe(false);
   });
 
@@ -110,5 +112,46 @@ test.describe('a long event', () => {
     await expect(slider(page)).not.toHaveAttribute('aria-valuetext', before!);
     await page.mouse.up();
     await expect(slider(page)).not.toHaveAttribute('aria-valuetext', before!);
+  });
+
+  test('the compact slider takes spare room at the bottom, never more than the full slider', async ({ page }) => {
+    await page.setViewportSize({ width: 412, height: 1400 });
+    await page.goto(`/?competitionId=${COMPETITION}`);
+    await expect(slider(page)).toBeVisible({ timeout: 15_000 });
+    const host = page.locator('.heat-slider-host');
+    await expect(page.locator('.heat-slider.compact')).toBeVisible({ timeout: 8000 });
+    const height = async () => (await host.boundingBox())!.height;
+    await expect.poll(height).toBeGreaterThan(110);
+    await slider(page).focus();
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.locator('.heat-slider.compact')).toHaveCount(0);
+    await page.waitForTimeout(600);
+    const full = await height();
+    await expect(page.locator('.heat-slider.compact')).toBeVisible({ timeout: 5000 });
+    await page.waitForTimeout(600);
+    expect(await height()).toBeLessThanOrEqual(full + 2);
+  });
+
+  test('the heading texts shrink only when the heats leave no room', async ({ page }) => {
+    await page.setViewportSize({ width: 412, height: 1400 });
+    await page.goto(heatUrl(COMPETITION, 'dist-500', 3));
+    await expect(slider(page)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.individual-competitor-card').first()).toBeVisible();
+    await expect(page.locator('app-dashboard[data-tight]')).toHaveCount(0);
+    await page.setViewportSize({ width: 412, height: 420 });
+    await expect(page.locator('app-dashboard[data-tight]')).toHaveCount(1);
+  });
+
+  test('the heats scroll in the part under the top bar, never beneath it', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 500 });
+    await page.goto(heatUrl(COMPETITION, 'dist-500', 3));
+    await expect(page.locator('.individual-competitor-card').first()).toBeVisible({ timeout: 15_000 });
+    const frame = await page.evaluate(() => ({
+      barBottom: document.querySelector('.topbar')!.getBoundingClientRect().bottom,
+      mainTop: document.querySelector('main')!.getBoundingClientRect().top,
+      pageScrolls: document.documentElement.scrollHeight > innerHeight,
+    }));
+    expect(frame.mainTop).toBeGreaterThanOrEqual(frame.barBottom - 1);
+    expect(frame.pageScrolls).toBe(false);
   });
 });

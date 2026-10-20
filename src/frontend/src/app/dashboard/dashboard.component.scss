@@ -7,7 +7,7 @@
 :host ::ng-deep .groups-strip {
   border-bottom: 1px solid var(--cui-border-color, #dee2e6);
   position: sticky;
-  top: var(--topbar-h, 3rem);
+  top: 0; // the top of the part that scrolls, under the bar
   z-index: 9;
   max-height: 60vh;
   overflow: hidden auto;
@@ -132,7 +132,9 @@
 }
 
 // The heats are dragged along by the slider: sliding to the right brings the next heat in from the right.
-.main-clip { overflow-x: clip; }
+// The top bar and the page below it fill the screen, and the heats scroll in the part under the bar, so they never pass beneath it.
+.dashboard-frame { height: 100vh; height: 100dvh; overflow: hidden; }
+.main-clip { overflow: hidden auto; min-height: 0; overscroll-behavior: contain; }
 // the lane bands stay where they are; only the labels, cards and hints slide
 :host ::ng-deep .step-view.slide-from-right :is(.individual-heat-label, .individual-competitor-card, .peek) { animation: slideFromRight 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
 :host ::ng-deep .step-view.slide-from-left :is(.individual-heat-label, .individual-competitor-card, .peek) { animation: slideFromLeft 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
@@ -163,6 +165,7 @@
   z-index: 1015; // under the top bar and its menu
   margin: 0;
   padding: 0 0.5rem calc(env(safe-area-inset-bottom) + 0.75rem); // room under the Live badge, which hangs below the bar
+  @media (max-width: 767.98px) { padding-inline: 0.25rem; padding-top: var(--slider-extra, 0px); } // the room a compact slider takes when the heats leave it
   background: var(--lr-surface);
   border-top: 1px solid var(--cui-border-color, #dee2e6);
   box-shadow: 0 -0.25rem 0.75rem rgba(0, 0, 0, 0.12);
@@ -171,12 +174,22 @@
 
 // While heats are named by marks the cards fold to their titles, lose their watermarks, and sit
 // below the marks, so a name is quickly found. The fold and the unfold are eased.
-.individual-competitors-row { transition: padding-top 0.3s ease; }
+:host ::ng-deep .individual-competitors-row { transition: padding-top 0.3s ease; }
+.distance-title, :host ::ng-deep .individual-heat-label { transition: color 0.3s ease, opacity 0.3s ease; }
 :host ::ng-deep .individual-comp-body { max-height: 40rem; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease, min-height 0.3s ease, opacity 0.2s ease; }
 :host-context([data-heat-marks]) ::ng-deep {
   // only the first pair of a quartet makes room for the marks; the second follows directly below it
-  app-individual-heat-card:first-child .individual-competitors-row { padding-top: 7rem; }
+  app-individual-heat-card:first-child .individual-competitors-row { padding-top: var(--marks-push, 0px); }
   .individual-comp-body { max-height: 0; min-height: 0 !important; padding-block: 0 !important; opacity: 0; }
-  .individual-watermark, .individual-comp-title[data-watermark]::before { display: none !important; }
+  .individual-watermark, .individual-watermark-code { display: none !important; }
+  // the marks name the heat and the distance already: their text goes, and its room stays so nothing shifts
+  .distance-title, .distance-title .text-muted { color: transparent !important; }
+  .individual-heat-label { opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) { :host ::ng-deep .individual-comp-body, .individual-competitors-row { transition: none; } }
+
+// short of vertical room (see fitSlider) the texts naming the heat and the distance are a little smaller
+:host([data-tight]) {
+  .distance-title { font-size: 0.95rem; padding-block: 0.3rem; }
+  ::ng-deep .individual-heat-label { font-size: 0.68em; padding-block: 0.05rem; }
+}

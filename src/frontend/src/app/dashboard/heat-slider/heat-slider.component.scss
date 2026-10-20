@@ -131,6 +131,7 @@ $pill-shift: translateX(calc(-1 * (clamp(0, (var(--at) - 0.15) / 0.7, 1) * (100%
   --below: 0rem; // how far the input reaches below the grown bar, over the numbers and texts there
   position: relative;
   margin-inline: 1.25rem; // room beside the bar for the thumb, the first distance text and the live pill
+  @media (max-width: 767.98px) { margin-inline: 0.9rem; } // every pixel counts on a narrow screen
   margin-top: 2.5rem; // room for the distance text above the lines, and the name of the current distance above that
   display: flow-root; // keeps the input's negative margins inside the track
   padding-bottom: calc(var(--rest) + var(--grow)); // room for the lines under the bar; the grown bar pushes what is below it down

@@ -2,7 +2,7 @@
   @if (pulled; as mark) {
     <div class="heat-mark" [class.heat-mark-live]="mark.live" [class.heat-mark-left]="mark.side === 'left'" [style.opacity]="mark.progress * 0.95" [style.top.px]="top" aria-hidden="true">
       <span class="heat-mark-arrow">{{ mark.edge ? '✕' : mark.side === 'left' ? '←' : '→' }}</span>
-      <span class="heat-mark-label">{{ mark.label }}</span>
+      <span class="heat-mark-label" [style.font-size.rem]="labelSize(mark.label)">{{ mark.label }}</span>
     </div>
   }
   @if (around; as sides) {
@@ -10,7 +10,7 @@
       @let near = side === 'left' ? sides.previous : sides.next;
       <div class="heat-mark" [class.heat-mark-live]="near.live" [class.heat-mark-fading]="fading" [class.heat-mark-left]="side === 'left'" [style.top.px]="top" aria-hidden="true">
         <span class="heat-mark-arrow">{{ near.edge ? '✕' : side === 'left' ? '←' : '→' }}</span>
-        <span class="heat-mark-label">{{ near.label }}</span>
+        <span class="heat-mark-label" [style.font-size.rem]="labelSize(near.label)">{{ near.label }}</span>
       </div>
     }
   }
@@ -20,6 +20,6 @@
     } @else {
       <svg class="heat-mark-arrow heat-mark-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7.5 11-7.5S23 12 23 12s-4 7.5-11 7.5S1 12 1 12z"/><circle cx="12" cy="12" r="3.5"/></svg>
     }
-    <span class="heat-mark-label">{{ current }}</span>
+    <span class="heat-mark-label" [style.font-size.rem]="labelSize(current)">{{ current }}</span>
   </div>
 }
