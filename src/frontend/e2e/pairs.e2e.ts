@@ -109,7 +109,7 @@ test.describe('personal best wording follows the browser language', () => {
         const cardA = page.locator('.individual-competitor-card', { hasText: 'Competitor A' });
         await expect(cardA.getByText(term, { exact: true }).first()).toBeVisible({ timeout: 15_000 });
         await expect(page.locator('.individual-competitor-card').getByText(other, { exact: true })).toHaveCount(0);
-        await expect(cardA.getByText(term === 'PB' ? 'Previous PB' : 'Vorig PR')).toBeVisible();
+        await expect(cardA.locator('.individual-pb-current-label', { hasText: term === 'PB' ? 'Previous PB' : 'Vorig PR' })).toBeVisible();
       });
     });
   }

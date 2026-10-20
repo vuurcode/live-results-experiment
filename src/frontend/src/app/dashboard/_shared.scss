@@ -227,16 +227,20 @@
     left: auto;
     transform: rotate(-6deg);
   }
-  // On a narrow screen the notes would cover the PB and the badges in the title: they hang under the total time instead,
-  // against the right edge.
+  // On a narrow screen the notes sit in the bottom part of the card (the lap times), centred vertically against the right edge,
+  // clear of the name and the total time in the title. The card is a grid, so a note placed in its second row takes that row as
+  // its containing block, whatever the title around it.
   @media (max-width: 767.98px) {
+    .individual-comp-title { position: static; }
     .individual-watermark,
     .individual-comp-title[data-watermark]::before,
     .individual-watermark.individual-watermark-slower,
     .individual-watermark.individual-watermark-pr {
-      top: calc(100% - 0.4rem);
-      right: 0.6rem;
-      left: auto;
+      grid-row: 2;
+      grid-column: 1;
+      inset: 0 0.8rem 0 auto;
+      margin-block: auto;
+      height: fit-content;
       transform: rotate(-6deg);
     }
   }
@@ -249,8 +253,6 @@
   &.individual-card-settling {
     .individual-watermark, .individual-comp-title[data-watermark]::before { opacity: 0; scale: 0.5; }
   }
-  // a card of the live heat that is still racing: a thick red border; the inner outline thickens it without changing the card height
-  &.individual-card-live { border-color: var(--lr-live); outline: 2px solid var(--lr-live); outline-offset: -3px; }
   &.individual-card-pr {
     border: 2px solid var(--lr-accent);
     .individual-comp-title::before { color: var(--lr-accent-text); }

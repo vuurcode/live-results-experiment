@@ -239,6 +239,28 @@
   color: var(--lr-text-subtle); // 6.2:1 on white
   font-variant-numeric: tabular-nums;
 }
+.compact-pb {
+  display: none;
+  font-size: 0.5rem;
+  font-weight: 400;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+// On a narrow screen the personal best is a caption under the total time; the badge stays for screen readers.
+@media (max-width: 767.98px) {
+  // the caption sits at the bottom inside the total's badge, in the badge's own colours
+  .compact-pb { display: block; align-self: center; text-align: center; }
+  .individual-compact-final .individual-lap-time { display: inline-flex; flex-direction: column; align-items: flex-end; }
+  .individual-ghost-total { flex-direction: column; .compact-pb { color: var(--lr-text-meta); } }
+  .individual-pb-current {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
 .individual-comp-body.individual-compact-body { // beats the plain .individual-comp-body padding defined further down
   // The badges sit in columns as wide as a badge (so as many fit on a row as the badges allow), centred in the card.
   display: grid;
@@ -248,8 +270,8 @@
   justify-items: center;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.6rem 1rem; // roomier: the single row already saves a lot of height
-  min-height: 4.7rem; // a card without laps yet keeps its height (also once the distances and the total are there)
+  padding: 0.4rem 1rem; // roomier than the plain body: the single row already saves a lot of height
+  min-height: 4.4rem; // a card without laps yet keeps its height (also once the distances and the total are there)
 }
 
 .individual-comp-body {

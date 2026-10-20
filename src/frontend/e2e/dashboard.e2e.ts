@@ -195,7 +195,7 @@ test.describe('individual race distance', () => {
 });
 
 test.describe('live heat', () => {
-  test('each competitor still racing in the live heat has a red border; a card with a result, or a border of its own, does not', async ({ page, request }) => {
+  test('each competitor still racing in the live heat is marked live; a card with a result, or a border of its own, is not', async ({ page, request }) => {
     await restartReplay(request, 'e2e-multi');
     await page.setViewportSize({ width: 1400, height: 1000 });
     await page.goto('/?competitionId=e2e-multi');
@@ -204,18 +204,13 @@ test.describe('live heat', () => {
     const cards = live.locator('.individual-competitor-card:not(.individual-lane-placeholder)');
     await expect(page.locator('.individual-card-live').first()).toBeVisible({ timeout: 20_000 });
     await expect(live).toHaveCSS('border-top-width', '0px'); // the row itself carries no border
-    for (const card of await page.locator('.individual-card-live').all()) {
-      await expect(card).toHaveCSS('border-top-color', 'rgb(176, 42, 55)'); // the colour fades in
-    }
     const states = await cards.evaluateAll((els) => els.map((c) => ({
       live: c.classList.contains('individual-card-live'),
-      border: getComputedStyle(c).borderTopColor,
       other: ['race-finished', 'individual-card-pr', 'individual-card-record', 'individual-card-red', 'individual-card-orange'].some((k) => c.classList.contains(k)),
     })));
     expect(states.some((s) => s.live)).toBe(true);
     for (const s of states) {
       expect(s.live, JSON.stringify(s)).toBe(!s.other);
-      if (s.live) expect(s.border).toBe('rgb(176, 42, 55)');
     }
     expect(await page.locator('.individual-card-live').evaluateAll((els) => els.every((c) => c.closest('[data-live]')))).toBe(true);
   });

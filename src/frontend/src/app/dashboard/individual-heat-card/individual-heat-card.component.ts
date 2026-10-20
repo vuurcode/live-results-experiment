@@ -330,6 +330,12 @@ export class IndividualHeatCardComponent {
   }
 
   /** True once the skater has finished faster than the personal best shown on the card. */
+  /** The personal best as a caption, small under the total time on a narrow screen: its label and time. */
+  protected pbText(race: CompetitorUpdate): string {
+    const [whole, decimal] = splitFormattedTime(truncateLapTime(race.personal_record ?? '', this.decimals(race)));
+    return `${this.ts.t(this.isPbImproved(race) ? 'pbPreviousLabel' : 'pbCurrentLabel')} ${whole}${decimal}`;
+  }
+
   protected isPbImproved(race: CompetitorUpdate): boolean {
     return !!this.distanceMeters && !!this.individualPrComparison(race, this.distanceMeters)?.faster;
   }

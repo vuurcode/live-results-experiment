@@ -66,13 +66,13 @@
                 <span class="individual-compact-final" [class.individual-compact-done]="compactDone(race)">
                   <!-- distance reached so far: small and subtle; 'Finished (unofficial result)' once the final lap is done -->
                   <span class="compact-reached">{{ compactDone(race) ? ts.t('finishedUnofficial') : lapSchedule[totalLaps(race) - 1] + 'm' }}</span>
-                  <span class="individual-lap-time"><span class="race-time">{{ splitFormattedTime(truncateLapTime(totalTime, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(totalTime, decimals(race)))[1] }}</small></span></span>
+                  <span class="individual-lap-time"><span class="race-time">{{ splitFormattedTime(truncateLapTime(totalTime, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(totalTime, decimals(race)))[1] }}</small></span>@if (race.personal_record) { <span class="compact-pb">{{ pbText(race) }}</span> }</span>
                 </span>
               }
               @if (race.lap_times.length === 0 && lapSchedule.length > 0) {
                 <span class="individual-compact-final individual-ghost-final" [class.individual-ghost-hidden]="ghostsHidden(race)" aria-hidden="true">
                   <span class="compact-reached">{{ ts.t('finishedUnofficial') }}</span>
-                  <c-badge class="individual-split-badge individual-ghost-badge individual-ghost-total">&nbsp;</c-badge>
+                  <c-badge class="individual-split-badge individual-ghost-badge individual-ghost-total">&nbsp;@if (race.personal_record) { <span class="compact-pb">{{ pbText(race) }}</span> }</c-badge>
                 </span>
               }
             </div>
