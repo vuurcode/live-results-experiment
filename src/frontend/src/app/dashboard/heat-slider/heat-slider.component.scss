@@ -485,6 +485,7 @@ $pill-shift: translateX(calc(-1 * (clamp(0, (var(--at) - 0.15) / 0.7, 1) * (100%
 .zoomed .you-line { top: -0.9rem; height: calc(0.9rem + (var(--thumb) + var(--grow)) / 2); }
 .zoomed .live-pill, .zoomed .you-pill { top: -2.2rem; }
 // Near the live pill the You pill takes a second row, below the Live pill on the whole bar and above it on the zoomed one; its line grows to reach it.
+.track.you-stacked { --rest: 3.3rem; } // the You pill on its second row needs room under the bar too
 .you-pill.stacked { margin-top: 1.6rem; }
 .you-line.stacked { height: 2.8rem; }
 .zoomed .you-pill.stacked { margin-top: -1.6rem; }

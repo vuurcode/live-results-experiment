@@ -19,7 +19,7 @@
     <div class="slide-hint" aria-hidden="true"><span class="slide-hint-arrow">←</span>{{ 'sliderHint' | translate }}<span class="slide-hint-arrow">→</span></div>
   }
   <div class="d-flex align-items-center gap-3">
-    <div class="track flex-grow-1" [style.--lines]="numberLines">
+    <div class="track flex-grow-1" [class.you-stacked]="youStacked" [style.--lines]="numberLines">
       <span class="bar" aria-hidden="true"></span>
       @for (index of ticks; track index) {
         @if (ticksShown && inWindow(index)) {

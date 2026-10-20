@@ -27,6 +27,23 @@ test.describe('a long event', () => {
     }
   });
 
+  test('on a Pixel 7a the pills stay on screen and the page leaves just the room the slider takes', async ({ page }) => {
+    await page.setViewportSize({ width: 412, height: 915 });
+    for (const heat of [11, 3]) {
+      await page.goto(heatUrl(COMPETITION, 'dist-500', heat));
+      await expect(page.locator('.you-pill')).toBeVisible({ timeout: 15_000 });
+      await page.waitForTimeout(600);
+      const you = await page.locator('.you-pill').boundingBox();
+      expect(you!.y + you!.height, `heat ${heat}`).toBeLessThanOrEqual(915);
+    }
+    const room = await page.evaluate(() => ({
+      padding: parseFloat(getComputedStyle(document.querySelector('main')!).paddingBottom),
+      slider: document.querySelector('.heat-slider-host')!.getBoundingClientRect().height,
+    }));
+    expect(room.padding).toBeGreaterThanOrEqual(room.slider);
+    expect(room.padding).toBeLessThanOrEqual(room.slider + 20);
+  });
+
   test('on a narrow screen the zoomed bar is only drawn and the overview below it takes the gestures', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
     await page.goto(`/?competitionId=${COMPETITION}`);
