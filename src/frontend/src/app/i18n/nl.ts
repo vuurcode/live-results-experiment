@@ -91,6 +91,7 @@ export const nl: Translations = {
   sliderMore: '+{n} meer',
   sliderYou: 'Je bekijkt nu',
   sliderEnd: 'Einde',
+  sliderStart: 'Begin',
   sliderHint: 'Veeg naar links of rechts om van rit te wisselen',
   peekStart: 'Begin afstand',
   peekEnd: 'Einde afstand',

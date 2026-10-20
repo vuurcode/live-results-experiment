@@ -91,6 +91,7 @@ export const es: Translations = {
   sliderMore: '+{n} más',
   sliderYou: 'Estás viendo',
   sliderEnd: 'Fin',
+  sliderStart: 'Inicio',
   sliderHint: 'Desliza a izquierda o derecha para cambiar de serie',
   peekStart: 'Inicio de la distancia',
   peekEnd: 'Fin de la distancia',

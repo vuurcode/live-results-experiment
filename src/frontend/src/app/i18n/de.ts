@@ -91,6 +91,7 @@ export const de: Translations = {
   sliderMore: '+{n} weitere',
   sliderYou: 'Du siehst gerade',
   sliderEnd: 'Ende',
+  sliderStart: 'Start',
   sliderHint: 'Nach links oder rechts wischen, um den Lauf zu wechseln',
   peekStart: 'Start der Distanz',
   peekEnd: 'Ende der Distanz',

@@ -110,6 +110,20 @@ test.describe('swiping between heats', () => {
     await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
   });
 
+  test('dragging past the first heat marks Start, past the last End', async ({ page }) => {
+    await page.goto(heatUrl('e2e-pairs', 'dist-500', 1));
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 1$/, { timeout: 15_000 });
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 200, y: 400 }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 260, y: 402 }] });
+    const mark = page.locator('.swipe-target');
+    await expect(mark).toContainText('Start');
+    await expect(page.locator('.swipe-target-arrow')).toHaveText('←');
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(mark).toHaveCount(0);
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 1$/);
+  });
+
   test('a short, a diagonal and a slow stroke leave the heat alone', async ({ page }) => {
     await page.goto(heatUrl('e2e-pairs', 'dist-500', 2));
     await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/, { timeout: 15_000 });

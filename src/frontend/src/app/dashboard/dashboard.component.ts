@@ -319,11 +319,13 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
     const view = this.swipeView;
     const current = view ? (this.position === null ? view.live : Math.min(this.position, view.steps.length - 1)) : 0;
     const step = view?.steps[current + (dx < 0 ? 1 : -1)];
+    // past the first or last heat the mark says so: there is nowhere to go
+    const label = step ? step.label : this.ts.t(dx < 0 ? 'sliderEnd' : 'sliderStart');
     const progress = Math.min(1, Math.abs(dx) / 120);
     // level with the top lane, where the cards are, so the mark covers as little of them as possible
     const lane = this.host.nativeElement.querySelector('.individual-competitor-card')?.getBoundingClientRect();
     const top = Math.round(lane ? lane.top : window.innerHeight / 2);
-    const next = step ? { side: dx < 0 ? 'right' as const : 'left' as const, label: step.label, progress, top } : null;
+    const next = view ? { side: dx < 0 ? 'right' as const : 'left' as const, label, progress, top } : null;
     if (next?.top === this.swipeTarget?.top && next?.side === this.swipeTarget?.side && next?.label === this.swipeTarget?.label && next?.progress === this.swipeTarget?.progress) return;
     this.swipeTarget = next;
     this.cdr.markForCheck();

@@ -91,6 +91,7 @@ export const nb: Translations = {
   sliderMore: '+{n} til',
   sliderYou: 'Du ser på',
   sliderEnd: 'Slutt',
+  sliderStart: 'Start',
   sliderHint: 'Sveip til venstre eller høyre for å bytte heat',
   peekStart: 'Start på distansen',
   peekEnd: 'Slutt på distansen',

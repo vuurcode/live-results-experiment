@@ -93,6 +93,7 @@ export interface Translations {
   sliderYou: string;    // the label under the slider thumb when it is not on the live heat
   sliderHint: string;   // the hint, shown once on a narrow screen, that the heats can be swiped
   sliderEnd: string;    // the label at the right end of the slider
+  sliderStart: string;  // the label at the left end of the slider, also on the mark of a swipe past the first heat
   peekStart: string;    // the grey hint left of the first heat of a distance
   peekEnd: string;      // the grey hint right of the last heat of a distance
   futureLap: string;

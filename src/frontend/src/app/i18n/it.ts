@@ -91,6 +91,7 @@ export const it: Translations = {
   sliderMore: '+{n} altri',
   sliderYou: 'Stai guardando',
   sliderEnd: 'Fine',
+  sliderStart: 'Inizio',
   sliderHint: 'Scorri a sinistra o a destra per cambiare batteria',
   peekStart: 'Inizio della distanza',
   peekEnd: 'Fine della distanza',

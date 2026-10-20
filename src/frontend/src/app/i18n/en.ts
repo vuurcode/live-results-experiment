@@ -91,6 +91,7 @@ export const en: Translations = {
   sliderMore: '+{n} more',
   sliderYou: 'You are viewing',
   sliderEnd: 'End',
+  sliderStart: 'Start',
   sliderHint: 'Swipe left or right to change heat',
   peekStart: 'Start of distance',
   peekEnd: 'End of distance',
