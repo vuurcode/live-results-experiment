@@ -62,7 +62,7 @@
 .individual-comp-header {
   flex: 1 1 auto;
   display: flex;
-  align-items: stretch; // the name and the code badges are as tall as the total time's badge (see --total-caption-h)
+  align-items: stretch; // the name and the code badges are as tall as the total time's badge
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.4rem 1rem; // the same side padding as the card body below
@@ -80,12 +80,14 @@
   gap: 0.5rem;
 }
 .individual-comp-name {
+  display: flex; // the badge inside is as tall as the row
   font-size: 1.1em;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 // The name is a badge in the colour of the lane, the category / club small below the name inside it.
 .individual-comp-name-text {
+  flex: 1 1 auto;
   display: inline-block;
   max-width: 100%;
   vertical-align: bottom;
@@ -96,11 +98,9 @@
   flex-direction: column;
   justify-content: center;
 }
-// the total time has a small caption above its badge; the name and the code badges leave that room, so their bottoms and heights line up with the badge
-.individual-comp-header { --total-caption-h: 0.85rem; }
-.individual-comp-header:has(.individual-compact-final) {
-  .individual-comp-who, .individual-comp-badges { margin-top: var(--total-caption-h); }
-}
+// the total time has a small caption above its badge, outside the badge's box: the header leaves room for it, and the name and the code badges
+// stretch to the height of the badge alone, whatever is inside it
+.individual-comp-header:has(.individual-compact-final) { padding-top: 1.25rem; }
 .individual-comp-name-line {
   display: block;
   font-weight: 600;
@@ -219,6 +219,7 @@
   font-variant-numeric: tabular-nums;
 }
 .individual-compact-final {
+  position: relative;
   display: inline-flex;
   flex-direction: column;
   align-items: flex-end; // the total badge sits right; its caption is centred over it
@@ -244,7 +245,11 @@
   animation: recordGlow 7.5s infinite;
 }
 .compact-reached {
-  align-self: center;
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  margin-bottom: 0.3rem;
+  white-space: nowrap;
   text-align: center;
   font-size: 0.5rem;
   color: var(--lr-text-subtle); // 6.2:1 on white
