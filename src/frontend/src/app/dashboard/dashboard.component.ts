@@ -1,7 +1,7 @@
 import { findLiveHeat } from '../results/live-heat';
 import { newFinishers } from '../results/finish-announce.util';
 import { distanceCompleted, hideDisqualifications } from '../results/hide-dq.util';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostBinding, OnInit, inject } from '@angular/core';
+import { AfterViewChecked, ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostBinding, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
@@ -71,7 +71,7 @@ import { raceListAnimation, raceListKey } from './dashboard.animations';
   animations: [raceListAnimation],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, AfterViewChecked {
   protected dataService = inject(DataService);
   protected settings = inject(SettingsService);
   private titleService = inject(Title);
@@ -146,6 +146,22 @@ export class DashboardComponent implements OnInit {
     );
   }
 
+  /** Keeps the room the page leaves under the heats equal to the height of the slider that is fixed over it. */
+  private sliderObserver: ResizeObserver | null = null;
+  private observedSlider: Element | null = null;
+
+  ngAfterViewChecked(): void {
+    const slider = this.host.nativeElement.querySelector('.heat-slider-host');
+    if (slider === this.observedSlider || typeof ResizeObserver === 'undefined') return;
+    this.observedSlider = slider;
+    this.sliderObserver ??= new ResizeObserver(() => {
+      const height = this.observedSlider?.getBoundingClientRect().height;
+      if (height) this.host.nativeElement.style.setProperty('--slider-h', `${Math.ceil(height)}px`);
+    });
+    this.sliderObserver.disconnect();
+    if (slider) this.sliderObserver.observe(slider);
+  }
+
   ngOnInit() {
     // The venue of the viewed competition is remembered; a page without a competition (or with one the backend does not know)
     // opens the live competition of the remembered venue, else its first.
@@ -176,7 +192,7 @@ export class DashboardComponent implements OnInit {
       this.cdr.markForCheck();
     });
     const timer = setInterval(() => this.announceFinishes(), ANNOUNCE_EVERY_MS);
-    this.destroyRef.onDestroy(() => clearInterval(timer));
+    this.destroyRef.onDestroy(() => { clearInterval(timer); this.sliderObserver?.disconnect(); });
   }
 
   /** What a screen reader says, in a polite live region: finishes only, at most one message every few seconds, so the routine lap times stay silent. */
@@ -285,10 +301,58 @@ export class DashboardComponent implements OnInit {
     this.swipeFrom = { x: event.touches[0].clientX, y: event.touches[0].clientY, time: event.timeStamp };
   }
 
+  /** The heats follow the finger while it drags sideways, a little, like a card being pulled; a vertical stroke is left to the scrolling. */
+  protected swipeMove(event: TouchEvent): void {
+    const from = this.swipeFrom;
+    if (!from || event.touches.length !== 1 || !this.animates()) return;
+    const dx = event.touches[0].clientX - from.x;
+    const dy = event.touches[0].clientY - from.y;
+    if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    this.showTarget(dx);
+    this.dragViews(`translateX(${dx * 0.4}px) rotate(${Math.max(-4, Math.min(4, dx / 60))}deg)`, '');
+  }
+
+  /** The heat a swipe this far sideways would go to, named at the side it comes from: a swipe to the left brings the next heat in from the right. */
+  protected swipeTarget: { side: 'left' | 'right'; label: string; progress: number; top: number } | null = null;
+
+  private showTarget(dx: number): void {
+    const view = this.swipeView;
+    const current = view ? (this.position === null ? view.live : Math.min(this.position, view.steps.length - 1)) : 0;
+    const step = view?.steps[current + (dx < 0 ? 1 : -1)];
+    const progress = Math.min(1, Math.abs(dx) / 120);
+    // level with the top lane, where the cards are, so the mark covers as little of them as possible
+    const lane = this.host.nativeElement.querySelector('.individual-competitor-card')?.getBoundingClientRect();
+    const top = Math.round(lane ? lane.top : window.innerHeight / 2);
+    const next = step ? { side: dx < 0 ? 'right' as const : 'left' as const, label: step.label, progress, top } : null;
+    if (next?.top === this.swipeTarget?.top && next?.side === this.swipeTarget?.side && next?.label === this.swipeTarget?.label && next?.progress === this.swipeTarget?.progress) return;
+    this.swipeTarget = next;
+    this.cdr.markForCheck();
+  }
+
+  private hideTarget(): void {
+    if (this.swipeTarget === null) return;
+    this.swipeTarget = null;
+    this.cdr.markForCheck();
+  }
+
+  private animates(): boolean {
+    return this.settings.animations.value && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  /** Sets the pull on the heats on show; released, they spring back (or, when the swipe went through, the new heat slides in). */
+  private dragViews(transform: string, transition: string): void {
+    this.host.nativeElement.querySelectorAll<HTMLElement>('.step-view').forEach((view) => {
+      view.style.transition = transition;
+      view.style.transform = transform;
+    });
+  }
+
   /** Moves a heat on a swipe over the heats, on narrow screens only (a wide screen has no room to swipe in). */
   protected swipeEnd(event: TouchEvent): void {
     const from = this.swipeFrom;
     this.swipeFrom = null;
+    this.dragViews('', 'transform 0.2s ease-out');
+    this.hideTarget();
     const view = this.swipeView;
     if (!from || !view || event.touches.length > 0 || event.changedTouches.length !== 1) return;
     const touch = event.changedTouches[0];
@@ -303,6 +367,8 @@ export class DashboardComponent implements OnInit {
 
   protected swipeCancel(): void {
     this.swipeFrom = null;
+    this.dragViews('', 'transform 0.2s ease-out');
+    this.hideTarget();
   }
 
   /** A stroke that starts on the slider, a form control or something that scrolls sideways by itself belongs to that element. */

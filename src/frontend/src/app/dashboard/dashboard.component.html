@@ -10,7 +10,14 @@
   </div>
   <!-- ===== MAIN CONTENT ===== -->
   <div class="visually-hidden" aria-live="polite" aria-atomic="true">{{ announcement }}</div>
-  <main class="flex-grow-1 px-2 pb-4 main-clip" (touchstart)="swipeStart($event)" (touchend)="swipeEnd($event)" (touchcancel)="swipeCancel()">
+  @if (swipeTarget; as target) {
+    <!-- a mark at the side the next heat comes from while the finger drags: the arrow and the number of the heat -->
+    <div class="swipe-target" [class.swipe-target-left]="target.side === 'left'" [style.opacity]="target.progress * 0.95" [style.top.px]="target.top" aria-hidden="true">
+      <span class="swipe-target-arrow">{{ target.side === 'left' ? '←' : '→' }}</span>
+      <span class="swipe-target-label">{{ target.label }}</span>
+    </div>
+  }
+  <main class="flex-grow-1 px-2 pb-4 main-clip" (touchstart)="swipeStart($event)" (touchmove)="swipeMove($event)" (touchend)="swipeEnd($event)" (touchcancel)="swipeCancel()">
     @if ((sortedDistances$ | async)?.length) {
       @let liveFeed = dataService.feed$ | async;
       @if (liveFeed?.state === 'not_live') {

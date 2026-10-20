@@ -81,6 +81,35 @@ test.describe('swiping between heats', () => {
     await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
   });
 
+  test('the cards slide in from the side the swipe came from', async ({ page }) => {
+    await page.goto(heatUrl('e2e-pairs', 'dist-500', 2));
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/, { timeout: 15_000 });
+    const card = page.locator('.step-view .individual-competitor-card').first();
+    await swipe(page, [340, 400], [60, 405]);
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 3$/);
+    await expect(page.locator('.step-view.slide-from-right')).toHaveCount(1);
+    await expect(card).toHaveCSS('animation-name', /slideFromRight$/);
+    await swipe(page, [60, 400], [340, 395]);
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
+    await expect(page.locator('.step-view.slide-from-left')).toHaveCount(1);
+    await expect(card).toHaveCSS('animation-name', /slideFromLeft$/);
+  });
+
+  test('the heat follows the finger while it drags and springs back when released short', async ({ page }) => {
+    await page.goto(heatUrl('e2e-pairs', 'dist-500', 2));
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/, { timeout: 15_000 });
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 300, y: 400 }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 240, y: 402 }] });
+    await expect(page.locator('.step-view').first()).toHaveCSS('transform', /matrix/);
+    await expect(page.locator('.swipe-target')).toContainText('Heat 3');
+    await expect(page.locator('.swipe-target-arrow')).toHaveText('→');
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(page.locator('.step-view').first()).toHaveCSS('transform', 'none');
+    await expect(page.locator('.swipe-target')).toHaveCount(0);
+    await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
+  });
+
   test('a short, a diagonal and a slow stroke leave the heat alone', async ({ page }) => {
     await page.goto(heatUrl('e2e-pairs', 'dist-500', 2));
     await expect(heat(page)).toHaveAttribute('aria-valuetext', /Heat 2$/, { timeout: 15_000 });

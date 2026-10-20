@@ -163,4 +163,27 @@
   border-top: 1px solid var(--cui-border-color, #dee2e6);
   box-shadow: 0 -0.25rem 0.75rem rgba(0, 0, 0, 0.12);
 }
-.main-clip { padding-bottom: 10rem !important; }
+.main-clip { padding-bottom: calc(var(--slider-h, 9rem) + 1rem) !important; } // the slider's own height, measured, and a little air
+
+// The watermark of the heat a swipe goes to: big and on a solid background at the side it comes from, over the page, never in the way of a touch.
+.swipe-target {
+  position: fixed;
+  right: 0.5rem;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  pointer-events: none;
+  color: var(--cui-body-color);
+  font-weight: 800;
+  text-align: center;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--lr-control-border);
+  border-radius: 0.75rem;
+  background: var(--cui-body-bg);
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.25);
+  &.swipe-target-left { right: auto; left: 0.5rem; }
+}
+.swipe-target-arrow { font-size: 3rem; line-height: 1; }
+.swipe-target-label { font-size: 1.1rem; }
