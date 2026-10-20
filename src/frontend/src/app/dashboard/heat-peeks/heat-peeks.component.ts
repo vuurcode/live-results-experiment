@@ -7,12 +7,12 @@ const SIDE_GAP = 16;
 /** The least width, in px, a half is worth showing at: it shrinks with the room beside the heat on show, the previous one going first. */
 const MIN_BEFORE = 110;
 const MIN_AFTER = 80;
+/** The widest, in px, a half is when it waits outside the screen for a swipe to pull it in. */
+const EDGE_WIDTH = 112;
 
 interface Peek {
-  /** The heat the racers are in, "Heat 3", or both heats of a quartet. */
-  label: string;
   /** The lanes in order; an empty lane has no name and is drawn as an empty badge in the colour of the lane. */
-  racers: { name: string | null; lane: string | null; heat: string | null }[];
+  racers: { name: string | null; lane: string | null }[];
 }
 
 /**
@@ -56,6 +56,8 @@ export class HeatPeeksComponent implements AfterViewInit {
   protected half = signal(0);
   protected showBefore = signal(false);
   protected showAfter = signal(false);
+  /** The cards fill the row, so the halves wait outside it, at its sides, and a swipe pulls the one it moves toward into view. */
+  protected outside = signal(false);
   /** The box of each name badge of the heat on show and of its lane: top and height from the top of the row, in px. */
   protected badges = signal<{ top: number; height: number; laneTop: number; laneHeight: number }[]>([]);
 
@@ -84,7 +86,7 @@ export class HeatPeeksComponent implements AfterViewInit {
 
   private peekOf(step: HeatStep | null): Peek | null {
     if (!step || step.isMassStart || step.racers.length === 0) return null;
-    return { label: step.label, racers: step.slots.map((slot) => ({ name: slot.racer?.name ?? null, lane: slot.lane, heat: slot.racer?.heat ?? null })) };
+    return { racers: step.slots.map((slot) => ({ name: slot.racer?.name ?? null, lane: slot.lane })) };
   }
 
   /** Reads the card width and the lane rows off the heat on show and decides which halves fit. */
@@ -111,12 +113,14 @@ export class HeatPeeksComponent implements AfterViewInit {
     // the heat on show is centred, so a half takes the room beside it, up to half a card
     const free = (width - shown) / 2 - SIDE_GAP;
     const peekWidth = Math.round(Math.min(half, free));
-    const showBefore = peekWidth >= MIN_BEFORE;
-    const showAfter = peekWidth >= MIN_AFTER;
+    const outside = peekWidth < MIN_AFTER;
+    const showBefore = outside || peekWidth >= MIN_BEFORE;
+    const showAfter = outside || peekWidth >= MIN_AFTER;
     // one signal write per field, only when it changed, so an unchanged measure renders nothing
     this.zone.run(() => {
       this.shown.set(shown);
-      this.half.set(peekWidth);
+      this.half.set(outside ? Math.min(half, EDGE_WIDTH) : peekWidth);
+      this.outside.set(outside);
       this.showBefore.set(showBefore);
       this.showAfter.set(showAfter);
       if (JSON.stringify(badges) !== JSON.stringify(this.badges())) this.badges.set(badges);

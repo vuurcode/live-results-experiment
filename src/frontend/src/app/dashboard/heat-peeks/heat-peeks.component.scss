@@ -12,6 +12,12 @@
 }
 .peek-before { left: 1rem; } // SIDE_GAP in the component
 .peek-after { right: 1rem; }
+// on a narrow screen they wait just outside the row and come into view as the swipe pulls the heat aside
+.peeks-outside {
+  .peek-before { left: auto; right: 100%; margin-right: 0.25rem; }
+  .peek-after { right: auto; left: 100%; margin-left: 0.25rem; }
+  .peek-arrow { display: none; } // the pull itself points the way
+}
 .peek-name {
   position: absolute;
   max-width: 100%;
@@ -26,15 +32,6 @@
 .peek-name-line {
   display: block;
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-// the heat of the racer, small and centred below the name like the category and club on a card
-.peek-meta {
-  display: block;
-  text-align: center;
-  font-size: 0.5rem;
-  line-height: 1.1;
   overflow: hidden;
   text-overflow: ellipsis;
 }
