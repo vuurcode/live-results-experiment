@@ -89,7 +89,7 @@ export const de: Translations = {
   tooltipTotalTime: 'Gesamtzeit',
   sliderLabel: 'Lauf-Schieberegler: ganz nach rechts für live',
   sliderMore: '+{n} weitere',
-  sliderYou: 'Du siehst gerade',
+  sliderYou: 'Ansicht',
   sliderEnd: 'Ende',
   sliderStart: 'Start',
   sliderHint: 'Nach links oder rechts wischen, um den Lauf zu wechseln',

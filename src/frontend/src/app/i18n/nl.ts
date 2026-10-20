@@ -89,7 +89,7 @@ export const nl: Translations = {
   tooltipTotalTime: 'Totaaltijd',
   sliderLabel: 'Ritten: schuif naar rechts voor live',
   sliderMore: '+{n} meer',
-  sliderYou: 'Je bekijkt nu',
+  sliderYou: 'Bekijkt',
   sliderEnd: 'Einde',
   sliderStart: 'Begin',
   sliderHint: 'Veeg naar links of rechts om van rit te wisselen',

@@ -89,7 +89,7 @@ export const nb: Translations = {
   tooltipTotalTime: 'Totaltid',
   sliderLabel: 'Heat-glidebryter: dra helt til høyre for live',
   sliderMore: '+{n} til',
-  sliderYou: 'Du ser på',
+  sliderYou: 'Viser',
   sliderEnd: 'Slutt',
   sliderStart: 'Start',
   sliderHint: 'Sveip til venstre eller høyre for å bytte heat',

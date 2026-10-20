@@ -89,7 +89,7 @@ export const en: Translations = {
   tooltipTotalTime: 'Total time',
   sliderLabel: 'Heat slider: slide right for live',
   sliderMore: '+{n} more',
-  sliderYou: 'You are viewing',
+  sliderYou: 'Viewing',
   sliderEnd: 'End',
   sliderStart: 'Start',
   sliderHint: 'Swipe left or right to change heat',

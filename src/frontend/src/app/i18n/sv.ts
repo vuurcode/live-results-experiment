@@ -89,7 +89,7 @@ export const sv: Translations = {
   tooltipTotalTime: 'Totaltid',
   sliderLabel: 'Heat-reglage: dra längst till höger för live',
   sliderMore: '+{n} till',
-  sliderYou: 'Du tittar på',
+  sliderYou: 'Visar',
   sliderEnd: 'Slut',
   sliderStart: 'Start',
   sliderHint: 'Svep åt vänster eller höger för att byta heat',

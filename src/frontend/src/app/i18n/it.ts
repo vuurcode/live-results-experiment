@@ -89,7 +89,7 @@ export const it: Translations = {
   tooltipTotalTime: 'Tempo totale',
   sliderLabel: 'Cursore delle batterie: tutto a destra per il live',
   sliderMore: '+{n} altri',
-  sliderYou: 'Stai guardando',
+  sliderYou: 'Visualizzi',
   sliderEnd: 'Fine',
   sliderStart: 'Inizio',
   sliderHint: 'Scorri a sinistra o a destra per cambiare batteria',

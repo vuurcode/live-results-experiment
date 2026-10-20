@@ -89,7 +89,7 @@ export const fr: Translations = {
   tooltipTotalTime: 'Temps total',
   sliderLabel: 'Curseur des séries : tout à droite pour le direct',
   sliderMore: '+{n} de plus',
-  sliderYou: 'Tu regardes',
+  sliderYou: 'Vue',
   sliderEnd: 'Fin',
   sliderStart: 'Début',
   sliderHint: 'Balayez à gauche ou à droite pour changer de course',
