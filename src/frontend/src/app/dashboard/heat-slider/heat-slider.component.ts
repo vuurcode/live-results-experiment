@@ -107,13 +107,14 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     if (this.hintDone || this.steps.length < 2 || !(this.narrow?.matches ?? false)) return;
     this.hintDone = true;
     try { if (localStorage.getItem(HINT_KEY)) return; } catch { /* storage blocked: the hint shows on every visit */ }
+    try { localStorage.setItem(HINT_KEY, '1'); } catch { /* nothing to remember it in */ } // shown once, also when the page is left before it is dismissed
     this.hintShown = true;
     this.hintPosition = this.position;
     Promise.resolve().then(() => this.hintChange.emit(true)); // not while the page is being checked
     this.hintTimer = setTimeout(() => this.dismissHint(), HINT_MS);
   }
 
-  /** The viewer has used the slider, or the hint has been up long enough: it is not shown again. */
+  /** The viewer has used the slider, or the hint has been up long enough: it goes away. */
   private dismissHint(): void {
     if (this.hintTimer !== null) clearTimeout(this.hintTimer);
     this.hintTimer = null;
@@ -121,7 +122,6 @@ export class HeatSliderComponent implements OnChanges, AfterViewInit, OnDestroy 
     if (!this.hintShown) return;
     this.hintShown = false;
     this.hintChange.emit(false);
-    try { localStorage.setItem(HINT_KEY, '1'); } catch { /* nothing to remember it in */ }
     this.cdr.markForCheck();
   }
 
