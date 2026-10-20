@@ -21,6 +21,7 @@
 @forward "@coreui/coreui/scss/offcanvas";
 @forward "@coreui/coreui/scss/placeholders";
 @forward "@coreui/coreui/scss/helpers";
+@forward "utilities"; // trims the utilities before the api below generates them
 @forward "@coreui/coreui/scss/utilities/api";
 
 // Large screens: scale everything that is sized in rem (nearly all of the UI) with the viewport,
