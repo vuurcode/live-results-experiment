@@ -6,7 +6,7 @@ import { map, type Observable } from 'rxjs';
 import { DataService } from '../results/data.service';
 import type { ProcessedDistance } from '../results/data.models';
 import { ordinalSuffix } from '../results/ordinal.util';
-import { RaceCode, invalidBadgeClass, remarkBadgeClass } from '../results/race-codes';
+import { RaceCode, invalidBadgeClass, remarkBadgeClass, topAchievementOnly } from '../results/race-codes';
 import { nameMatches } from '../results/startlist.util';
 import { raceStepKey } from '../results/step-key.util';
 import { rankDistance, type RankingRow } from '../results/ranking.util';
@@ -19,6 +19,9 @@ interface RankedDistance {
   distance: ProcessedDistance;
   rows: RankingRow[];
 }
+
+/** Codes that are not badged in the first column: the racer has no time to flag. */
+const HIDDEN_CODES: ReadonlySet<string> = new Set<string>([RaceCode.DidNotStart, RaceCode.Withdrawn, RaceCode.Disqualified]);
 
 /** The final order so far of every distance, from the live data. */
 @Component({
@@ -46,9 +49,9 @@ export class RankingComponent {
   protected readonly invalidBadgeClass = invalidBadgeClass;
   protected readonly remarkBadgeClass = remarkBadgeClass;
 
-  /** The race has a fall noted in its remark, shown small along the time. */
-  protected fell(race: { remark?: string | null }): boolean {
-    return !!race.remark?.toUpperCase().split(/\s+/).includes(RaceCode.Fall);
+  /** The codes noted in the remark of a race, shown as badges in front of the rank. Of the records and the personal record only the most significant shows. */
+  protected remarkCodes(race: { remark?: string | null }): string[] {
+    return topAchievementOnly((race.remark?.trim().toUpperCase().split(/\s+/) ?? []).filter((code) => code && !HIDDEN_CODES.has(code)));
   }
 
   protected readonly eventName$ = this.dataService.eventName$;
@@ -66,6 +69,13 @@ export class RankingComponent {
   /** A time with hundredths, or thousandths when that setting is on. */
   protected time(value: string): string {
     return value ? truncateLapTime(formatDurationSeconds(parseSeconds(value)), this.settings.showThousandths.value ? 3 : 2) : '';
+  }
+
+  /** The time cut at the decimal comma or point, so the decimals can be drawn smaller. */
+  protected timeParts(value: string): { whole: string; decimals: string } {
+    const text = this.time(value);
+    const at = text.search(/[.,]/);
+    return at < 0 ? { whole: text, decimals: '' } : { whole: text.slice(0, at), decimals: text.slice(at) };
   }
 
   protected gap(value: string): string {

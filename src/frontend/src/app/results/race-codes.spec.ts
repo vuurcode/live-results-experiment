@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GHOST_HIDING_CODES, NO_TIME_CODES, RECORD_CODES, RECORD_PRIORITY, RaceCode, isNeverLive } from './race-codes';
+import { GHOST_HIDING_CODES, NO_TIME_CODES, RECORD_CODES, RECORD_PRIORITY, RaceCode, isNeverLive, topAchievementOnly } from './race-codes';
 
 describe('isNeverLive', () => {
   it('is true for a competitor who did not start or withdrew, in either field', () => {
@@ -30,5 +30,14 @@ describe('code sets', () => {
     expect(RECORD_PRIORITY).toEqual(['WR', 'NR', 'TR', 'TRC']);
     expect([...RECORD_CODES]).toEqual([...RECORD_PRIORITY]);
     expect(RECORD_CODES.has(RaceCode.PersonalRecord)).toBe(false);
+  });
+});
+
+describe('topAchievementOnly', () => {
+  it('keeps the most significant of the records and the personal record, and the other codes', () => {
+    expect(topAchievementOnly(['PR', 'TR', 'FL'])).toEqual(['TR', 'FL']);
+    expect(topAchievementOnly(['pr', 'trc', 'nr'])).toEqual(['nr']);
+    expect(topAchievementOnly(['PR'])).toEqual(['PR']);
+    expect(topAchievementOnly(['FL', 'MT'])).toEqual(['FL', 'MT']);
   });
 });

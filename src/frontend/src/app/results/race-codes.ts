@@ -27,6 +27,15 @@ export const GHOST_HIDING_CODES: ReadonlySet<string> = new Set<string>([RaceCode
 export const RECORD_PRIORITY: readonly string[] = [RaceCode.WorldRecord, RaceCode.NationalRecord, RaceCode.TrackRecord, RaceCode.TrackRecordCourse];
 export const RECORD_CODES: ReadonlySet<string> = new Set<string>(RECORD_PRIORITY);
 
+/** The records and the personal record, the most significant first: of these, a racer's badges show only the first they have. */
+export const ACHIEVEMENT_PRIORITY: readonly string[] = [...RECORD_PRIORITY, RaceCode.PersonalRecord];
+
+/** The codes with only the most significant of the records and the personal record kept; the order of the others stays. */
+export function topAchievementOnly(codes: readonly string[]): string[] {
+  const best = ACHIEVEMENT_PRIORITY.find((code) => codes.some((c) => c.toUpperCase() === code));
+  return codes.filter((code) => !ACHIEVEMENT_PRIORITY.includes(code.toUpperCase()) || code.toUpperCase() === best);
+}
+
 /** Codes of a competitor who is not on the ice: the card never gets the live tag and does not make its heat the live one. */
 const NEVER_LIVE_CODES: ReadonlySet<string> = new Set<string>([RaceCode.DidNotStart, RaceCode.Withdrawn]);
 

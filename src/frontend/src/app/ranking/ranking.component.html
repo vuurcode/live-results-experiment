@@ -6,7 +6,7 @@
     <h1 class="ranking-title">{{ (eventName$ | async) || ('rankingTitle' | translate) }}</h1>
   </header>
   @if (distances?.length) {
-    <c-alert color="warning" class="disclaimer" role="note">{{ 'disclaimer' | translate }} {{ 'disclaimerOwnership' | translate }}</c-alert>
+    <c-alert color="warning" class="disclaimer" role="note">{{ 'disclaimer' | translate }}</c-alert>
   }
   @for (item of distances; track item.distance.id) {
     <section class="ranking-distance" [attr.aria-labelledby]="'rank-' + item.distance.id">
@@ -26,7 +26,7 @@
           <tbody>
             @for (row of item.rows; track row.race.id) {
               <tr [class.unranked]="row.unranked" [class.highlight]="highlighted(row.race.name)">
-                <td class="rank-col">@if (row.rank !== null) { {{ ordinalSuffix(row.rank)[0] }}<sup>{{ ordinalSuffix(row.rank)[1] }}</sup> } @else if (row.live) { <c-badge color="danger">{{ 'rankingLive' | translate }}</c-badge> }</td>
+                <td class="rank-col">@if (!row.reason) { @for (code of remarkCodes(row.race); track code) { <c-badge class="code-badge" [class]="remarkBadgeClass(code)" [title]="code">{{ code }}</c-badge> } } @if (row.rank !== null) { {{ ordinalSuffix(row.rank)[0] }}<sup>{{ ordinalSuffix(row.rank)[1] }}</sup> } @else if (row.live) { <c-badge color="danger">{{ 'rankingLive' | translate }}</c-badge> }</td>
                 <td><a class="row-link" routerLink="/" [queryParams]="{ heat: stepKey(item.distance, row.race.id) }" queryParamsHandling="merge">{{ row.race.name }}</a></td>
                 @if (row.unranked && !row.reason) {
                   <td class="pending-col" colspan="2"><a class="heat-badge" [attr.data-lane]="row.race.lane" routerLink="/" [queryParams]="{ heat: stepKey(item.distance, row.race.id) }" queryParamsHandling="merge">{{ 'rankingInHeat' | translate: { n: heatNumber(item.distance, row.race.id) } }}</a></td>
@@ -35,7 +35,7 @@
                     @if (row.reason) {
                       <c-badge [class]="invalidBadgeClass(row.reason)">{{ row.reason }}</c-badge>
                     } @else {
-                      @if (fell(row.race)) { <c-badge class="fall-badge" [class]="remarkBadgeClass('FL')" [title]="'FL'">FL</c-badge> }{{ time(row.time) }}
+                      {{ timeParts(row.time).whole }}<small class="decimals">{{ timeParts(row.time).decimals }}</small>
                     }
                   </td>
                   <td class="num-col gap-col">
