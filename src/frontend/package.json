@@ -28,6 +28,9 @@
     ]
   },
   "private": true,
+  "overrides": {
+    "vite": "^8.3.4"
+  },
   "packageManager": "npm@10.8.2",
   "dependencies": {
     "@angular/animations": "^22.2.2",
