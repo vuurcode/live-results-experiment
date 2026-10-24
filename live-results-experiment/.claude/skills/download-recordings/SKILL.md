@@ -29,5 +29,26 @@ the key from `.agents/recordings-api-key`. It never prints the key.
 ## Afterwards
 
 - Report what was downloaded, skipped and deleted. Show times (the `modified` field is UTC) in Europe/Amsterdam.
-- Recordings hold anonymised data only, but never put names of real skaters, officials or clubs in commits or messages.
+- Recordings are anonymised by the backend while recording (competitor names become `Competitor <start number>`, ids are hashed). Verify every new archive before reporting it done, and change nothing:
+
+  ```bash
+  python3 -I - src/mockserver/data/archive.d/recordings/<id>.tar.gz <<'P'
+  import json, sys, tarfile
+  bad = 0
+  with tarfile.open(sys.argv[1]) as t:
+      for m in t.getmembers():
+          if not m.name.endswith(".json"): continue
+          doc = json.load(t.extractfile(m))
+          for d in doc.get("distances") or []:
+              for r in d.get("races") or []:
+                  c = r.get("competitor") or {}
+                  for k, v in c.items():
+                      if k.lower() in ("name", "firstname", "lastname", "fullname", "middlename", "surname") and v and not str(v).startswith("Competitor"):
+                          bad += 1
+  print("not anonymised competitor fields:", bad)
+  P
+  ```
+
+  Anything but 0 is reported to the user (archive name and count, never the names themselves) and the archive is left out of any commit.
+- Never put names of real skaters, officials or clubs in commits or messages.
 - The new archives are untracked files: stage them by explicit path, and only when asked to commit.
