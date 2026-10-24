@@ -35,6 +35,8 @@ type Options struct {
 	WebSocketOrigins []string
 	// Recordings serves the stored recordings under /api/recordings; nil leaves the routes out.
 	Recordings *RecordingsAPI
+	// Demo starts the demo match and answers with its id; nil leaves the route out.
+	Demo http.HandlerFunc
 }
 
 // Server connects websocket clients to the rooms of a hub.
@@ -58,6 +60,9 @@ func (s *Server) Handler(ua *useragent.Mirror, today http.HandlerFunc) http.Hand
 	mux.HandleFunc("GET /healthcheck", Healthcheck)
 	if today != nil {
 		mux.HandleFunc("GET /api/competitions/today", today)
+	}
+	if s.opts.Demo != nil {
+		mux.HandleFunc("POST /api/demo", s.opts.Demo)
 	}
 	s.opts.Recordings.register(mux)
 	return ua.Middleware(securityHeaders(cors(s.opts.CORSAllowedOrigins, mux)))

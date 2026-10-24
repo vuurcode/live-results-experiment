@@ -54,11 +54,12 @@ func main() {
 
 	limiter := ratelimit.New(cfg.ConnectsPerMinute, cfg.ConnectBurst, cfg.MaxClientsPerIP)
 
-	var today http.HandlerFunc
+	var today, demo http.HandlerFunc
 	if cat, err := catalog.New(cfg, set, ua); err != nil {
 		slog.Error("Competition list disabled", "err", err)
 	} else {
 		today = cat.ServeToday
+		demo = cat.ServeDemo
 		h.Ended = cat.Ended
 		h.Period = cat.Period
 		go h.WatchEnded(ctx, time.Minute)
@@ -69,7 +70,7 @@ func main() {
 	}
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           server.New(h, server.Options{PingInterval: cfg.PingInterval, Limiter: limiter, ClientIPHeader: cfg.ClientIPHeader, CORSAllowedOrigins: cfg.CORSAllowedOrigins, WebSocketOrigins: cfg.WebSocketOrigins, Recordings: recordings}).Handler(ua, today),
+		Handler:           server.New(h, server.Options{PingInterval: cfg.PingInterval, Limiter: limiter, ClientIPHeader: cfg.ClientIPHeader, CORSAllowedOrigins: cfg.CORSAllowedOrigins, WebSocketOrigins: cfg.WebSocketOrigins, Recordings: recordings, Demo: demo}).Handler(ua, today),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

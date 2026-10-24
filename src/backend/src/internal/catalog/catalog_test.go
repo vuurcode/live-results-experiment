@@ -589,3 +589,52 @@ func TestCompetitionThatStartedEarlierAndEndsLaterNeverExpires(t *testing.T) {
 		t.Fatalf("a competition that has not ended is listed: list=%v ended=%v", ids(got), e.cat.Ended("long"))
 	}
 }
+
+func TestServeDemoStartsTheMatchAndListsIt(t *testing.T) {
+	var started atomic.Bool
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/venues", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(testVenues)) })
+	mux.HandleFunc("/api/competitions", func(w http.ResponseWriter, _ *http.Request) {
+		list := "[]"
+		if started.Load() {
+			list = "[" + comp("mock-match-1", "DEV", "SpeedSkating.LongTrack", "2026-10-24T11:00:00Z", "2026-10-24T15:00:00Z") + "]"
+		}
+		_, _ = w.Write([]byte(list))
+	})
+	mux.HandleFunc("POST /api/start", func(w http.ResponseWriter, _ *http.Request) {
+		started.Store(true)
+		_, _ = w.Write([]byte(`{"id":"mock-match-1"}`))
+	})
+	demo := httptest.NewServer(mux)
+	t.Cleanup(demo.Close)
+	primary := newCatalogEnv(t)
+	cfg := config.Config{CatalogTTL: time.Hour, VenueCountry: "NED", VenueDiscipline: "SpeedSkating.LongTrack"}
+	set := source.NewSet(
+		source.Upstream{DataSourceURL: "http://real/Competition", CatalogURL: primary.cat.upstreams[0].base.String()},
+		source.Upstream{DataSourceURL: "http://demo/Competition", CatalogURL: demo.URL},
+	)
+	cat, err := New(cfg, set, fakeUA{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat.now = func() time.Time { return primary.now }
+	if list, _ := cat.Today(context.Background()); len(list) != 0 {
+		t.Fatalf("listed before the start: %v", ids(list))
+	}
+
+	rec := httptest.NewRecorder()
+	cat.ServeDemo(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/demo", nil))
+	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != `{"id":"mock-match-1"}` {
+		t.Fatalf("demo: %d %s", rec.Code, rec.Body)
+	}
+	if got, _ := set.FeedURL("mock-match-1"); got != "http://demo/Competition?competitionId=mock-match-1" {
+		t.Errorf("the match is fetched from %q", got)
+	}
+
+	// without an extra upstream there is no demo
+	rec = httptest.NewRecorder()
+	primary.cat.ServeDemo(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/demo", nil))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("no demo upstream: %d", rec.Code)
+	}
+}

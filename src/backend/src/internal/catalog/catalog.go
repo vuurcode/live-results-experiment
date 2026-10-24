@@ -621,3 +621,42 @@ func (c *Catalog) Watch(ctx context.Context, every time.Duration, active func() 
 		last, seen = sig.String(), true
 	}
 }
+
+// ServeDemo starts the demo match of an extra upstream, unless it is running, and answers with its id. The list is
+// fetched again, so the backend knows where the match lives before the first viewer follows it.
+func (c *Catalog) ServeDemo(w http.ResponseWriter, r *http.Request) {
+	if len(c.upstreams) < 2 {
+		http.NotFound(w, r)
+		return
+	}
+	var started struct {
+		ID string `json:"id"`
+	}
+	target := c.upstreams[1].base.JoinPath("/api/start").String()
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, target, nil)
+	if err != nil {
+		http.Error(w, "demo unavailable", http.StatusBadGateway)
+		return
+	}
+	resp, err := c.client.Do(req)
+	if err != nil {
+		http.Error(w, "demo unavailable", http.StatusBadGateway)
+		return
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(resp.Body, 1<<10)).Decode(&started) != nil || !ValidID(started.ID) {
+		http.Error(w, "demo unavailable", http.StatusBadGateway)
+		return
+	}
+	c.mu.Lock()
+	c.fetchedAt = time.Time{}
+	c.lastFailed = time.Time{}
+	c.mu.Unlock()
+	if err := c.refresh(context.WithoutCancel(r.Context())); err != nil {
+		http.Error(w, "demo unavailable", http.StatusBadGateway)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(started)
+}

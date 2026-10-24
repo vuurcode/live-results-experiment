@@ -37,7 +37,7 @@ In `compose.yml` (prod profile) the variables are read from the optional `.env.p
 
 ## Demo match
 
-The combined image carries the mockserver. With `MOCKSERVER_ENABLED=true` it runs on loopback with one generated match, `mock-match-1`, restarted `MOCKSERVER_DATA_EXPIRE_AFTER` seconds (default 300) after it has finished, and the backend reads it as its extra source (`BACKEND_EXTRA_BASE_URL`). Without the variable the service idles and the backend has only its primary source.
+The combined image carries the mockserver. With `MOCKSERVER_ENABLED=true` it runs on loopback with one generated match, `mock-match-1`, listed only while its replay runs, restarted `MOCKSERVER_DATA_EXPIRE_AFTER` seconds (default 300) after it has finished, and the backend reads it as its extra source (`BACKEND_EXTRA_BASE_URL`). The menu item "Start a recorded demo" calls `POST /api/demo`, which starts the match unless it is running and answers `{"id": ...}`; the page then opens it. Without the variable the service idles and the backend has only its primary source.
 
 ## Recordings
 
