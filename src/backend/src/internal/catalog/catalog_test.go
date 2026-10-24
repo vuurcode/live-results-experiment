@@ -622,6 +622,7 @@ func TestServeDemoStartsTheMatchAndListsIt(t *testing.T) {
 		t.Fatalf("listed before the start: %v", ids(list))
 	}
 
+	primaryHits := primary.compHits.Load()
 	rec := httptest.NewRecorder()
 	cat.ServeDemo(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/demo", nil))
 	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != `{"id":"mock-match-1"}` {
@@ -629,6 +630,13 @@ func TestServeDemoStartsTheMatchAndListsIt(t *testing.T) {
 	}
 	if got, _ := set.FeedURL("mock-match-1"); got != "http://demo/Competition?competitionId=mock-match-1" {
 		t.Errorf("the match is fetched from %q", got)
+	}
+
+	// the primary upstream is not asked again, and a second request within the cooldown reaches no upstream
+	rec = httptest.NewRecorder()
+	cat.ServeDemo(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/demo", nil))
+	if got := primary.compHits.Load(); got != primaryHits || rec.Code != http.StatusOK {
+		t.Fatalf("primary asked %d times, want %d; status %d", got, primaryHits, rec.Code)
 	}
 
 	// without an extra upstream there is no demo

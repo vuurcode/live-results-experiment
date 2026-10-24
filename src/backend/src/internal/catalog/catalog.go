@@ -193,6 +193,10 @@ type Catalog struct {
 	client     *http.Client
 	now        func() time.Time
 
+	demoMu sync.Mutex // one start of the demo at a time, and its answer reused for demoCooldown
+	demoID string
+	demoAt time.Time
+
 	liveMu sync.Mutex
 	live   map[string]liveState // what the data source said last, per competition id
 	asking map[string]*liveCall // the requests under way
@@ -622,41 +626,59 @@ func (c *Catalog) Watch(ctx context.Context, every time.Duration, active func() 
 	}
 }
 
-// ServeDemo starts the demo match of an extra upstream, unless it is running, and answers with its id. The list is
-// fetched again, so the backend knows where the match lives before the first viewer follows it.
+// demoCooldown is how long an answer of ServeDemo is reused, so that repeated requests cost the upstreams nothing.
+const demoCooldown = 5 * time.Second
+
+// ServeDemo starts the demo match of an extra upstream, unless it is running, and answers with its id. Only that
+// upstream's list is fetched again, and only when the match is not in the catalog yet, so the backend knows where the
+// match lives before the first viewer follows it; the primary upstream and its cache are left alone.
 func (c *Catalog) ServeDemo(w http.ResponseWriter, r *http.Request) {
 	if len(c.upstreams) < 2 {
 		http.NotFound(w, r)
 		return
 	}
-	var started struct {
-		ID string `json:"id"`
-	}
-	target := c.upstreams[1].base.JoinPath("/api/start").String()
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, target, nil)
+	id, err := c.startDemo(r.Context())
 	if err != nil {
-		http.Error(w, "demo unavailable", http.StatusBadGateway)
-		return
-	}
-	resp, err := c.client.Do(req)
-	if err != nil {
-		http.Error(w, "demo unavailable", http.StatusBadGateway)
-		return
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(resp.Body, 1<<10)).Decode(&started) != nil || !ValidID(started.ID) {
-		http.Error(w, "demo unavailable", http.StatusBadGateway)
-		return
-	}
-	c.mu.Lock()
-	c.fetchedAt = time.Time{}
-	c.lastFailed = time.Time{}
-	c.mu.Unlock()
-	if err := c.refresh(context.WithoutCancel(r.Context())); err != nil {
 		http.Error(w, "demo unavailable", http.StatusBadGateway)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	_ = json.NewEncoder(w).Encode(started)
+	_ = json.NewEncoder(w).Encode(map[string]string{"id": id})
+}
+
+func (c *Catalog) startDemo(ctx context.Context) (string, error) {
+	c.demoMu.Lock()
+	defer c.demoMu.Unlock()
+	if c.demoID != "" && c.now().Sub(c.demoAt) < demoCooldown {
+		return c.demoID, nil
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.upstreams[1].base.JoinPath("/api/start").String(), nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	var started struct {
+		ID string `json:"id"`
+	}
+	if resp.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(resp.Body, 1<<10)).Decode(&started) != nil || !ValidID(started.ID) {
+		return "", errors.New("the demo upstream did not start a match")
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if _, known := c.known[started.ID]; !known {
+		// the extra upstream alone is read again; the cache age of the whole list stays as it was
+		fetchedAt := c.fetchedAt
+		if err := c.loadUpstream(context.WithoutCancel(ctx), c.upstreams[1]); err != nil {
+			return "", err
+		}
+		c.merge()
+		c.fetchedAt = fetchedAt
+	}
+	c.demoID, c.demoAt = started.ID, c.now()
+	return started.ID, nil
 }
