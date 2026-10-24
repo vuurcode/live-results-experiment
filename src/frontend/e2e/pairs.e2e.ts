@@ -32,7 +32,7 @@ test.describe('two-lane competition', () => {
     }
   });
 
-  test('each peek badge has an arrow below it, centred under the badge and in the middle of its lane, pointing to its heat', async ({ page, request }) => {
+  test('each peek badge has an arrow below it, centred under the badge, the two together centred in their lane, pointing to its heat', async ({ page, request }) => {
     await restartReplay(request);
     await page.setViewportSize({ width: 1600, height: 900 });
     await page.goto(heatUrl(COMPETITION, 'dist-500', 2));
@@ -45,12 +45,28 @@ test.describe('two-lane competition', () => {
         const badge = r(el.querySelector('.peek-name')!);
         const arrow = r(el.querySelector('.peek-arrow')!);
         const laneBox = r(el);
-        return { badgeX: badge.left + badge.width / 2, badgeBottom: badge.bottom, arrowX: arrow.left + arrow.width / 2, arrowTop: arrow.top, arrowY: arrow.top + arrow.height / 2, laneY: laneBox.top + laneBox.height / 2 };
+        return { badgeX: badge.left + badge.width / 2, badgeBottom: badge.bottom, arrowX: arrow.left + arrow.width / 2, arrowTop: arrow.top, groupY: (badge.top + arrow.bottom) / 2, laneY: laneBox.top + laneBox.height / 2 };
       });
       expect(Math.abs(boxes.arrowX - boxes.badgeX), side).toBeLessThanOrEqual(1);
-      expect(Math.abs(boxes.arrowY - boxes.laneY), side).toBeLessThanOrEqual(1);
+      expect(Math.abs(boxes.groupY - boxes.laneY), side).toBeLessThanOrEqual(1);
       expect(boxes.arrowTop, side).toBeGreaterThanOrEqual(boxes.badgeBottom - 1);
     }
+  });
+
+  test('a peek shows the label of its heat and a click on it steps to that heat; so does a sideways wheel', async ({ page, request }) => {
+    await restartReplay(request);
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await page.goto(heatUrl(COMPETITION, 'dist-500', 2));
+    await expect(slider(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
+    await expect(page.locator('.peek-after .peek-name-meta').first()).toHaveText('Heat 3');
+    await expect(page.locator('.peek-before .peek-name-meta').first()).toHaveText('Heat 1');
+    await page.locator('.peek-after').click();
+    await expect(slider(page)).toHaveAttribute('aria-valuetext', /Heat 3$/);
+    await page.locator('.peek-before').click();
+    await expect(slider(page)).toHaveAttribute('aria-valuetext', /Heat 2$/);
+    await page.mouse.move(800, 400);
+    for (let i = 0; i < 6; i++) await page.mouse.wheel(30, 0);
+    await expect(slider(page)).toHaveAttribute('aria-valuetext', /Heat 3$/);
   });
 
   test('shows pairs, a lone skater, a DNF and a personal best', async ({ page, request }) => {

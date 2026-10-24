@@ -1,22 +1,22 @@
 <div class="peeks" [class.peeks-outside]="outside()" [style.--shown.px]="shown()">
   @if (showBefore()) {
-    <div class="peek peek-before" [class.peek-live]="prevLive" aria-hidden="true" [style.width.px]="half()">
+    <div class="peek peek-before" [class.peek-click]="before() && !outside()" (click)="before() && go.emit(-1)" aria-hidden="true" [style.max-width.px]="half()" [style.top.px]="badgeOf(0).laneTop">
       @if (!before()) {
-        <span class="peek-name peek-edge" [style.top.px]="badgeOf(0).top" [style.height.px]="badgeOf(0).height"><span class="peek-name-line">{{ 'peekStart' | translate }}</span></span>
+        <span class="peek-lane" [style.height.px]="badgeOf(0).laneHeight"><span class="peek-name peek-edge" [style.height.px]="badgeOf(0).height"><span class="peek-name-line">{{ 'peekStart' | translate }}</span></span></span>
       }
       @for (racer of before() ? rowsOf(before()!) : []; track $index) {
-        <span class="peek-lane" [style.top.px]="badgeOf($index).laneTop" [style.height.px]="badgeOf($index).laneHeight"><span class="peek-name" [class.peek-empty]="racer.name === null" [attr.data-lane]="racer.lane" [style.margin-top.px]="badgeOf($index).top - badgeOf($index).laneTop" [style.height.px]="badgeOf($index).height"><span class="peek-name-line">{{ racer.name }}</span></span>@if (racer.name !== null) {<svg class="peek-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12H5M11 6l-6 6 6 6" /></svg>}</span>
+        <span class="peek-lane" [style.height.px]="badgeOf($index).laneHeight" [style.margin-top.px]="$index === 0 ? 0 : badgeOf($index).laneTop - badgeOf($index - 1).laneTop - badgeOf($index - 1).laneHeight"><span class="peek-name" [class.peek-empty]="racer.name === null" [attr.data-lane]="racer.lane" [style.height.px]="badgeOf($index).height"><span class="peek-name-line">{{ racer.name }}</span>@if (!outside() && racer.name !== null && racer.heat) {<span class="peek-name-meta">{{ racer.heat }}</span>}</span>@if (racer.name !== null) {<svg class="peek-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12H5M11 6l-6 6 6 6" /></svg>}</span>
       }
     </div>
   }
   <div class="peek-current"><ng-content /></div>
   @if (showAfter()) {
-    <div class="peek peek-after" [class.peek-live]="nextLive" aria-hidden="true" [style.width.px]="half()">
+    <div class="peek peek-after" [class.peek-click]="after() && !outside()" (click)="after() && go.emit(1)" aria-hidden="true" [style.max-width.px]="half()" [style.top.px]="badgeOf(0).laneTop">
       @if (!after()) {
-        <span class="peek-name peek-edge" [style.top.px]="badgeOf(0).top" [style.height.px]="badgeOf(0).height"><span class="peek-name-line">{{ 'peekEnd' | translate }}</span></span>
+        <span class="peek-lane" [style.height.px]="badgeOf(0).laneHeight"><span class="peek-name peek-edge" [style.height.px]="badgeOf(0).height"><span class="peek-name-line">{{ 'peekEnd' | translate }}</span></span></span>
       }
       @for (racer of after() ? rowsOf(after()!) : []; track $index) {
-        <span class="peek-lane" [style.top.px]="badgeOf($index).laneTop" [style.height.px]="badgeOf($index).laneHeight"><span class="peek-name" [class.peek-empty]="racer.name === null" [attr.data-lane]="racer.lane" [style.margin-top.px]="badgeOf($index).top - badgeOf($index).laneTop" [style.height.px]="badgeOf($index).height"><span class="peek-name-line">{{ racer.name }}</span></span>@if (racer.name !== null) {<svg class="peek-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h15M13 6l6 6-6 6" /></svg>}</span>
+        <span class="peek-lane" [style.height.px]="badgeOf($index).laneHeight" [style.margin-top.px]="$index === 0 ? 0 : badgeOf($index).laneTop - badgeOf($index - 1).laneTop - badgeOf($index - 1).laneHeight"><span class="peek-name" [class.peek-empty]="racer.name === null" [attr.data-lane]="racer.lane" [style.height.px]="badgeOf($index).height"><span class="peek-name-line">{{ racer.name }}</span>@if (!outside() && racer.name !== null && racer.heat) {<span class="peek-name-meta">{{ racer.heat }}</span>}</span>@if (racer.name !== null) {<svg class="peek-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h15M13 6l6 6-6 6" /></svg>}</span>
       }
     </div>
   }

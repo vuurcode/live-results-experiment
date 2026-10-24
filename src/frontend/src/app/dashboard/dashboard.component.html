@@ -11,7 +11,7 @@
   <!-- ===== MAIN CONTENT ===== -->
   <div class="visually-hidden" aria-live="polite" aria-atomic="true">{{ announcement }}</div>
   <app-heat-marks />
-  <main class="flex-grow-1 px-2 pb-4 main-clip" (touchstart)="swipeStart($event)" (touchmove)="swipeMove($event)" (touchend)="swipeEnd($event)" (touchcancel)="swipeCancel()">
+  <main class="flex-grow-1 px-2 pb-4 main-clip" (touchstart)="swipeStart($event)" (touchmove)="swipeMove($event)" (touchend)="swipeEnd($event)" (touchcancel)="swipeCancel()" (wheel)="wheel($event)">
     @if ((sortedDistances$ | async)?.length) {
       @let liveFeed = dataService.feed$ | async;
       @if (liveFeed?.state === 'not_live') {
@@ -96,7 +96,7 @@
                 @let heatGroups = mergedHeatGroups(distance);
                 @let laneColors = heatGroupLaneColors(heatGroups);
                 @let maxLanes = distanceMaxLaneCount(heatGroups);
-                <app-heat-peeks [prev]="neighbour(v, step, -1)" [next]="neighbour(v, step, 1)" [prevLive]="neighbour(v, step, -1) === v.steps[v.live]" [nextLive]="neighbour(v, step, 1) === v.steps[v.live]">
+                <app-heat-peeks [prev]="neighbour(v, step, -1)" [next]="neighbour(v, step, 1)" (go)="moveHeat($event, v)">
                 <div class="heat-rows">
                   @for (heatIdx of step.heatIndexes; track heatIdx; let first = $first) {
                     @let displayGroup = heatGroups[heatIdx];

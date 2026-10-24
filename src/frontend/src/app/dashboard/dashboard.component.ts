@@ -14,7 +14,7 @@ import { TranslateService, TranslationKey } from '../i18n/translate.service';
 import { TranslatePipe } from '../i18n/translate.pipe';
 import { HeaderComponent } from '../header/header.component';
 import { HeatMarksComponent } from './heat-marks/heat-marks.component';
-import { swipeDirection, type SwipePoint } from './swipe.util';
+import { swipeDirection, WheelSwipe, type SwipePoint } from './swipe.util';
 import { MassStartTimelineComponent } from './mass-start-timeline/mass-start-timeline.component';
 import { IndividualHeatCardComponent } from './individual-heat-card/individual-heat-card.component';
 import { MassStartRaceRowComponent } from './mass-start-race-row/mass-start-race-row.component';
@@ -400,8 +400,23 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
     const touch = event.changedTouches[0];
     const direction = swipeDirection(from, { x: touch.clientX, y: touch.clientY, time: event.timeStamp }, window.innerWidth);
     if (direction === 0) return;
-    const current = this.position === null ? view.live : Math.min(this.position, view.steps.length - 1);
-    const target = current + direction;
+    this.moveHeat(direction, view);
+  }
+
+  private readonly wheelSwipe = new WheelSwipe();
+
+  /** A two-finger swipe on a trackpad (a sideways wheel) steps like a touch swipe; the browser's own back swipe is held off while it is over the heats. */
+  protected wheel(event: WheelEvent): void {
+    const view = this.swipeView;
+    if (!view || !WheelSwipe.horizontal(event.deltaX, event.deltaY) || !this.swipeStartsOnPage(event.target)) return;
+    event.preventDefault();
+    const direction = this.wheelSwipe.feed(event.deltaX, event.deltaY, event.timeStamp);
+    if (direction !== 0) this.moveHeat(direction, view);
+  }
+
+  /** Moves a heat further on or back, within the steps. */
+  protected moveHeat(direction: -1 | 1, view: { steps: HeatStep[]; live: number }): void {
+    const target = this.shownIndex(view) + direction;
     if (target < 0 || target >= view.steps.length) return;
     this.setPosition(target === view.live ? null : target, view);
     this.marks?.land(target, view);

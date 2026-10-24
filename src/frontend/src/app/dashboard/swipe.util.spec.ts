@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { swipeDirection } from './swipe.util';
+import { swipeDirection, WheelSwipe } from './swipe.util';
 
 const at = (x: number, y: number, time: number) => ({ x, y, time });
 
@@ -29,5 +29,26 @@ describe('swipeDirection', () => {
 
   it('a slow drag is no swipe', () => {
     expect(swipeDirection(at(300, 400, 0), at(100, 400, 1200), 390)).toBe(0);
+  });
+});
+
+describe('WheelSwipe', () => {
+  it('steps once for a stroke, however long the inertia lasts', () => {
+    const wheel = new WheelSwipe();
+    const steps = [0, 16, 32, 48, 64, 80, 96, 112].map((t) => wheel.feed(20, 1, t));
+    expect(steps.filter((s) => s !== 0)).toEqual([1]);
+  });
+
+  it('steps back for a stroke the other way, and again after a pause', () => {
+    const wheel = new WheelSwipe();
+    expect([0, 16, 32, 48].map((t) => wheel.feed(-30, 0, t)).filter((s) => s !== 0)).toEqual([-1]);
+    expect(wheel.feed(40, 0, 1000)).toBe(0);
+    expect(wheel.feed(40, 0, 1016)).toBe(1);
+  });
+
+  it('leaves a vertical stroke to the scrolling', () => {
+    const wheel = new WheelSwipe();
+    expect([0, 16, 32, 48].map((t) => wheel.feed(20, 40, t))).toEqual([0, 0, 0, 0]);
+    expect(WheelSwipe.horizontal(20, 40)).toBe(false);
   });
 });

@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Input, NgZone, inject, signal } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, EventEmitter, Input, NgZone, Output, inject, signal } from '@angular/core';
 import { TranslatePipe } from '../../i18n/translate.pipe';
 import type { HeatStep } from '../heat-steps';
 
@@ -11,8 +11,8 @@ const MIN_AFTER = 80;
 const EDGE_WIDTH = 112;
 
 interface Peek {
-  /** The lanes in order; an empty lane has no name and is drawn as an empty badge in the colour of the lane. */
-  racers: { name: string | null; lane: string | null }[];
+  /** The lanes in order; an empty lane has no name and is drawn as an empty badge in the colour of the lane. Each racer has the label of its heat, shown small at the bottom of its lane. */
+  racers: { name: string | null; lane: string | null; heat: string | null }[];
 }
 
 /**
@@ -35,9 +35,8 @@ export class HeatPeeksComponent implements AfterViewInit {
   private zone = inject(NgZone);
   private destroyRef = inject(DestroyRef);
 
-  /** The heat before or after the one on show is the live one: its half gets the red border of live cards. */
-  @Input() prevLive = false;
-  @Input() nextLive = false;
+  /** A click on a half asks for the heat it hints at: -1 for the one before, 1 for the one after. */
+  @Output() go = new EventEmitter<-1 | 1>();
 
   @Input() set prev(step: HeatStep | null) {
     this.before.set(this.peekOf(step));
@@ -86,7 +85,7 @@ export class HeatPeeksComponent implements AfterViewInit {
 
   private peekOf(step: HeatStep | null): Peek | null {
     if (!step || step.isMassStart || step.racers.length === 0) return null;
-    return { racers: step.slots.map((slot) => ({ name: slot.racer?.name ?? null, lane: slot.lane })) };
+    return { racers: step.slots.map((slot) => ({ name: slot.racer?.name ?? null, lane: slot.lane, heat: slot.racer?.heat ?? null })) };
   }
 
   /** Reads the card width and the lane rows off the heat on show and decides which halves fit. */

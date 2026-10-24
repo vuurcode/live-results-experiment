@@ -5,10 +5,16 @@
 // They are faint by a tinted background, not by opacity, which would take the contrast out of the text.
 .peek {
   position: absolute;
-  top: 0;
-  bottom: 0;
+  width: max-content; // as wide as its widest badge, up to the half card
   overflow: hidden;
   pointer-events: none;
+}
+// a half that hints at a heat takes a click as a step to it, on a wide screen
+.peek-click {
+  pointer-events: auto;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  &:hover { background: color-mix(in srgb, var(--lr-text) 8%, transparent); }
 }
 .peek-before { left: 1rem; } // SIDE_GAP in the component
 .peek-after { right: 1rem; }
@@ -29,6 +35,21 @@
   white-space: nowrap;
   overflow: hidden;
 }
+.peek-name {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+// the heat of the racer, small under the name like the category line of the real card
+.peek-name-meta {
+  display: block;
+  font-size: 0.5rem;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .peek-name-line {
   display: block;
   font-weight: 600;
@@ -37,24 +58,21 @@
 }
 .peek-before .peek-name { left: 0; } // the badges are at the outer edges
 .peek-after .peek-name { right: 0; }
-// a lane is as wide as its badge; the badge hangs from its top and the arrow is centred below it, in the middle of the lane
+// the lanes stack at the heights of the lanes on show; the badge with the arrow below it, centred in the lane
 .peek-lane {
-  position: absolute;
-  display: block;
-  max-width: 100%;
-  .peek-name { position: relative; display: block; }
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center; // the badge and its arrow are one group, centred on the line through the middle of the lane on show
+  gap: 0.25rem;
+  .peek-name { position: relative; left: auto; right: auto; flex: none; }
 }
-.peek-before .peek-lane { left: 0; }
-.peek-after .peek-lane { right: 0; }
-.peek-lane .peek-name { left: auto; right: auto; }
 // a watermark pointing to the heat it belongs to: left for the one before, right for the one after
 .peek-arrow {
-  position: absolute;
-  left: 50%;
-  top: 50%;
+  flex: none;
+  align-self: center;
   width: 1.5rem;
   height: 1.5rem;
-  transform: translate(-50%, -50%);
   fill: none;
   stroke: var(--lr-text-subtle, #6c757d);
   stroke-width: 1.5;
@@ -72,19 +90,4 @@
 // the end of a distance: a grey badge, the same box as a racer's
 .peek-edge { --lane: #6c757d; display: flex; align-items: center; justify-content: center; }
 // an empty lane is still drawn, as an empty badge of its colour
-.peek-empty { opacity: 0.6; }
-// a half of the live heat has the red border of live cards, with a pulse that spreads outwards (the names clip themselves)
-.peek-live {
-  overflow: visible;
-  box-sizing: border-box;
-  border: 2px solid var(--lr-live);
-  border-radius: 0.5rem;
-  animation: peekLive 1.5s infinite;
-}
-@keyframes peekLive {
-  0%   { box-shadow: 0 0 0 0   rgba(176, 42, 55, 0.7); }
-  70%  { box-shadow: 0 0 0 6px rgba(176, 42, 55, 0); }
-  100% { box-shadow: 0 0 0 0   rgba(176, 42, 55, 0); }
-}
-@media (prefers-reduced-motion: reduce) { .peek-live { animation: none; } }
-:host-context([data-animations='off']) .peek-live { animation: none; }
+.peek-empty { opacity: 0.6; min-width: 7rem; }
