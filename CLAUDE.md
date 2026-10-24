@@ -4,6 +4,7 @@
 - No Co-Authored-By or "Generated with" attribution lines in commits or PR descriptions.
 - Don't name protected paths (container-data, mockserver data, .env) in message text; the deny rules in `.claude/settings.json` match command text and will block the commit.
 - Pushes to main publish the image but only deploy when the newest commit's subject contains `[deploy]` (or the workflow is run by hand). Add it only when the user asks for a deploy.
+- A deploy restarts the server and interrupts a live recording. Before pushing or adding `[deploy]`, check `GET https://live-results-experiment.vuurcode.dev/api/competitions/today` (public, no key) for entries with `"live": true`, and the recordings list (see the download-recordings skill) for a recording that is not `complete`. While any is live or recording, don't suggest a push or a deploy commit and don't make one; say what is live and offer to do it once it has finished. The user's explicit instruction to deploy anyway overrides this.
 - Never mention the model name or version (e.g. in README, docs, commits or PRs).
 
 # Testing and committing
