@@ -194,6 +194,11 @@
     background: transparent;
     cursor: default;
     pointer-events: none;
+    // an empty lane is as tall as a lane with a racer (a title row and a row of lap badges), so the lanes keep their places; not a subgrid, which takes its height from its tracks
+    display: block;
+    grid-row: 1 / span 2;
+    height: 8.7rem;
+    @media (max-width: 767.98px) { height: 9.7rem; } // the title and the lap badges wrap on a narrow screen
   }
   // The watermarks are placed against the title: top right, and dead centre with four lanes in a row. A card without a time
   // (fall, disqualified, ...) has it placed against the whole card instead, so in the four lane view it is centred on the card.
