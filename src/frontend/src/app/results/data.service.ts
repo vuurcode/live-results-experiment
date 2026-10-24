@@ -76,6 +76,18 @@ export class DataService {
     }
   }
 
+  /** Starts the demo match (when the backend has one) and returns its id; null when there is none. */
+  async startDemo(): Promise<string | null> {
+    try {
+      const res = await fetch(`${this.backendHttpUrl}/api/demo`, { method: 'POST' });
+      if (!res.ok) return null;
+      const body = (await res.json()) as { id?: unknown };
+      return typeof body.id === 'string' && competitionIdFromSearch(`?competitionId=${encodeURIComponent(body.id)}`) ? body.id : null;
+    } catch {
+      return null;
+    }
+  }
+
   private statusSubject = new BehaviorSubject<BackendStatus>({ status: 'Disconnected', url: '', interval: null });
   status$ = this.statusSubject.asObservable();
   private competitionsChangedSubject = new Subject<void>();

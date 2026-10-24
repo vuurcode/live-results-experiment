@@ -105,7 +105,20 @@
   display: flex;
   flex-direction: column;
 }
-// stays at the bottom of the drawer, below the links when the screen is short
+// the demo link and the credit stay at the bottom of the drawer, below the links when the screen is short
+.menu-demo {
+  margin: auto 0 0;
+  padding: 1.5rem 0 0;
+  border: 0;
+  background: none;
+  font-size: 0.75rem;
+  text-align: start;
+  color: var(--cui-secondary-color);
+  text-decoration: underline;
+  min-height: 2.5rem;
+  cursor: pointer;
+  &:disabled { cursor: progress; }
+}
 .menu-credit {
   margin: auto 0 0;
   padding-top: 1.5rem;
@@ -113,6 +126,7 @@
   color: var(--cui-secondary-color);
   a { color: inherit; text-decoration: underline; display: inline-block; min-height: 1.5rem; line-height: 1.5rem; }
 }
+.menu-demo + .menu-credit { margin-top: 0; padding-top: 0.25rem; }
 .menu-ownership {
   margin: 0.5rem 0 0;
   font-size: 0.75rem;

@@ -33,6 +33,7 @@ export const nb: Translations = {
   menuStartList: 'Startliste',
   menuMain: 'Direktevisning',
   menuSettings: 'Innstillinger',
+  menuDemo: 'Start en innspilt demo',
   menuCreditBy: 'Laget av',
   menuCreditFree: 'Fri for offentlig bruk',
   settingsTitle: 'Innstillinger',

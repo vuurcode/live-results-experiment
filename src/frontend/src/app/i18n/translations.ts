@@ -34,6 +34,7 @@ export interface Translations {
   menuStartList: string;
   menuMain: string;
   menuSettings: string;
+  menuDemo: string;
   menuCreditBy: string;
   menuCreditFree: string;
   settingsTitle: string;
