@@ -262,14 +262,14 @@
   line-height: 1.1;
   white-space: nowrap;
 }
+// a racer without a time shows the status badge (DNS, DQ, NS), as big as the total time's badge and against the right edge, instead of the empty placeholder
+.individual-ghost-final.individual-ghost-hidden { display: none; }
+.individual-comp-badges .individual-status-badge { font-size: 1.5rem !important; min-height: 0; min-width: 4.5rem; padding: 0.25em 0.6em; }
 // On a narrow screen the personal best is a caption under the total time; the badge stays for screen readers.
 @media (max-width: 767.98px) {
   // the caption sits at the bottom inside the total's badge, in the badge's own colours
   .compact-pb { display: block; align-self: center; text-align: center; }
   .individual-compact-final .individual-lap-time { display: inline-flex; flex-direction: column; align-items: flex-end; }
-  // a racer without a time shows the status badge, as big as the total time's badge, instead of the empty placeholder
-  .individual-ghost-final.individual-ghost-hidden { display: none; }
-  .individual-comp-badges .individual-status-badge { font-size: 1.5rem !important; min-height: 0; min-width: 4.5rem; padding: 0.25em 0.6em; }
   .individual-ghost-total { flex-direction: column; .compact-pb { color: var(--lr-text-meta); } }
   .individual-pb-current {
     position: absolute;
