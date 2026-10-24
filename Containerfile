@@ -1,6 +1,6 @@
 ARG PYTHON_VERSION="3.14"
 ARG NODE_VERSION="24"
-ARG GO_VERSION="1.27.2"
+ARG GO_VERSION="1.27.3"
 
 FROM node:${NODE_VERSION}-slim AS node
 FROM golang:${GO_VERSION} AS go
@@ -15,8 +15,9 @@ ENV PATH="/usr/local/go/bin:/root/.local/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1 \
     CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
 
+# gcc and libc6-dev are for `CGO_ENABLED=1 go test -race`; builds stay cgo-free (CGO_ENABLED=0 above)
 # hadolint ignore=DL3008 # dev-only image: follow Debian's current package versions
-RUN apt-get update && apt-get install -y --no-install-recommends bash curl jq git libstdc++6 \
+RUN apt-get update && apt-get install -y --no-install-recommends bash curl jq git libstdc++6 gcc libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Node from the official image
@@ -27,7 +28,7 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 
 # Chromium and its system libraries for the Playwright e2e tests; keep the version in step with
 # @playwright/test in src/frontend/package.json so the browser build matches.
-ARG PLAYWRIGHT_VERSION="1.64.0"
+ARG PLAYWRIGHT_VERSION="1.64.1"
 RUN npx --yes playwright@${PLAYWRIGHT_VERSION} install --with-deps chromium \
     && rm -rf /var/lib/apt/lists/*
 

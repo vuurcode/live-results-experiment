@@ -49,7 +49,7 @@ jobs:
           cache-dependency-path: src/backend/src/go.sum
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
-          version: v2.14.0
+          version: v2.15.0
           working-directory: src/backend/src
       - run: go mod verify
       - run: test -z "$(gofmt -l .)"
@@ -73,7 +73,7 @@ jobs:
           cache: false # standard library only: no go.sum to key a cache on
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
-          version: v2.14.0
+          version: v2.15.0
           working-directory: src/mockserver
       - run: test -z "$(gofmt -l .)"
       - run: go vet ./...
