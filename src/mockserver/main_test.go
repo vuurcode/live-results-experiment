@@ -196,3 +196,28 @@ func TestCompetitionExpiresAfterItsLastUpdate(t *testing.T) {
 	waitForBody(t, url2, `{"s":2}`)
 	waitForBody(t, url2, `{"s":1}`) // dropped after 100ms without an update: the replay starts over
 }
+
+func TestAGeneratedMatchOnRequestIsListedOnceStarted(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	s := &server{cfg: config{baseDir: t.TempDir(), interval: time.Hour, matches: 1, generate: true, onRequest: true}, ctx: ctx, replays: map[string]*replay{}}
+	s.withGenerated()
+	ts := httptest.NewServer(s.routes())
+	t.Cleanup(ts.Close)
+
+	_, body := do(t, "GET", ts.URL+"/api/competitions")
+	if strings.Contains(body, `"id":"mock-match-1"`) {
+		t.Fatalf("listed before it was started: %s", body)
+	}
+	code, body := do(t, "POST", ts.URL+"/api/start")
+	if code != 200 || body != `{"id":"mock-match-1"}` {
+		t.Fatalf("start: %d %s", code, body)
+	}
+	_, body = do(t, "GET", ts.URL+"/api/competitions")
+	if !strings.Contains(body, `"id":"mock-match-1"`) {
+		t.Fatalf("not listed once started: %s", body)
+	}
+	if code, _ = do(t, "POST", ts.URL+"/api/start?competitionId=mock-tomorrow"); code != 404 {
+		t.Fatalf("starting a match that is not generated: %d", code)
+	}
+}

@@ -15,6 +15,7 @@ It plays a competition back step by step, starting at the first request. The dat
 | `MOCKSERVER_DATA_EXPIRE_AFTER` | `300` | Seconds the last step is held before the replay restarts; `0` never |
 | `MOCKSERVER_DATA_GENERATE` | off | Always add the generated matches |
 | `MOCKSERVER_DATA_GENERATED_MATCHES` | `4` | How many generated matches are served (1 to 4) |
+| `MOCKSERVER_DATA_GENERATED_ON_REQUEST` | off | List a generated match only while its replay runs, which `POST /api/start[?competitionId=<id>]` begins (the first match without an id) unless it is running |
 | `MOCKSERVER_LISTEN_ADDR` | `:8080` | Where it listens |
 
 `GET /api/matches` lists the competitions, `POST /api/reset` restarts replays. `docker compose --profile dev up` runs it with the rest.

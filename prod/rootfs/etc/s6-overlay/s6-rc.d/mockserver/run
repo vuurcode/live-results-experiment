@@ -5,5 +5,5 @@ if [ "${MOCKSERVER_ENABLED:-}" != true ]; then
 fi
 # A step lasts at least two polls of the backend (1 s per live distance), so no poll sees two laps at once.
 export MOCKSERVER_DATA_SAMPLE_INTERVAL="${MOCKSERVER_DATA_SAMPLE_INTERVAL:-10}"
-export MOCKSERVER_LISTEN_ADDR=127.0.0.1:5001 MOCKSERVER_DATA_GENERATED_MATCHES=1 MOCKSERVER_DATA_GENERATE=true
+export MOCKSERVER_LISTEN_ADDR=127.0.0.1:5001 MOCKSERVER_DATA_GENERATED_MATCHES=1 MOCKSERVER_DATA_GENERATE=true MOCKSERVER_DATA_GENERATED_ON_REQUEST=true
 exec s6-setuidgid nobody /usr/local/bin/mockserver

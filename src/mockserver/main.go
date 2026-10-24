@@ -17,6 +17,8 @@
 //	                                     (tomorrow, last week, other venue) to exercise filtering
 //	GET  /Competition?competitionId=<id> current sample of a competition; starts its replay on first use
 //	POST /api/reset[?competitionId=<id>] restart one started competition, or all of them
+//	POST /api/start[?competitionId=<id>] start the replay of a generated match (the first one without an id) unless it is
+//	                                     running; answers {"id": ...}
 package main
 
 import (
@@ -49,6 +51,7 @@ type config struct {
 	listenAddr  string
 	generate    bool // serve the generated matches next to the sample directory
 	matches     int  // how many of the generated matches are served
+	onRequest   bool // list a generated match only while its replay runs, which POST /api/start begins
 }
 
 func loadConfig() config {
@@ -71,6 +74,13 @@ func loadConfig() config {
 			cfg.matches = n
 		} else {
 			slog.Warn("Ignoring invalid MOCKSERVER_DATA_GENERATED_MATCHES", "value", v, "max", cfg.matches)
+		}
+	}
+	if v := os.Getenv("MOCKSERVER_DATA_GENERATED_ON_REQUEST"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			cfg.onRequest = b
+		} else {
+			slog.Warn("Ignoring invalid MOCKSERVER_DATA_GENERATED_ON_REQUEST", "value", v)
 		}
 	}
 	if v := os.Getenv("MOCKSERVER_LISTEN_ADDR"); v != "" {
@@ -318,6 +328,32 @@ func (s *server) reset(id string) error {
 	return nil
 }
 
+// running reports whether a competition has a replay under way (or held at its last sample).
+func (s *server) running(id string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, ok := s.replays[id]
+	return ok
+}
+
+// handleStart begins the replay of a generated match, unless it is running, so that every viewer of it sees the same one.
+func (s *server) handleStart(w http.ResponseWriter, req *http.Request) {
+	id := req.URL.Query().Get("competitionId")
+	if id == "" && len(s.genOrder) > 0 {
+		id = s.genOrder[0].id
+	}
+	if _, ok := s.generated[id]; !ok {
+		http.Error(w, "not a generated match", http.StatusNotFound)
+		return
+	}
+	if _, err := s.replayFor(id); err != nil {
+		fail(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"id": id})
+}
+
 func fail(w http.ResponseWriter, err error) {
 	code := http.StatusInternalServerError
 	switch {
@@ -439,6 +475,9 @@ func (s *server) handleCompetitions(w http.ResponseWriter, _ *http.Request) {
 	}
 	list := []any{}
 	for _, m := range s.genOrder {
+		if s.cfg.onRequest && !s.running(m.id) {
+			continue
+		}
 		list = append(list, comp(m.id, m.name, m.venue.code, now.Add(-time.Hour), now.Add(3*time.Hour)))
 	}
 	for _, e := range entries {
@@ -465,6 +504,7 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("GET /api/matches", s.handleMatches)
 	mux.HandleFunc("GET /Competition", s.handleData)
 	mux.HandleFunc("POST /api/reset", s.handleReset)
+	mux.HandleFunc("POST /api/start", s.handleStart)
 	return mux
 }
 
