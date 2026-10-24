@@ -9,6 +9,8 @@ Dependabot proposes major versions only (see `.github/dependabot.yml`), so minor
 and so are the majors when the user asks for them. Work inline (no subagents), one ecosystem at a time, and run the checks
 of that ecosystem before going to the next. Report what changed in the end: package, old version, new version.
 
+Dependabot waits 7 days after a release (`cooldown` in its config); do the same: hold back a version published less than a week ago and say so.
+
 ## 1. Frontend (`src/frontend`)
 
 ```bash
