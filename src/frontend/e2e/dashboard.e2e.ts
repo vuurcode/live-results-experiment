@@ -400,7 +400,7 @@ test('lists the competitions of today and opens the chosen one', async ({ page }
   await expect(page.getByLabel('Competitions today')).toHaveValue('e2e-mass');
 });
 
-test('the competition picker replaces the event name, times then venue then name, start time only before the start', async ({ page }) => {
+test('the competition picker replaces the event name, times then city then name, start time only before the start', async ({ page }) => {
   await page.goto('/?competitionId=e2e-individual');
   const select = page.getByLabel('Competitions today');
   await expect(select).toBeVisible();
@@ -409,7 +409,7 @@ test('the competition picker replaces the event name, times then venue then name
   await expect(page.getByRole('heading', { level: 1 })).toHaveClass(/visually-hidden/);
   const labels = await select.locator('option').allTextContents();
   const running = labels.find((l) => l.includes('E2E Individual Event'))!;
-  expect(running.trim()).toMatch(/^(🔴 |⚪ )?\d{2}:\d{2}( - \d{2}:\d{2})? · Mock Ice Rink · E2E Individual Event$/);
+  expect(running.trim()).toMatch(/^(🔴 |⚪ )?\d{2}:\d{2}( - \d{2}:\d{2})? · Mockville · E2E Individual Event$/);
 });
 
 test('the settings page holds the general settings and, in a mass start match, the mass start ones under their own headings', async ({ page, request }) => {

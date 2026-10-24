@@ -24,7 +24,7 @@
           <option value="" selected disabled>{{ 'noCompetitionOption' | translate }}</option>
         }
         @for (m of competitions; track m.id) {
-          <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.live ? '🔴' : '⚪' }} {{ m.start | date: 'HH:mm' }}@if (m.end) { - {{ m.end | date: 'HH:mm' }}} · {{ m.venue.name }} · {{ m.name }}</option>
+          <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.live ? '🔴' : '⚪' }} {{ m.start | date: 'HH:mm' }}@if (m.end) { - {{ m.end | date: 'HH:mm' }}} · {{ m.venue.city }} · {{ m.name }}</option>
         }
       </select>
       @if (noCompetition) {
