@@ -16,7 +16,7 @@ go_module() {
 		cd "$1"
 		test -z "$(gofmt -l .)" || { gofmt -l .; echo "gofmt: files above need formatting" >&2; exit 1; }
 		go vet ./...
-		go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run
+		go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run
 	)
 }
 

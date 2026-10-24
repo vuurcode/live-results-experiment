@@ -58,7 +58,7 @@ go mod verify
 - Actions are pinned by commit SHA with the version in a trailing comment (`uses: owner/repo@<sha> # v1.2.3`). Update both
   together, taking the SHA of the release tag, never of a branch. Find the latest with `gh release list -R owner/repo` and
   `gh api repos/owner/repo/git/ref/tags/<tag>`; resolve annotated tags to their commit.
-- Tool versions given as inputs, such as the `golangci-lint` `version:` in both Go jobs, move together and with the Go version.
+- Tool versions given as inputs, such as the `golangci-lint` `version:` in both Go jobs, move together and with the Go version, and with the `golangci-lint` version in `.githooks/pre-commit`.
 - Check with `actionlint` when it is installed.
 
 ## Finishing
