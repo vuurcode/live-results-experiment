@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Lists the recordings of the prod backend; with --fetch downloads the complete ones and deletes them on the server.
 set -euo pipefail
-cd "$(dirname "$0")/../../../.."
+cd "$(dirname "$0")/../../../../.."
 
 dest=src/mockserver/data/archive.d/recordings
 scratch=.agents/recordings-download

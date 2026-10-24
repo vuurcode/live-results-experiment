@@ -11,8 +11,8 @@ a bearer-protected API. They are kept in `src/mockserver/data/archive.d/recordin
 ## Run
 
 ```bash
-.claude/skills/download-recordings/scripts/download.sh          # list only, changes nothing
-.claude/skills/download-recordings/scripts/download.sh --fetch  # download, verify, then delete on the server
+live-results-experiment/.claude/skills/download-recordings/scripts/download.sh          # list only, changes nothing
+live-results-experiment/.claude/skills/download-recordings/scripts/download.sh --fetch  # download, verify, then delete on the server
 ```
 
 The script reads the host from `RECORDINGS_URL` and the key from `RECORDINGS_API_KEY` in `agents.local.md` (gitignored), or
