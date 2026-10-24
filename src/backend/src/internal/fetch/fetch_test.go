@@ -71,3 +71,24 @@ func TestAnUnchangedReplyIsNotProcessedAgain(t *testing.T) {
 		t.Fatalf("applied %d, feed set %d times, want 2 and 3", sink.applied, sink.feeds)
 	}
 }
+
+func TestANotLiveReplyKeepsTheResultsOfTheCompetition(t *testing.T) {
+	bodies := []string{`{"success":false,"distances":[]}`, `{"distances":[{"id":"d","races":[]}]}`, `{"success":false,"distances":[]}`}
+	var n atomic.Int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(bodies[n.Add(1)-1]))
+	}))
+	defer ts.Close()
+
+	sink := &countSink{}
+	f := &Fetcher{URL: ts.URL, Sink: sink, UA: noUA{}, Client: ts.Client(), Log: slog.Default()}
+	for range bodies {
+		if err := f.once(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// the not live reply before any results is applied (it names the event); the one after the results is not
+	if sink.applied != 2 || f.feed.state != "not_live" {
+		t.Fatalf("applied %d, feed %q, want 2 and not_live", sink.applied, f.feed.state)
+	}
+}

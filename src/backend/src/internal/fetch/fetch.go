@@ -44,6 +44,7 @@ type Fetcher struct {
 	Record func([]byte)
 
 	wasLive bool // whether the previous reply had a live distance
+	hasData bool // whether results of this competition were applied, which a reply that says the competition is not live does not replace
 
 	// The reply that was processed last, by hash: the replies are large and mostly unchanged between two polls, so a
 	// reply that hashes the same is not decoded, processed or recorded again.
@@ -94,10 +95,16 @@ func (f *Fetcher) once(ctx context.Context) error {
 		f.Record(body)
 	}
 	f.wasLive = live
-	f.Sink.Apply(results.Process(&raw))
 	f.feed = feedState{"ok", ""}
 	if raw.Success != nil && !*raw.Success {
+		// once the competition is over the source answers without results; the last results stay for those who look afterwards
 		f.feed = feedState{"not_live", raw.ErrorMessage}
+		if !f.hasData {
+			f.Sink.Apply(results.Process(&raw))
+		}
+	} else {
+		f.Sink.Apply(results.Process(&raw))
+		f.hasData = true
 	}
 	f.Sink.SetFeed(f.feed.state, f.feed.message)
 	f.last, f.haveLast = sum, true
