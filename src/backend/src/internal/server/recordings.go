@@ -23,7 +23,7 @@ type RecordingsAPI struct {
 	Store *recorder.Store
 	// Key is the bearer token that is required. The API is not served when it is empty.
 	Key string
-	// Limiter limits requests per client address, whether or not they carry the right key; nil means no limit.
+	// Limiter limits the requests per client address that do not carry the right key; nil means no limit.
 	Limiter *ratelimit.Limiter
 	// ClientIPHeader names the request header that carries the client address behind a proxy; see clientKey.
 	ClientIPHeader string
@@ -38,19 +38,20 @@ func (a *RecordingsAPI) register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/recordings/{id}", a.guard(a.remove))
 }
 
-// guard applies the rate limit, then checks the key.
+// guard checks the key; a request without the right one is rate limited per client address, so guessing the key is slow
+// while a client with the key is never refused for asking too often.
 func (a *RecordingsAPI) guard(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		if a.Limiter != nil {
-			release, wait, ok := a.Limiter.Acquire(clientKey(req, a.ClientIPHeader))
-			if !ok {
-				w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(wait.Seconds()))))
-				http.Error(w, "too many requests", http.StatusTooManyRequests)
-				return
-			}
-			defer release()
-		}
 		if !a.authorized(req) {
+			if a.Limiter != nil {
+				release, wait, ok := a.Limiter.Acquire(clientKey(req, a.ClientIPHeader))
+				if !ok {
+					w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(wait.Seconds()))))
+					http.Error(w, "too many requests", http.StatusTooManyRequests)
+					return
+				}
+				release()
+			}
 			w.Header().Set("WWW-Authenticate", "Bearer")
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return

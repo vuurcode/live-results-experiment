@@ -122,6 +122,6 @@ func startRecordings(ctx context.Context, cfg config.Config, h *hub.Hub) *server
 	}
 	return &server.RecordingsAPI{
 		Store: store, Key: cfg.RecordingsAPIKey, ClientIPHeader: cfg.ClientIPHeader,
-		Limiter: ratelimit.New(config.RecordingsRequestsPerMinute, config.RecordingsBurst, config.RecordingsConcurrent),
+		Limiter: ratelimit.New(config.RecordingsRequestsPerMinute, config.RecordingsBurst, config.RecordingsBurst),
 	}
 }

@@ -18,12 +18,11 @@ const dataSourcePath = "/Competition"
 // ListWatchInterval is how often the competitions list is checked for changes to tell the clients about.
 const ListWatchInterval = 30 * time.Second
 
-// The recordings API is limited per client address: requests per minute on average, how many back to back, and how
-// many downloads at once. The limit applies before the key is checked, so guessing the key is slow too.
+// Requests to the recordings API that do not carry the right key are limited per client address: requests per minute on
+// average and how many back to back. Requests with the key are not limited.
 const (
 	RecordingsRequestsPerMinute = 20.0
 	RecordingsBurst             = 10
-	RecordingsConcurrent        = 2
 )
 
 // DefaultPingInterval keeps a quiet connection busy enough for proxies (nginx closes after 60s of silence).

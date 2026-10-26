@@ -24,7 +24,7 @@ the key from `.agents/recordings-api-key`. It never prints the key.
 - Each download goes to a scratch folder in `.agents/`, is checked with `gzip -t`, and is compared with the local copy
   when one exists. A server recording is deleted only after the local copy is byte-identical to the download. A different
   local copy with the same name is never overwritten and the server one is kept.
-- The API allows 20 requests a minute; the script stays well under.
+- Requests with the right key are not rate limited; only wrong or missing keys are (20 a minute). A 429 therefore means the key is wrong or missing.
 
 ## Afterwards
 

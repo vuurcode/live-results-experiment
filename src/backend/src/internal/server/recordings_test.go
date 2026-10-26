@@ -92,6 +92,15 @@ func TestRecordingsAreRateLimitedEvenWithAWrongKey(t *testing.T) {
 	}
 }
 
+func TestRecordingsWithTheKeyAreNotRateLimited(t *testing.T) {
+	ts, _ := recordingsServer(t, ratelimit.New(1, 3, 2))
+	for i := range 20 {
+		if status, _, _ := call(t, "GET", ts.URL+"/api/recordings", "secret"); status != http.StatusOK {
+			t.Fatalf("request %d: status %d", i, status)
+		}
+	}
+}
+
 func TestRecordingsAreOffWithoutAKey(t *testing.T) {
 	store, _ := recorder.New(t.TempDir(), 0)
 	mux := http.NewServeMux()
