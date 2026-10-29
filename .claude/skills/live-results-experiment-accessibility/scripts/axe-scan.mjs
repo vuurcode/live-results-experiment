@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Scans pages of the dashboard with axe-core (WCAG 2.0/2.1/2.2 A and AA rules) in headless Chromium.
 //
-//   cd frontend && node ../.claude/skills/accessibility/scripts/axe-scan.mjs [--wait 8000] [--all] [url ...]
+//   cd frontend && node ../.claude/skills/live-results-experiment-accessibility/scripts/axe-scan.mjs [--wait 8000] [--all] [url ...]
 //
 //   --all       list every affected element with axe's message (default: first three per rule)
 //   --summary   group colour-contrast failures by element class and colour pair (best for large pages)

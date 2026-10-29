@@ -1,5 +1,5 @@
 ---
-name: accessibility
+name: live-results-experiment-accessibility
 description: Audit, fix and prevent accessibility problems (WCAG 2.2 AA) in the live results dashboard (Angular + CoreUI). Use this skill whenever the user mentions accessibility, a11y, WCAG, screen readers, keyboard navigation, focus, ARIA, colour contrast, colour-blindness, reduced motion, axe, or asks whether the UI is "usable for everyone" — and also whenever you add or change interactive UI, badges, colours, animations or live-updating content in frontend/, even if they never say "accessibility".
 ---
 
@@ -30,7 +30,7 @@ template and CSS changes, so prefer fixing at the source over adding workarounds
 cd frontend
 npm run lint                      # angular-eslint template accessibility rules
 npm run e2e                       # starts the stack on the e2e ports, runs the tests, stops it
-node ../.claude/skills/accessibility/scripts/axe-scan.mjs   # axe-core against the fixture competitions
+node ../.claude/skills/live-results-experiment-accessibility/scripts/axe-scan.mjs   # axe-core against the fixture competitions
 ```
 
 `axe-scan.mjs` needs the e2e stack running (mockserver 18080, backend 15000, `ng serve` on

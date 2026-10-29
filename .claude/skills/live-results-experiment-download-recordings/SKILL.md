@@ -1,5 +1,5 @@
 ---
-name: download-recordings
+name: live-results-experiment-download-recordings
 description: Download the recordings of the production backend into the mockserver archive and remove them from the server. Use when asked to check prod for new recordings, to fetch or download recordings or matches that were not downloaded yet, or to clean up the recordings on the server.
 ---
 
@@ -11,8 +11,8 @@ a bearer-protected API. They are kept in `src/mockserver/data/archive.d/recordin
 ## Run
 
 ```bash
-.claude/skills/download-recordings/scripts/download.sh          # list only, changes nothing
-.claude/skills/download-recordings/scripts/download.sh --fetch  # download, verify, then delete on the server
+.claude/skills/live-results-experiment-download-recordings/scripts/download.sh          # list only, changes nothing
+.claude/skills/live-results-experiment-download-recordings/scripts/download.sh --fetch  # download, verify, then delete on the server
 ```
 
 The script reads the host from `RECORDINGS_URL` and the key from `RECORDINGS_API_KEY` in `agents.local.md` (gitignored), or

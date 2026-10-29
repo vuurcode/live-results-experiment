@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { MOCK_URL } from './env';
 import { heatUrl } from './slider';
 
-// Same rule set as .claude/skills/accessibility/scripts/axe-scan.mjs
+// Same rule set as .claude/skills/live-results-experiment-accessibility/scripts/axe-scan.mjs
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
 
 async function restartReplay(request: import('@playwright/test').APIRequestContext, competition: string) {
