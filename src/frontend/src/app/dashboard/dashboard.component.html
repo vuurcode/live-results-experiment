@@ -15,7 +15,7 @@
     @if ((sortedDistances$ | async)?.length) {
       @let liveFeed = dataService.feed$ | async;
       @if (liveFeed?.state === 'not_live') {
-        <ng-container *ngTemplateOutlet="noticeTpl; context: { $implicit: { titleKey: 'feedNotLiveTitle', bodyKey: 'feedNotLiveBody', message: liveFeed?.message, showLive: true } }" />
+        <ng-container *ngTemplateOutlet="noticeTpl; context: { $implicit: { titleKey: 'feedNotLiveTitle', bodyKey: 'feedNotLiveBody', message: liveFeed?.message } }" />
       }
       @let view = view$ | async;
       @if (view; as v) {
