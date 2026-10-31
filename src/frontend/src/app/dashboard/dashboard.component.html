@@ -15,7 +15,7 @@
     @if ((sortedDistances$ | async)?.length) {
       @let liveFeed = dataService.feed$ | async;
       @if (liveFeed?.state === 'not_live') {
-        <ng-container *ngTemplateOutlet="noticeTpl; context: { $implicit: { titleKey: 'feedNotLiveTitle', bodyKey: 'feedNotLiveBody', message: liveFeed?.message } }" />
+        <ng-container *ngTemplateOutlet="noticeTpl; context: { $implicit: { titleKey: 'feedNotLiveTitle', bodyKey: 'feedNotLiveBody', message: liveFeed?.message, showLive: true } }" />
       }
       @let view = view$ | async;
       @if (view; as v) {
@@ -161,4 +161,40 @@
       <p class="mb-0 mt-2 small"><span class="text-body-secondary me-1">{{ 'feedSourceMessage' | translate }}</span> <q lang="nl">{{ notice.message }}</q></p>
     }
   </c-alert>
+  @if (notice.showLive) {
+    @let choices = choices$ | async;
+    @if (choices; as c) {
+      <ng-container *ngTemplateOutlet="choiceListTpl; context: { titleKey: 'feedLiveNow', list: c.live, live: true }" />
+      <ng-container *ngTemplateOutlet="choiceListTpl; context: { titleKey: 'feedUpcoming', list: c.upcoming, live: false }" />
+      <ng-container *ngTemplateOutlet="choiceListTpl; context: { titleKey: 'feedPast', list: c.past, live: false, past: true }" />
+    }
+  }
+</ng-template>
+
+<!-- A list of competitions to switch to, each linking to its page; nothing is shown for an empty list -->
+<ng-template #choiceListTpl let-titleKey="titleKey" let-list="list" let-live="live" let-past="past">
+  @if (list.length) {
+    <section class="competition-choices mt-3" [attr.aria-label]="titleKey | translate">
+      <h2 class="h6 mb-2">{{ titleKey | translate }}</h2>
+      <ul class="competition-cards list-unstyled row g-2 mb-0">
+        @for (competition of list; track competition.id) {
+          <li class="col-12 col-md-6">
+            <a class="card h-100 text-decoration-none" [class.card-live]="live" [attr.aria-current]="isCurrent(competition.id) ? 'page' : null" [class.card-past]="past" [href]="competitionHref(competition.id)">
+              <div class="card-body p-3">
+                <div class="mb-1">
+                  @if (live) {
+                    <c-badge color="danger" class="glowing-badge">{{ 'badgeLive' | translate }}</c-badge>
+                  } @else {
+                    <span class="card-meta">{{ competition.start | date: 'HH:mm' }}@if (competition.end) { - {{ competition.end | date: 'HH:mm' }}}</span>
+                  }
+                </div>
+                <h3 class="h6 mb-1">{{ competition.name }}</h3>
+                <small class="card-meta">{{ competition.venue.city }}</small>
+              </div>
+            </a>
+          </li>
+        }
+      </ul>
+    </section>
+  }
 </ng-template>

@@ -23,8 +23,14 @@
         @if (!picked) {
           <option value="" selected disabled>{{ 'noCompetitionOption' | translate }}</option>
         }
-        @for (m of competitions; track m.id) {
-          <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.live ? '🔴' : '⚪' }} {{ m.start | date: 'HH:mm' }}@if (m.end) { - {{ m.end | date: 'HH:mm' }}} · {{ m.venue.city }} · {{ m.name }}</option>
+        @for (section of groups(competitions); track section.key) {
+          @if (section.list.length) {
+            <optgroup [label]="section.key | translate">
+              @for (m of section.list; track m.id) {
+                <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.live ? '🔴' : '⚪' }} {{ m.start | date: 'HH:mm' }}@if (m.end) { - {{ m.end | date: 'HH:mm' }}} · {{ m.venue.city }} · {{ m.name }}</option>
+              }
+            </optgroup>
+          }
         }
       </select>
       @if (noCompetition) {

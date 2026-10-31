@@ -193,3 +193,57 @@
   .distance-title { font-size: 0.95rem; padding-block: 0.3rem; }
   ::ng-deep .individual-heat-label { font-size: 0.68em; padding-block: 0.05rem; }
 }
+
+// The cards that offer another competition: tinted with the blue of the inner lane (green when live, red once finished), stronger under the pointer or focus
+.competition-cards .card {
+  --card-lane: #0b5ed7;
+  background: color-mix(in srgb, var(--lr-surface), var(--card-lane) 14%);
+  color: var(--lr-text);
+  border-color: color-mix(in srgb, var(--lr-surface), var(--card-lane) 45%);
+  border-inline-start: 0.35rem solid var(--card-lane);
+  transition: background-color 0.15s;
+
+  // the small text keeps 4.5:1 on every tint, also under the pointer
+  .card-meta {
+    color: var(--lr-text-small);
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: color-mix(in srgb, var(--lr-surface), var(--card-lane) 26%);
+    color: var(--lr-text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--lr-ring);
+    outline-offset: 2px;
+  }
+
+  // live competitions are green, finished ones take the red of the outer lane
+  &.card-live {
+    --card-lane: #198754;
+  }
+
+  &.card-past {
+    --card-lane: #b02a37;
+  }
+}
+
+[data-coreui-theme='dark'] .competition-cards .card {
+  --card-lane: #5b9bff;
+
+  &.card-live {
+    --card-lane: #5fd3a6;
+  }
+
+  &.card-past {
+    --card-lane: #ff8d97;
+  }
+
+  background: color-mix(in srgb, var(--lr-surface), var(--card-lane) 18%);
+
+  &:hover,
+  &:focus-visible {
+    background: color-mix(in srgb, var(--lr-surface), var(--card-lane) 30%);
+  }
+}

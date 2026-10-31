@@ -44,3 +44,22 @@ export function preselectCompetition(competitions: TodayCompetition[], venueCode
   const atVenue = competitions.filter((c) => c.venue.code === venueCode);
   return atVenue.find((c) => c.live) ?? atVenue[0] ?? null;
 }
+
+/** Today's competitions to offer, the one being viewed included. */
+export interface CompetitionChoices {
+  /** Live right now. */
+  live: TodayCompetition[];
+  /** Not live and not over: still to come, or started and may go live. */
+  upcoming: TodayCompetition[];
+  /** Over for today, the latest first. */
+  past: TodayCompetition[];
+}
+
+/** Sorts today's competitions into those live, those still to come and those over. */
+export function competitionChoices(others: TodayCompetition[], now: number): CompetitionChoices {
+  const live = others.filter((c) => c.live);
+  const endOf = (c: TodayCompetition) => Date.parse(c.end ?? c.start);
+  const upcoming = others.filter((c) => !c.live && endOf(c) >= now);
+  const past = others.filter((c) => !c.live && endOf(c) < now).sort((a, b) => endOf(b) - endOf(a));
+  return { live, upcoming, past };
+}

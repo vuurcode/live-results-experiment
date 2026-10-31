@@ -393,7 +393,7 @@ test.describe('mass start', () => {
 test('lists the competitions of today and opens the chosen one', async ({ page }) => {
   await page.goto('/?competitionId=e2e-individual');
   const select = page.getByLabel('Competitions today');
-  await expect(select.locator('option')).toHaveCount(7); // the seven fixture competitions; the mock's other-day and other-venue entries are filtered out
+  await expect(select.locator('option')).toHaveCount(11); // the seven fixture competitions and the mock's two later and two finished ones of today; its other-day and other-venue entries are filtered out
   await expect(select).toHaveValue('e2e-individual');
   await select.selectOption('e2e-mass');
   await page.waitForURL(/competitionId=e2e-mass/);

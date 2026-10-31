@@ -9,6 +9,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { DataService } from '../results/data.service';
 import { SettingsService } from '../settings/settings.service';
 import { FeedStatus, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../results/data.models';
+import { CompetitionChoices, competitionChoices } from '../results/competition.util';
 import { Observable, combineLatest, concat, map, of, startWith, switchMap, tap, timer } from 'rxjs';
 import { TranslateService, TranslationKey } from '../i18n/translate.service';
 import { TranslatePipe } from '../i18n/translate.pipe';
@@ -89,6 +90,8 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
   protected errors$: Observable<string[]>;
   /** Why the page has no results to show (instead of the loading skeleton), or null while it is just connecting. */
   protected emptyNotice$!: Observable<EmptyNotice | null>;
+  /** The competitions of today, the selected one included, offered when nothing is selected or the selected one is not live. */
+  protected choices$: Observable<CompetitionChoices>;
 
   protected liveEventNumber: number | null = null;
   /** Mass start competitors the viewer follows; several can be selected at once. A new set on every change, for the OnPush rows. */
@@ -107,6 +110,14 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
   /** The distances with the steps of the slider and the index of the live one. */
   protected view$!: Observable<{ distances: ProcessedDistance[]; steps: HeatStep[]; live: number }>;
 
+  protected isCurrent(id: string): boolean {
+    return id === this.dataService.competitionId;
+  }
+
+  protected competitionHref(id: string): string {
+    return `?competitionId=${encodeURIComponent(id)}`;
+  }
+
   protected selectRace(id: string): void {
     const next = new Set(this.selectedRaceIds);
     if (!next.delete(id)) next.add(id);
@@ -118,6 +129,10 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
 
   constructor() {
     this.eventName$ = this.dataService.eventName$;
+    // re-sorted every minute, so a competition that ends while the page is open moves from upcoming to past
+    this.choices$ = combineLatest([this.dataService.todayCompetitions$, timer(0, 60_000)]).pipe(
+      map(([competitions]) => competitionChoices(competitions, Date.now())),
+    );
     this.errors$ = this.dataService.errors$;
     this.emptyNotice$ = combineLatest([
       this.dataService.feed$,
@@ -585,13 +600,15 @@ interface EmptyNotice {
   bodyKey: TranslationKey;
   /** The data source's own text, shown as a quote */
   message?: string;
+  /** The competitions that are live are listed with the notice. */
+  showLive?: boolean;
 }
 
 /** What to tell the viewer while there are no results to show. */
 function emptyNotice(feed: FeedStatus | null, connection: string, waitedLong: boolean): EmptyNotice | null {
-  if (connection === 'No competition') return { titleKey: 'feedNoCompetitionTitle', bodyKey: 'feedNoCompetitionBody' };
+  if (connection === 'No competition') return { titleKey: 'feedNoCompetitionTitle', bodyKey: 'feedNoCompetitionBody', showLive: true };
   if (connection === 'Error' || connection === 'Disconnected') return { titleKey: 'feedDisconnectedTitle', bodyKey: 'feedDisconnectedBody' };
-  if (feed?.state === 'not_live') return { titleKey: 'feedNotLiveTitle', bodyKey: 'feedNotLiveBody', message: feed.message };
+  if (feed?.state === 'not_live') return { titleKey: 'feedNotLiveTitle', bodyKey: 'feedNotLiveBody', message: feed.message, showLive: true };
   if (feed?.state === 'unavailable') return { titleKey: 'feedUnavailableTitle', bodyKey: 'feedUnavailableBody' };
   if (feed?.state === 'ok') return { titleKey: 'feedEmptyTitle', bodyKey: 'feedEmptyBody' };
   return waitedLong ? { titleKey: 'feedSlowTitle', bodyKey: 'feedSlowBody' } : null;

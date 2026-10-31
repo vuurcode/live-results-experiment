@@ -4,6 +4,8 @@ import { RouterLink } from '@angular/router';
 import { ButtonModule, FormModule, OffcanvasModule, PlaceholderModule } from '@coreui/angular';
 import { DataService } from '../results/data.service';
 import type { TodayCompetition } from '../results/data.models';
+import { competitionChoices } from '../results/competition.util';
+import type { TranslationKey } from '../i18n/translate.service';
 import { TranslatePipe } from '../i18n/translate.pipe';
 
 /** The bar at the top of every page: the menu, the competition picker and the app icon; the drawer lists the pages. */
@@ -39,6 +41,16 @@ export class HeaderComponent {
       observer.observe(bar);
       destroyRef.onDestroy(() => observer.disconnect());
     });
+  }
+
+  /** The competitions of the picker in its sections: live, coming up and finished. */
+  protected groups(competitions: TodayCompetition[]): { key: TranslationKey; list: TodayCompetition[] }[] {
+    const c = competitionChoices(competitions, Date.now());
+    return [
+      { key: 'feedLiveNow', list: c.live },
+      { key: 'feedUpcoming', list: c.upcoming },
+      { key: 'feedPast', list: c.past },
+    ];
   }
 
   /** Length of the shown option text; on narrow screens a longer one gets a smaller font. */

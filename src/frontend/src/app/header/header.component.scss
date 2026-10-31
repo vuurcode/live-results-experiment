@@ -145,6 +145,10 @@
   text-align: start;
   --cui-btn-color: var(--cui-body-color);
   --cui-btn-border-color: var(--lr-control-border);
+  // a fill that differs from the drawer's surface, a little darker under the pointer
+  --cui-btn-bg: var(--lr-neutral-bg);
+  --cui-btn-hover-bg: color-mix(in srgb, var(--lr-neutral-bg), var(--lr-text) 10%);
+  --cui-btn-active-bg: color-mix(in srgb, var(--lr-neutral-bg), var(--lr-text) 14%);
   --cui-btn-hover-color: var(--cui-body-color);
   --cui-btn-active-color: var(--cui-body-color);
 }

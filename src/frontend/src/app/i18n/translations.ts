@@ -74,6 +74,9 @@ export interface Translations {
   feedNotLiveTitle: string;
   feedNotLiveBody: string;
   feedSourceMessage: string;
+  feedLiveNow: string;
+  feedUpcoming: string;
+  feedPast: string;
   disclaimer: string;
   disclaimerOwnership: string;
   feedUnavailableTitle: string;

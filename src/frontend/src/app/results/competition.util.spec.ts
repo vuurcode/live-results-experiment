@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TodayCompetition } from './data.models';
-import { competitionIdFromSearch, preselectCompetition, withCompetitionId, withResume } from './competition.util';
+import { competitionChoices, competitionIdFromSearch, preselectCompetition, withCompetitionId, withResume } from './competition.util';
 
 describe('competitionIdFromSearch', () => {
   it('reads a valid id', () => {
@@ -57,5 +57,36 @@ describe('preselectCompetition', () => {
   it('takes nothing without a remembered venue or a competition there', () => {
     expect(preselectCompetition([at('a', 'V1', true)], null)).toBeNull();
     expect(preselectCompetition([at('a', 'V1', true)], 'V2')).toBeNull();
+  });
+});
+
+describe('competitionChoices', () => {
+  const at = (id: string, live: boolean, start: string, end?: string): TodayCompetition => ({
+    id, code: id, name: id, start, end, allowToSendLive: true, live, venue: { code: 'V', name: 'V', city: 'C' },
+  });
+  const now = Date.parse('2026-10-31T12:00:00Z');
+  const list = [
+    at('past-old', false, '2026-10-31T06:00:00Z', '2026-10-31T08:00:00Z'),
+    at('past-new', false, '2026-10-31T08:00:00Z', '2026-10-31T10:00:00Z'),
+    at('running', true, '2026-10-31T11:00:00Z', '2026-10-31T13:00:00Z'),
+    at('soon', false, '2026-10-31T14:00:00Z', '2026-10-31T16:00:00Z'),
+  ];
+
+  it('lists the live ones, the upcoming ones and the past ones, also while something is live', () => {
+    const c = competitionChoices(list, now);
+    expect(c.live.map((x) => x.id)).toEqual(['running']);
+    expect(c.upcoming.map((x) => x.id)).toEqual(['soon']);
+    expect(c.past.map((x) => x.id)).toEqual(['past-new', 'past-old']);
+  });
+
+  it('lists the upcoming ones when nothing is live', () => {
+    const c = competitionChoices(list.filter((x) => x.id !== 'running'), now);
+    expect(c.live).toEqual([]);
+    expect(c.upcoming.map((x) => x.id)).toEqual(['soon']);
+  });
+
+  it('counts a competition that started and is not over as upcoming, since it may go live', () => {
+    const c = competitionChoices([at('late', false, '2026-10-31T11:00:00Z', '2026-10-31T13:00:00Z')], now);
+    expect(c.upcoming.map((x) => x.id)).toEqual(['late']);
   });
 });
