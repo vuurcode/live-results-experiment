@@ -1,5 +1,5 @@
 ---
-name: live-results-experiment-accessibility
+name: live-results-experiment:accessibility
 description: Audit, fix and prevent accessibility problems (WCAG 2.2 AA) in the live results dashboard (Angular + CoreUI). Use this skill whenever the user mentions accessibility, a11y, WCAG, screen readers, keyboard navigation, focus, ARIA, colour contrast, colour-blindness, reduced motion, axe, or asks whether the UI is "usable for everyone" — and also whenever you add or change interactive UI, badges, colours, animations or live-updating content in frontend/, even if they never say "accessibility".
 ---
 

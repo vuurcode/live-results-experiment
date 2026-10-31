@@ -1,5 +1,5 @@
 ---
-name: live-results-experiment-update-dependencies
+name: live-results-experiment:update-dependencies
 description: Update all the dependencies of the project: the frontend npm packages, the Go modules of the backend and the mockserver, the base images in the Containerfiles, the pinned GitHub Actions and tool versions in CI. Use when asked to update, upgrade or refresh dependencies, to clear npm audit or Dependabot findings, or to bump Node, Go, Playwright or the linters.
 ---
 

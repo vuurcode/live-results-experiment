@@ -1,5 +1,5 @@
 ---
-name: live-results-experiment-download-recordings
+name: live-results-experiment:download-recordings
 description: Download the recordings of the production backend into the mockserver archive and remove them from the server. Use when asked to check prod for new recordings, to fetch or download recordings or matches that were not downloaded yet, or to clean up the recordings on the server.
 ---
 
