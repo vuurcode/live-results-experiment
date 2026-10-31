@@ -174,10 +174,10 @@ func (r *Recording) Add(body []byte) {
 	if r.skip {
 		return
 	}
-	// stored without who the competitors are; a reply that cannot be read is not stored at all
-	body, err := anonymize(body)
-	if err != nil {
-		slog.Error("Recording failed, reply is not JSON", "competition", r.id, "err", err)
+	// stored as it came, so that the final results can be served with the names; a download is anonymised. A reply
+	// that cannot be read is not stored at all.
+	if !json.Valid(body) {
+		slog.Error("Recording failed, reply is not JSON", "competition", r.id)
 		return
 	}
 	if bytes.Equal(body, r.last) {
@@ -329,7 +329,7 @@ func (s *Store) pack(name string) error {
 	if err != nil {
 		return err
 	}
-	err = writeArchive(f, name, dir, names)
+	err = writeArchive(f, name, dir, names, false)
 	if cerr := f.Close(); err == nil {
 		err = cerr
 	}
@@ -342,6 +342,49 @@ func (s *Store) pack(name string) error {
 	}
 	slog.Info("Recording complete", "recording", name, "snapshots", len(names))
 	return os.RemoveAll(dir)
+}
+
+// anonymizeArchive copies a packed recording to w, replacing who the competitors are in every snapshot.
+func anonymizeArchive(w io.Writer, packed io.Reader) error {
+	gz, err := gzip.NewReader(packed)
+	if err != nil {
+		return err
+	}
+	tr := tar.NewReader(gz)
+	out, err := gzip.NewWriterLevel(w, gzip.BestCompression)
+	if err != nil {
+		return err
+	}
+	tw := tar.NewWriter(out)
+	for {
+		h, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		b, err := io.ReadAll(tr)
+		if err != nil {
+			return err
+		}
+		if strings.HasSuffix(h.Name, snapshotExt) {
+			if b, err = anonymize(b); err != nil {
+				return fmt.Errorf("anonymise %s: %w", h.Name, err)
+			}
+		}
+		h.Size = int64(len(b))
+		if err := tw.WriteHeader(h); err != nil {
+			return err
+		}
+		if _, err := tw.Write(b); err != nil {
+			return err
+		}
+	}
+	if err := tw.Close(); err != nil {
+		return err
+	}
+	return out.Close()
 }
 
 // addExtra adds a file that is no snapshot (the meta or clients file) to the archive, when the folder has it.
@@ -365,8 +408,9 @@ func addExtra(tw *tar.Writer, dirName, dir, file string) error {
 	return err
 }
 
-// writeArchive writes the snapshots as a gzipped tar whose entries are <dirName>/<snapshot>.
-func writeArchive(w io.Writer, dirName, dir string, names []string) error {
+// writeArchive writes the snapshots as a gzipped tar whose entries are <dirName>/<snapshot>, without who the
+// competitors are when anon is set.
+func writeArchive(w io.Writer, dirName, dir string, names []string, anon bool) error {
 	gz, err := gzip.NewWriterLevel(w, gzip.BestCompression)
 	if err != nil {
 		return err
@@ -376,6 +420,11 @@ func writeArchive(w io.Writer, dirName, dir string, names []string) error {
 		b, err := os.ReadFile(filepath.Join(dir, name)) //nolint:gosec // a name from the recording's own folder
 		if err != nil {
 			return err
+		}
+		if anon {
+			if b, err = anonymize(b); err != nil {
+				return fmt.Errorf("anonymise %s: %w", name, err)
+			}
 		}
 		hdr := &tar.Header{Name: dirName + "/" + name, Mode: 0o640, Size: int64(len(b)), ModTime: modTime(name)}
 		if err := tw.WriteHeader(hdr); err != nil {
@@ -437,15 +486,86 @@ func (s *Store) List() ([]Info, error) {
 	return out, nil
 }
 
-// Write sends a recording as a gzipped tar: the packed file of a complete one, or the snapshots so far of one that
-// is still going. It returns ErrNotFound, before writing anything, for a name nothing is stored under.
+// Latest returns the newest snapshot stored for a competition, over all its days, or nil when there is none. After a
+// competition is over this is its final results, which the data source no longer sends. Nothing is returned for a nil
+// store.
+func (s *Store) Latest(id string) []byte {
+	if s == nil || !idRe.MatchString(id) {
+		return nil
+	}
+	entries, err := os.ReadDir(s.dir)
+	if err != nil {
+		return nil
+	}
+	// the newest day first: names end in the date
+	var names []string
+	for _, e := range entries {
+		n := strings.TrimSuffix(e.Name(), archiveExt)
+		if nameRe.MatchString(n) && len(n) == len(id)+len("_2006-01-02") && strings.HasPrefix(n, id+"_") {
+			names = append(names, e.Name())
+		}
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(names)))
+	for _, n := range names {
+		if b := s.latestOf(n); b != nil {
+			return b
+		}
+	}
+	return nil
+}
+
+// latestOf reads the newest snapshot of the folder or the packed file called entry.
+func (s *Store) latestOf(entry string) []byte {
+	if !strings.HasSuffix(entry, archiveExt) {
+		dir := filepath.Join(s.dir, entry)
+		names := snapshotNames(dir)
+		if len(names) == 0 {
+			return nil
+		}
+		b, _ := os.ReadFile(filepath.Join(dir, names[len(names)-1])) //nolint:gosec // the recording's own folder
+		return b
+	}
+	f, err := os.Open(filepath.Join(s.dir, entry)) //nolint:gosec // the store's own folder
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = f.Close() }()
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return nil
+	}
+	tr := tar.NewReader(gz)
+	var best string
+	var last []byte
+	for {
+		h, err := tr.Next()
+		if err != nil {
+			break
+		}
+		if !strings.HasSuffix(h.Name, snapshotExt) || h.Name <= best {
+			continue
+		}
+		if b, err := io.ReadAll(io.LimitReader(tr, 64<<20)); err == nil {
+			best, last = h.Name, b
+		}
+	}
+	return last
+}
+
+// Write sends a recording as a gzipped tar, with the competitors anonymised: the packed file of a complete one, or
+// the snapshots so far of one that is still going. It returns ErrNotFound, before writing anything, for a name nothing is stored under.
 func (s *Store) Write(w io.Writer, name string) error {
 	if !nameRe.MatchString(name) {
 		return ErrBadID
 	}
 	if f, err := os.Open(s.archive(name)); err == nil {
 		defer func() { _ = f.Close() }()
-		_, err = io.Copy(w, f)
+		// anonymised in full before anything is sent, so that a failure is not a truncated download
+		var buf bytes.Buffer
+		if err := anonymizeArchive(&buf, f); err != nil {
+			return err
+		}
+		_, err = buf.WriteTo(w)
 		return err
 	}
 	dir := filepath.Join(s.dir, name)
@@ -453,7 +573,12 @@ func (s *Store) Write(w io.Writer, name string) error {
 	if len(names) == 0 {
 		return ErrNotFound
 	}
-	return writeArchive(w, name, dir, names)
+	var buf bytes.Buffer
+	if err := writeArchive(&buf, name, dir, names, true); err != nil {
+		return err
+	}
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 // Info describes the recording stored under name.

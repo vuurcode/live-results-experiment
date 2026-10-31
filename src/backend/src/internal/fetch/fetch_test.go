@@ -92,3 +92,25 @@ func TestANotLiveReplyKeepsTheResultsOfTheCompetition(t *testing.T) {
 		t.Fatalf("applied %d, feed %q, want 2 and not_live", sink.applied, f.feed.state)
 	}
 }
+
+type lastSink struct{ distances int }
+
+func (l *lastSink) Apply(p *results.Processed) { l.distances = len(p.Distances) }
+func (l *lastSink) SetFeed(string, string)     {}
+
+func TestFinalResultsFillInForANotLiveReplyWithoutResults(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"success":false,"errorMessage":"over"}`))
+	}))
+	defer ts.Close()
+
+	sink := &lastSink{}
+	f := &Fetcher{URL: ts.URL, Sink: sink, UA: noUA{}, Client: ts.Client(), Log: slog.Default(),
+		Final: func() []byte { return []byte(`{"distances":[{"id":"d","isLive":false,"races":[]}]}`) }}
+	if err := f.once(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if sink.distances != 1 {
+		t.Fatalf("distances applied: %d", sink.distances)
+	}
+}

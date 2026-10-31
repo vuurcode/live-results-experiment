@@ -222,11 +222,28 @@ func TestCompetitorsAreAnonymized(t *testing.T) {
 		`{"id":"r1","heat":1,"competitor":{"id":"c-1","name":"Jan Jansen","startNumber":"3","clubCode":"ABC","category":"M","birth":"x"}},` +
 		`{"id":"r2","heat":2,"competitor":{"id":"c-1","name":"Jan Jansen","startNumber":"3","clubCode":"ABC","category":"M","birth":"x"}}]}]}`
 	r.Add([]byte(in))
-	var buf bytes.Buffer
-	if err := s.Write(&buf, "m1_2026-03-08"); err != nil {
-		t.Fatal(err)
+	if !strings.Contains(string(s.Latest("m1")), "Jan Jansen") {
+		t.Fatal("the server keeps the names, to serve the final results with")
 	}
-	for _, got := range readArchive(t, buf.Bytes()) {
+	for _, packed := range []bool{false, true} {
+		if packed {
+			age(t, s, "m1_2026-03-08", 2*time.Hour)
+			s.Sweep()
+		}
+		var buf bytes.Buffer
+		if err := s.Write(&buf, "m1_2026-03-08"); err != nil {
+			t.Fatal(err)
+		}
+		checkAnonymized(t, readArchive(t, buf.Bytes()))
+	}
+}
+
+func checkAnonymized(t *testing.T, files map[string]string) {
+	t.Helper()
+	if len(files) == 0 {
+		t.Fatal("empty download")
+	}
+	for _, got := range files {
 		if strings.Contains(got, "Jansen") || strings.Contains(got, "c-1") {
 			t.Fatalf("personal data in the recording: %s", got)
 		}
@@ -317,5 +334,36 @@ func TestTheClientsOfADayAreCountedInATextFile(t *testing.T) {
 	// the file is not a snapshot
 	if infos, _ := s.List(); len(infos) != 2 || infos[0].Snapshots != 1 {
 		t.Fatalf("got %+v", infos)
+	}
+}
+
+func TestLatestIsTheNewestSnapshotOfTheNewestDay(t *testing.T) {
+	s, now := clockedStore(t, 0)
+	if s.Latest("m1") != nil {
+		t.Fatal("a competition without recordings has no latest snapshot")
+	}
+	rec := s.Open("m1")
+	rec.Add([]byte(`{"distances":[{"id":"a"}]}`))
+	*now = now.Add(time.Second)
+	rec.Add([]byte(`{"distances":[{"id":"b"}]}`))
+	s.Open("m10").Add([]byte(`{"distances":[{"id":"other"}]}`)) // an id that only starts the same
+	if got := string(s.Latest("m1")); got != `{"distances":[{"id":"b"}]}` {
+		t.Fatalf("open folder: %s", got)
+	}
+
+	age(t, s, "m1_2026-03-08", 2*time.Hour)
+	s.Sweep()
+	if got := string(s.Latest("m1")); got != `{"distances":[{"id":"b"}]}` {
+		t.Fatalf("packed: %s", got)
+	}
+
+	*now = now.Add(24 * time.Hour)
+	rec.Add([]byte(`{"distances":[{"id":"c"}]}`))
+	if got := string(s.Latest("m1")); got != `{"distances":[{"id":"c"}]}` {
+		t.Fatalf("next day: %s", got)
+	}
+	var none *Store
+	if none.Latest("m1") != nil {
+		t.Fatal("a nil store has nothing")
 	}
 }

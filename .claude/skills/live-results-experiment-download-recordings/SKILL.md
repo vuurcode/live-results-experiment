@@ -29,7 +29,7 @@ the key from `.agents/recordings-api-key`. It never prints the key.
 ## Afterwards
 
 - Report what was downloaded, skipped and deleted. Show times (the `modified` field is UTC) in Europe/Amsterdam.
-- Recordings are anonymised by the backend while recording (competitor names become `Competitor <start number>`, ids are hashed). Verify every new archive before reporting it done, and change nothing:
+- The server keeps the competitor names; the backend anonymises a recording only when it is downloaded (names become `Competitor <start number>`, ids are hashed). So the download is the only anonymised copy: never copy files out of the server's recordings folder by any other route, and never use a recording from anywhere else in the mockserver data. Older recordings were stored anonymised. Verify every new archive before reporting it done, and change nothing:
 
   ```bash
   python3 -I - src/mockserver/data/archive.d/recordings/<id>.tar.gz <<'P'

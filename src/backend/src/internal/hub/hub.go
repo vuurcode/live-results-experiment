@@ -127,6 +127,7 @@ func (m *Hub) openLocked(id string) (*room.Room, error) {
 		if rec := m.Recorder.Open(id); rec != nil {
 			m.notePeriod(id, rec)
 			f.Record = rec.Add
+			f.Final = func() []byte { return m.Recorder.Latest(id) }
 		}
 	}
 	go f.Run(ctx)

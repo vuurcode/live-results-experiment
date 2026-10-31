@@ -42,9 +42,13 @@ type Fetcher struct {
 	Log      *slog.Logger
 	// Record, when set, gets the replies of a live competition, as the data source sent them.
 	Record func([]byte)
+	// Final, when set, gives the last results stored for the competition. They are applied when the data source says
+	// the competition is not live and sends no results, which is how a competition that is over answers.
+	Final func() []byte
 
-	wasLive bool // whether the previous reply had a live distance
-	hasData bool // whether results of this competition were applied, which a reply that says the competition is not live does not replace
+	wasLive    bool // whether the previous reply had a live distance
+	finalAsked bool // whether the stored final results were looked up, which is done once
+	hasData    bool // whether results of this competition were applied, which a reply that says the competition is not live does not replace
 
 	// The reply that was processed last, by hash: the replies are large and mostly unchanged between two polls, so a
 	// reply that hashes the same is not decoded, processed or recorded again.
@@ -100,7 +104,7 @@ func (f *Fetcher) once(ctx context.Context) error {
 		// once the competition is over the source answers without results; the last results stay for those who look afterwards
 		f.feed = feedState{"not_live", raw.ErrorMessage}
 		if !f.hasData {
-			f.Sink.Apply(results.Process(&raw))
+			f.Sink.Apply(results.Process(f.withFinal(&raw)))
 		}
 	} else {
 		f.Sink.Apply(results.Process(&raw))
@@ -109,6 +113,21 @@ func (f *Fetcher) once(ctx context.Context) error {
 	f.Sink.SetFeed(f.feed.state, f.feed.message)
 	f.last, f.haveLast = sum, true
 	return nil
+}
+
+// withFinal returns raw, or the stored final results when raw has none and there are any.
+func (f *Fetcher) withFinal(raw *results.RawData) *results.RawData {
+	if len(raw.Distances) > 0 || f.Final == nil || f.finalAsked {
+		return raw
+	}
+	f.finalAsked = true
+	var stored results.RawData
+	if b := f.Final(); b == nil || json.Unmarshal(b, &stored) != nil || len(stored.Distances) == 0 {
+		return raw
+	}
+	stored.Success, stored.ErrorMessage = raw.Success, raw.ErrorMessage
+	f.hasData = true
+	return &stored
 }
 
 // Run fetches until ctx ends, waiting Interval() between fetches and longer while the data source keeps failing.
