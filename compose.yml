@@ -23,8 +23,9 @@ services:
       MOCKSERVER_DATA_SAMPLE_INTERVAL: ${MOCKSERVER_DATA_SAMPLE_INTERVAL:-3}
       # seconds a finished replay is held before it restarts from the start; 0 never
       MOCKSERVER_DATA_EXPIRE_AFTER: ${MOCKSERVER_DATA_EXPIRE_AFTER:-300}
-      # also serve the generated matches (mock-match-1..3) next to the recordings
+      # also serve the generated matches next to the recordings, only the mass start one
       MOCKSERVER_DATA_GENERATE: ${MOCKSERVER_DATA_GENERATE:-true}
+      MOCKSERVER_DATA_GENERATED_IDS: ${MOCKSERVER_DATA_GENERATED_IDS:-mock-match-4}
       BACKEND_LIVE_RESULTS_BASE_URL: http://localhost:8080
       BACKEND_LIVE_RESULTS_INTERVAL_NOT_STARTED: 1
       BACKEND_LIVE_RESULTS_INTERVAL_MASS_START: 1

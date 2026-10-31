@@ -33,6 +33,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -49,9 +50,10 @@ type config struct {
 	lapInterval time.Duration // how long the leader of a generated mass start takes for its first lap, the race clock is scaled to it; 0 replays the race clock in real time
 	expireAfter time.Duration // how long the last sample is held before the competition is dropped; 0 never
 	listenAddr  string
-	generate    bool // serve the generated matches next to the sample directory
-	matches     int  // how many of the generated matches are served
-	onRequest   bool // list a generated match only while its replay runs, which POST /api/start begins
+	generate    bool     // serve the generated matches next to the sample directory
+	matches     int      // how many of the generated matches are served
+	only        []string // ids of the generated matches to serve, in place of the first matches; empty serves the first matches
+	onRequest   bool     // list a generated match only while its replay runs, which POST /api/start begins
 }
 
 func loadConfig() config {
@@ -74,6 +76,11 @@ func loadConfig() config {
 			cfg.matches = n
 		} else {
 			slog.Warn("Ignoring invalid MOCKSERVER_DATA_GENERATED_MATCHES", "value", v, "max", cfg.matches)
+		}
+	}
+	if v := os.Getenv("MOCKSERVER_DATA_GENERATED_IDS"); v != "" {
+		for id := range strings.SplitSeq(v, ",") {
+			cfg.only = append(cfg.only, strings.TrimSpace(id))
 		}
 	}
 	if v := os.Getenv("MOCKSERVER_DATA_GENERATED_ON_REQUEST"); v != "" {
@@ -143,12 +150,24 @@ type server struct {
 	startLists sync.Map // competition id -> *cachedStartList, so a restart of a replay does not read every sample again
 }
 
-// withGenerated adds the first cfg.matches generated matches to the server.
+// withGenerated adds the generated matches named in cfg.only, else the first cfg.matches, to the server.
 func (s *server) withGenerated() *server {
 	s.generated = map[string]*genMatch{}
-	for _, m := range generatedMatches(s.cfg.matches) {
+	count := s.cfg.matches
+	if len(s.cfg.only) > 0 {
+		count = maxGeneratedMatches
+	}
+	for _, m := range generatedMatches(count) {
+		if len(s.cfg.only) > 0 && !slices.Contains(s.cfg.only, m.id) {
+			continue
+		}
 		s.generated[m.id] = m
 		s.genOrder = append(s.genOrder, m)
+	}
+	for _, id := range s.cfg.only {
+		if _, ok := s.generated[id]; !ok {
+			slog.Warn("MOCKSERVER_DATA_GENERATED_IDS names no generated match", "id", id)
+		}
 	}
 	return s
 }
@@ -380,10 +399,57 @@ func (s *server) handleMatches(w http.ResponseWriter, _ *http.Request) {
 	_ = json.NewEncoder(w).Encode(ids)
 }
 
+// notLiveIDs are the competitions of the list that are still to come today; their feed says that they are not live.
+var notLiveIDs = []string{"mock-later-1", "mock-later-2"}
+
+// finishedFrom names the generated match whose final results a finished competition of the list serves.
+var finishedFrom = map[string]string{"mock-done-1": "mock-match-1", "mock-done-2": "mock-match-2"}
+
+// finishedFeeds holds the final results of the finished competitions: the last reply of the generated match, as a
+// source answers once the competition is over, that is "not live" with the results of the day still in it.
+var finishedFeeds = sync.OnceValue(func() map[string][]byte {
+	byID := map[string][]byte{}
+	for _, m := range generatedMatches(maxGeneratedMatches) {
+		byID[m.id] = m.frames[len(m.frames)-1]
+	}
+	out := map[string][]byte{}
+	for id, from := range finishedFrom {
+		var doc map[string]any
+		if err := json.Unmarshal(byID[from], &doc); err != nil {
+			continue
+		}
+		doc["success"] = false
+		doc["errorMessage"] = "Deze demo-wedstrijd is afgelopen."
+		if ds, ok := doc["distances"].([]any); ok {
+			for _, d := range ds {
+				if dm, ok := d.(map[string]any); ok {
+					dm["isLive"] = false
+				}
+			}
+		}
+		if b, err := json.Marshal(doc); err == nil {
+			out[id] = b
+		}
+	}
+	return out
+})
+
+const notLiveFeed = `{"id":null,"name":null,"isInternational":false,"distances":[],"success":false,"errorMessage":"Deze demo-wedstrijd is niet live.","errorMode":0,"resultUrl":null}`
+
 func (s *server) handleData(w http.ResponseWriter, req *http.Request) {
 	id := req.URL.Query().Get("competitionId")
 	if !competitionIDRe.MatchString(id) {
 		http.Error(w, "competitionId is required", http.StatusBadRequest)
+		return
+	}
+	if b, ok := finishedFeeds()[id]; ok {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(b)
+		return
+	}
+	if slices.Contains(notLiveIDs, id) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(notLiveFeed))
 		return
 	}
 	r, err := s.replayFor(id)
@@ -492,6 +558,10 @@ func (s *server) handleCompetitions(w http.ResponseWriter, _ *http.Request) {
 		comp("mock-tomorrow", "Mock competition tomorrow", "DEV", now.Add(day), now.Add(day+3*time.Hour)),
 		comp("mock-last-week", "Mock competition last week", "DEV", now.Add(-7*day), now.Add(-7*day+3*time.Hour)),
 		comp("mock-other-venue", "Mock competition elsewhere", "OTH", now.Add(-time.Hour), now.Add(3*time.Hour)),
+		comp("mock-later-1", "Mock competition later today", "DEV", now.Add(90*time.Minute), now.Add(3*time.Hour)),
+		comp("mock-later-2", "Mock competition this evening", "DEV", now.Add(2*time.Hour), now.Add(4*time.Hour)),
+		comp("mock-done-1", "Mock competition finished this morning", "DEV", now.Add(-5*time.Hour), now.Add(-3*time.Hour)),
+		comp("mock-done-2", "Mock competition finished earlier", "DEV", now.Add(-4*time.Hour), now.Add(-2*time.Hour)),
 	)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(list)

@@ -189,6 +189,14 @@ func TestGeneratedMatchCountIsConfigurable(t *testing.T) {
 	}
 }
 
+func TestGeneratedMatchIDsSelectMatches(t *testing.T) {
+	t.Setenv("MOCKSERVER_DATA_GENERATED_IDS", "mock-match-4, mock-match-2")
+	s := (&server{cfg: loadConfig(), replays: map[string]*replay{}}).withGenerated()
+	if len(s.genOrder) != 2 || s.genOrder[0].id != "mock-match-2" || s.genOrder[1].id != "mock-match-4" {
+		t.Fatalf("want mock-match-2 and mock-match-4, got %d matches", len(s.genOrder))
+	}
+}
+
 // clockMillis reads a feed time (hh:mm:ss.fffffff) as whole milliseconds.
 func clockMillis(t *testing.T, s string) int {
 	t.Helper()

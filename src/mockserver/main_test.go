@@ -168,7 +168,7 @@ func TestCatalogEndpoints(t *testing.T) {
 	if code != 200 {
 		t.Fatalf("competitions: %d %s", code, body)
 	}
-	for _, want := range []string{`"id":"m1"`, `"name":"Event One"`, `"code":"DEV"`, `"id":"mock-tomorrow"`, `"id":"mock-last-week"`, `"id":"mock-other-venue"`} {
+	for _, want := range []string{`"id":"m1"`, `"name":"Event One"`, `"code":"DEV"`, `"id":"mock-tomorrow"`, `"id":"mock-last-week"`, `"id":"mock-other-venue"`, `"id":"mock-later-1"`, `"id":"mock-done-1"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("competitions missing %s", want)
 		}
@@ -219,5 +219,18 @@ func TestAGeneratedMatchOnRequestIsListedOnceStarted(t *testing.T) {
 	}
 	if code, _ = do(t, "POST", ts.URL+"/api/start?competitionId=mock-tomorrow"); code != 404 {
 		t.Fatalf("starting a match that is not generated: %d", code)
+	}
+}
+
+func TestFinishedCompetitionsServeTheirFinalResults(t *testing.T) {
+	ts, _ := newTestServer(t, time.Second)
+	for _, id := range []string{"mock-done-1", "mock-done-2"} {
+		code, body := do(t, "GET", ts.URL+"/Competition?competitionId="+id)
+		if code != 200 || !strings.Contains(body, `"success":false`) || !strings.Contains(body, `"races"`) || strings.Contains(body, `"isLive":true`) {
+			t.Errorf("%s: %d %.200s", id, code, body)
+		}
+	}
+	if _, body := do(t, "GET", ts.URL+"/Competition?competitionId=mock-later-1"); strings.Contains(body, `"races"`) {
+		t.Error("a competition still to come has no results")
 	}
 }
