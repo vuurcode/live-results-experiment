@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -644,5 +645,119 @@ func TestServeDemoStartsTheMatchAndListsIt(t *testing.T) {
 	primary.cat.ServeDemo(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/demo", nil))
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("no demo upstream: %d", rec.Code)
+	}
+}
+
+// newFeedCatalog serves mux as the catalog of one upstream whose data source is its /feed route.
+func newFeedCatalog(t *testing.T, mux *http.ServeMux) *Catalog {
+	t.Helper()
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	cfg := config.Config{CatalogTTL: time.Minute, VenueCountry: "NED", VenueDiscipline: "SpeedSkating.LongTrack"}
+	cat, err := New(cfg, source.NewSet(source.Upstream{CatalogURL: srv.URL, DataSourceURL: srv.URL + "/feed"}), fakeUA{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cat
+}
+
+func TestPulledCompetitionStaysListedWhileLive(t *testing.T) {
+	var pulled, live atomic.Bool
+	live.Store(true)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/venues", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(testVenues)) })
+	mux.HandleFunc("/api/competitions", func(w http.ResponseWriter, _ *http.Request) {
+		list := comp("other", "DEV", "SpeedSkating.LongTrack", "2026-10-24T10:00:00Z", "2026-10-24T12:00:00Z")
+		if !pulled.Load() {
+			list += "," + comp("event", "DEV", "SpeedSkating.LongTrack", "2026-10-23T10:00:00Z", "2026-10-25T12:00:00Z")
+		}
+		_, _ = w.Write([]byte("[" + list + "]"))
+	})
+	mux.HandleFunc("/feed", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("competitionId") == "event" && live.Load() {
+			_, _ = w.Write([]byte(`{"success":true}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"success":false}`))
+	})
+	cat := newFeedCatalog(t, mux)
+	now := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
+	cat.now = func() time.Time { return now }
+	today := func() string {
+		got, err := cat.Today(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		list := ids(got)
+		sort.Strings(list)
+		return strings.Join(list, ",")
+	}
+	if got := today(); got != "event,other" {
+		t.Fatalf("before the pull: %s", got)
+	}
+	pulled.Store(true)
+	now = now.Add(2 * time.Minute) // the list is fetched again
+	if got := today(); got != "event,other" {
+		t.Fatalf("pulled but live: %s, want it kept", got)
+	}
+	if cat.Ended("event") {
+		t.Fatal("a pulled competition that is live is not over")
+	}
+	live.Store(false)
+	now = now.Add(2 * time.Minute) // past the cache of the live answer
+	if got := today(); got != "other" {
+		t.Fatalf("pulled and not live: %s, want it gone", got)
+	}
+	now = now.Add(2 * pullGrace)
+	if got := today(); got != "other" {
+		t.Fatalf("after the grace: %s", got)
+	}
+}
+
+func TestInjectAddsOnlyLiveCompetitions(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/venues", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(testVenues)) })
+	mux.HandleFunc("/api/competitions", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("[" + comp("other", "DEV", "SpeedSkating.LongTrack", "2026-10-24T10:00:00Z", "2026-10-24T12:00:00Z") + "]"))
+	})
+	mux.HandleFunc("/feed", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("competitionId") == "down" {
+			http.Error(w, "boom", http.StatusInternalServerError)
+			return
+		}
+		if r.URL.Query().Get("competitionId") == "hidden" {
+			_, _ = w.Write([]byte(`{"success":true,"name":"Hidden event"}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"success":false}`))
+	})
+	cat := newFeedCatalog(t, mux)
+	cat.now = func() time.Time { return time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC) }
+	ctx := context.Background()
+	if err := cat.Inject(ctx, "not/valid"); !errors.Is(err, ErrBadID) {
+		t.Fatalf("bad id: %v", err)
+	}
+	if err := cat.Inject(ctx, "idle"); !errors.Is(err, ErrNotLive) {
+		t.Fatalf("not live: %v", err)
+	}
+	if err := cat.Inject(ctx, "down"); err == nil || errors.Is(err, ErrNotLive) {
+		t.Fatalf("data source down: %v, want an error that is not ErrNotLive", err)
+	}
+	if err := cat.Inject(ctx, "hidden"); err != nil {
+		t.Fatal(err)
+	}
+	got, err := cat.Today(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	list := ids(got)
+	sort.Strings(list)
+	if strings.Join(list, ",") != "hidden,other" {
+		t.Fatalf("today: %v", list)
+	}
+	for _, m := range got {
+		if m.ID == "hidden" && m.Name != "Hidden event" {
+			t.Errorf("name %q", m.Name)
+		}
 	}
 }

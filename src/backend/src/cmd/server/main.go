@@ -60,6 +60,9 @@ func main() {
 	} else {
 		today = cat.ServeToday
 		demo = cat.ServeDemo
+		if recordings != nil {
+			recordings.Inject = cat.Inject
+		}
 		h.Ended = cat.Ended
 		h.Period = cat.Period
 		go h.WatchEnded(ctx, time.Minute)
@@ -94,16 +97,24 @@ func main() {
 	<-shutdownDone
 }
 
-// startRecordings switches recording on for the hub when a folder is configured and returns the API to reach the
-// recordings, which is nil without an API key.
+// startRecordings switches recording on for the hub when a folder is configured and returns the key protected API,
+// which is nil without an API key. Without a recordings folder the API has no store and serves no recordings.
 func startRecordings(ctx context.Context, cfg config.Config, h *hub.Hub) *server.RecordingsAPI {
+	api := &server.RecordingsAPI{
+		Key: cfg.RecordingsAPIKey, ClientIPHeader: cfg.ClientIPHeader,
+		Limiter: ratelimit.New(config.RecordingsRequestsPerMinute, config.RecordingsBurst, config.RecordingsBurst),
+	}
+	if cfg.RecordingsAPIKey == "" {
+		slog.Warn("Recordings API off: BACKEND_RECORDINGS_API_KEY is not set")
+		api = nil
+	}
 	if cfg.RecordingsDir == "" {
-		return nil
+		return api
 	}
 	store, err := recorder.New(cfg.RecordingsDir, cfg.RecordingsRetention)
 	if err != nil {
 		slog.Error("Recording disabled", "dir", cfg.RecordingsDir, "err", err)
-		return nil
+		return api
 	}
 	h.Recorder = store
 	go func() {
@@ -116,12 +127,8 @@ func startRecordings(ctx context.Context, cfg config.Config, h *hub.Hub) *server
 			}
 		}
 	}()
-	if cfg.RecordingsAPIKey == "" {
-		slog.Warn("Recordings API off: BACKEND_RECORDINGS_API_KEY is not set")
-		return nil
+	if api != nil {
+		api.Store = store
 	}
-	return &server.RecordingsAPI{
-		Store: store, Key: cfg.RecordingsAPIKey, ClientIPHeader: cfg.ClientIPHeader,
-		Limiter: ratelimit.New(config.RecordingsRequestsPerMinute, config.RecordingsBurst, config.RecordingsBurst),
-	}
+	return api
 }

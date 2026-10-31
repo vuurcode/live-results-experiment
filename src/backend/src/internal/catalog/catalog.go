@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -204,6 +205,8 @@ type Catalog struct {
 	mu           sync.Mutex
 	competitions []*competition
 	known        map[string]*competition // every competition of the venues, also those no longer listed
+	owners       map[string]int          // the upstream that lists each known competition
+	pulled       map[string]*pulledCompetition
 	fetchedAt    time.Time
 	lastFailed   time.Time
 }
@@ -217,6 +220,21 @@ type upstream struct {
 }
 
 const retryAfterFailure = 30 * time.Second
+
+// pullGrace is how long a competition that the upstream stopped listing is still checked with the data source, counted
+// from the last time it was live (or from the moment it was pulled), so a competition that is running does not vanish
+// from the list because the upstream removed it or the data source answered badly once.
+const pullGrace = time.Hour
+
+// pulledCompetition is a competition that an upstream listed earlier and no longer does.
+type pulledCompetition struct {
+	*competition
+	owner  int       // the upstream that listed it
+	liveAt time.Time // when it was last live, else when it was pulled
+	// injected marks a competition that was added by hand (see Inject); it is kept also while the list carries it, so
+	// it is probed whatever day the list places it on.
+	injected bool
+}
 
 // liveTTL is how long what the data source said about a competition is reused, so the list costs the data source at
 // most one request per competition per period however often it is asked for.
@@ -237,7 +255,7 @@ type liveState struct {
 func New(cfg config.Config, set *source.Set, ua UserAgent) (*Catalog, error) {
 	c := &Catalog{
 		set: set, country: cfg.VenueCountry, discipline: cfg.VenueDiscipline, ttl: min(cfg.CatalogTTL, maxCacheAge), retention: cfg.DataRetention,
-		ua: ua, client: &http.Client{}, now: time.Now, live: map[string]liveState{}, asking: map[string]*liveCall{},
+		ua: ua, client: &http.Client{}, now: time.Now, live: map[string]liveState{}, pulled: map[string]*pulledCompetition{}, asking: map[string]*liveCall{},
 	}
 	for _, u := range set.Upstreams() {
 		base, err := url.Parse(u.CatalogURL)
@@ -407,8 +425,27 @@ func (c *Catalog) merge() {
 		}
 	}
 	sort.Slice(listed, func(i, j int) bool { return listed[i].from.Before(listed[j].from) })
+	// a competition that was listed before and no longer is stays known while the data source says it is live
+	for id, m := range c.known {
+		if _, still := known[id]; !still && c.pulled[id] == nil {
+			c.pulled[id] = &pulledCompetition{competition: m, owner: c.owners[id], liveAt: now}
+		}
+	}
+	for id, p := range c.pulled {
+		_, back := known[id]
+		if (back && !p.injected) || now.Sub(p.liveAt) > pullGrace {
+			delete(c.pulled, id)
+			continue
+		}
+		if back {
+			continue
+		}
+		known[id] = p.competition
+		owner[id] = p.owner
+	}
 	c.competitions = listed
 	c.known = known
+	c.owners = owner
 	c.fetchedAt = now
 	c.set.SetOwners(owner)
 }
@@ -446,6 +483,18 @@ func (c *Catalog) Today(ctx context.Context) ([]*competition, error) {
 			others = append(others, m)
 		}
 	}
+	seen := map[string]bool{}
+	for _, m := range out {
+		seen[m.ID] = true
+	}
+	for _, m := range others {
+		seen[m.ID] = true
+	}
+	for _, p := range c.pulled {
+		if !seen[p.ID] {
+			others = append(others, p.competition)
+		}
+	}
 	c.mu.Unlock()
 
 	live := make([]bool, len(others))
@@ -458,11 +507,16 @@ func (c *Catalog) Today(ctx context.Context) ([]*competition, error) {
 		}()
 	}
 	wg.Wait()
+	c.mu.Lock()
 	for i, m := range others {
 		if live[i] {
 			out = append(out, m)
+			if p, ok := c.pulled[m.ID]; ok {
+				p.liveAt = c.now()
+			}
 		}
 	}
+	c.mu.Unlock()
 	sort.SliceStable(out, func(i, j int) bool { return out[i].from.Before(out[j].from) })
 	return out, nil
 }
@@ -525,13 +579,100 @@ func (c *Catalog) probe(ctx context.Context, id string) bool {
 	if err != nil {
 		return false
 	}
+	live, _, _ := c.probeURL(ctx, feed)
+	return live
+}
+
+// probeURL asks the data source at feed whether its competition is live and what name it gives it. A failed request
+// is an error, not an answer.
+func (c *Catalog) probeURL(ctx context.Context, feed string) (live bool, name string, err error) {
 	var raw struct {
-		Success *bool `json:"success"` // false when the competition is not live; absent in older payloads
+		Success *bool   `json:"success"` // false when the competition is not live; absent in older payloads
+		Name    *string `json:"name"`
 	}
 	if err := c.getURL(ctx, feed, "live results", &raw); err != nil {
-		return false
+		return false, "", err
 	}
-	return raw.Success == nil || *raw.Success
+	if raw.Name != nil {
+		name = *raw.Name
+	}
+	return raw.Success == nil || *raw.Success, name, nil
+}
+
+// ErrNotLive is returned by Inject for a competition the data source does not say is live.
+var ErrNotLive = errors.New("the data source does not say that the competition is live")
+
+// ErrBadID is returned by Inject for an id that is not a valid competition id.
+var ErrBadID = errors.New("invalid competition id")
+
+// Inject adds a competition to the list by its id, also one the list of the match source does not carry. The data
+// source is asked right away (not from the cache) and the competition is only added when it says that it is live; a
+// data source that cannot be reached is an error, not "not live". An id no list carries is looked up at each upstream
+// in turn and belongs to the first that says it is live. An injected competition stays in the list while it is live
+// and for pullGrace after it was last seen live.
+func (c *Catalog) Inject(ctx context.Context, id string) error {
+	if !ValidID(id) {
+		return ErrBadID
+	}
+	if err := c.refresh(ctx); err != nil {
+		return err
+	}
+	c.mu.Lock()
+	m, owner := c.known[id], c.owners[id]
+	c.mu.Unlock()
+
+	candidates := []int{owner}
+	if m == nil {
+		candidates = candidates[:0]
+		for i := range c.set.Upstreams() {
+			candidates = append(candidates, i)
+		}
+	}
+	var live bool
+	var name string
+	var failed error
+	for _, i := range candidates {
+		feed, err := c.set.Upstreams()[i].FeedURL(id)
+		if err == nil {
+			var l bool
+			var n string
+			if l, n, err = c.probeURL(ctx, feed); err == nil && l {
+				live, name, owner = true, n, i
+				break
+			}
+		}
+		failed = errors.Join(failed, err)
+	}
+	if !live {
+		if failed != nil {
+			return failed
+		}
+		c.liveMu.Lock()
+		c.live[id] = liveState{live: false, at: c.now()}
+		c.liveMu.Unlock()
+		return ErrNotLive
+	}
+	c.liveMu.Lock()
+	c.live[id] = liveState{live: true, at: c.now()}
+	c.liveMu.Unlock()
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	now := c.now()
+	if m == nil {
+		if name == "" {
+			name = id
+		}
+		m = &competition{ID: id, Code: id, Name: name, Start: now.UTC().Format(time.RFC3339), zone: time.UTC, from: now, to: now}
+		c.known[id] = m
+		owners := make(map[string]int, len(c.owners)+1)
+		maps.Copy(owners, c.owners)
+		owners[id] = owner
+		c.owners = owners
+		c.set.SetOwners(owners)
+	}
+	c.pulled[id] = &pulledCompetition{competition: m, owner: owner, liveAt: now, injected: true}
+	return nil
 }
 
 // forgetLiveExcept drops the answers of competitions that are not in list, so the cache holds no more than the list.
@@ -539,6 +680,9 @@ func (c *Catalog) forgetLiveExcept(list []*competition) {
 	keep := make(map[string]struct{}, len(list))
 	for _, m := range list {
 		keep[m.ID] = struct{}{}
+	}
+	for id := range c.pulled {
+		keep[id] = struct{}{}
 	}
 	c.liveMu.Lock()
 	defer c.liveMu.Unlock()

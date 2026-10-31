@@ -1,12 +1,14 @@
 package server
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/vuurcode/live-results-experiment/backend/internal/catalog"
 	"github.com/vuurcode/live-results-experiment/backend/internal/ratelimit"
 	"github.com/vuurcode/live-results-experiment/backend/internal/recorder"
 )
@@ -109,5 +111,33 @@ func TestRecordingsAreOffWithoutAKey(t *testing.T) {
 	defer ts.Close()
 	if status, _, _ := call(t, "GET", ts.URL+"/api/recordings", ""); status != http.StatusNotFound {
 		t.Fatalf("status %d", status)
+	}
+}
+
+func TestInjectNeedsTheKeyAndMapsErrors(t *testing.T) {
+	mux := http.NewServeMux()
+	(&RecordingsAPI{Key: "secret", Inject: func(_ context.Context, id string) error {
+		switch id {
+		case "live":
+			return nil
+		case "idle":
+			return catalog.ErrNotLive
+		case "bad":
+			return catalog.ErrBadID
+		}
+		return io.ErrUnexpectedEOF
+	}}).register(mux)
+	ts := httptest.NewServer(mux)
+	t.Cleanup(ts.Close)
+	for _, tc := range []struct {
+		id, key string
+		want    int
+	}{{"live", "", 401}, {"live", "wrong", 401}, {"live", "secret", 204}, {"idle", "secret", 422}, {"bad", "secret", 400}, {"x", "secret", 502}} {
+		if status, _, _ := call(t, "PUT", ts.URL+"/api/competitions/today/"+tc.id, tc.key); status != tc.want {
+			t.Errorf("%s with %q: %d, want %d", tc.id, tc.key, status, tc.want)
+		}
+	}
+	if status, _, _ := call(t, "GET", ts.URL+"/api/recordings", "secret"); status != http.StatusNotFound && status != http.StatusMethodNotAllowed {
+		t.Errorf("recordings without a store: %d", status)
 	}
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/vuurcode/live-results-experiment/backend/internal/catalog"
 	"github.com/vuurcode/live-results-experiment/backend/internal/ratelimit"
 	"github.com/vuurcode/live-results-experiment/backend/internal/recorder"
 )
@@ -19,8 +21,15 @@ import (
 //	GET    /api/recordings       list: [{id, state, snapshots, bytes, modified}]
 //	GET    /api/recordings/{id}  download as a gzipped tar that extracts to <id>/<snapshot>.json
 //	DELETE /api/recordings/{id}  delete, also a recording that is still going
+//
+// With Inject set it also serves, under the same key:
+//
+//	PUT    /api/competitions/today/{id}  add a competition to today's list by id, 204 when it is live, 422 when not
 type RecordingsAPI struct {
 	Store *recorder.Store
+	// Inject adds the competition to the list when the data source says it is live; ErrBadID and ErrNotLive (from the
+	// catalog package) map to 400 and 422. Nil leaves the route out.
+	Inject func(ctx context.Context, id string) error
 	// Key is the bearer token that is required. The API is not served when it is empty.
 	Key string
 	// Limiter limits the requests per client address that do not carry the right key; nil means no limit.
@@ -30,12 +39,30 @@ type RecordingsAPI struct {
 }
 
 func (a *RecordingsAPI) register(mux *http.ServeMux) {
-	if a == nil || a.Store == nil || a.Key == "" {
+	if a == nil || a.Key == "" {
 		return
 	}
-	mux.HandleFunc("GET /api/recordings", a.guard(a.list))
-	mux.HandleFunc("GET /api/recordings/{id}", a.guard(a.download))
-	mux.HandleFunc("DELETE /api/recordings/{id}", a.guard(a.remove))
+	if a.Store != nil {
+		mux.HandleFunc("GET /api/recordings", a.guard(a.list))
+		mux.HandleFunc("GET /api/recordings/{id}", a.guard(a.download))
+		mux.HandleFunc("DELETE /api/recordings/{id}", a.guard(a.remove))
+	}
+	if a.Inject != nil {
+		mux.HandleFunc("PUT /api/competitions/today/{id}", a.guard(a.inject))
+	}
+}
+
+func (a *RecordingsAPI) inject(w http.ResponseWriter, req *http.Request) {
+	switch err := a.Inject(req.Context(), req.PathValue("id")); {
+	case err == nil:
+		w.WriteHeader(http.StatusNoContent)
+	case errors.Is(err, catalog.ErrBadID):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	case errors.Is(err, catalog.ErrNotLive):
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+	default:
+		http.Error(w, "cannot check the competition", http.StatusBadGateway)
+	}
 }
 
 // guard checks the key; a request without the right one is rate limited per client address, so guessing the key is slow
