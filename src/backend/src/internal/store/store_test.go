@@ -91,3 +91,26 @@ func TestSuppressNoTimeUpdates(t *testing.T) {
 		t.Errorf("suppressed competitor dropped from replay: %d messages", got)
 	}
 }
+
+func TestRaceRemovedFromItsDistanceResetsTheCache(t *testing.T) {
+	s := New(slog.Default())
+	s.Update(snapshot(0, false))
+	curr := snapshot(0, false)
+	curr.Distances[0].Competitors = curr.Distances[0].Competitors[:1]
+	res := s.Update(curr)
+	if !res.Reset || !strings.HasPrefix(types(res.Messages), "reset,") {
+		t.Fatalf("messages %q (reset %v), want a reset first", types(res.Messages), res.Reset)
+	}
+	if got := len(s.Replay()); got != 3 { // event name, distance, the one race left
+		t.Errorf("replay holds %d messages, want 3", got)
+	}
+}
+
+func TestMissingDistanceIsNotAChangedDraw(t *testing.T) {
+	s := New(slog.Default())
+	s.Update(snapshot(0, false))
+	res := s.Update(&results.Processed{Name: "E"})
+	if res.Reset {
+		t.Error("an answer without the distance is not a change of its races")
+	}
+}

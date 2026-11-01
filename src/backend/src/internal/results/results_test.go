@@ -2,6 +2,7 @@ package results
 
 import (
 	"encoding/json"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -160,5 +161,41 @@ func TestDistanceComplete(t *testing.T) {
 	mass.Competitors[1].LapsRemaining = &none
 	if !mass.Complete() {
 		t.Fatal("a mass start where everyone finished is complete")
+	}
+}
+
+func TestProcessDropsRacesSupersededByAChangedDraw(t *testing.T) {
+	entry := func(id, comp string, heat int, laps ...rawLap) rawRace {
+		r := race(id, heat, laps...)
+		r.Competitor.ID = comp
+		return r
+	}
+	done := lap("00:00:30.000", "00:00:30.000")
+	build := func(races ...rawRace) []Competitor {
+		raw := &RawData{Name: "E", Distances: []rawDistance{{ID: "d1", Name: "Men 5000m", Races: races}}}
+		return Process(raw).Distances[0].Competitors
+	}
+	ids := func(cs []Competitor) string {
+		var out []string
+		for _, c := range cs {
+			out = append(out, c.ID)
+		}
+		sort.Strings(out)
+		return strings.Join(out, ",")
+	}
+
+	// the entry without an outcome goes once the competitor's other entry has one
+	if got := ids(build(entry("old", "a", 2), entry("new", "a", 4, done), entry("b", "b", 4))); got != "b,new" {
+		t.Errorf("kept %q, want b,new", got)
+	}
+	// while neither has one, which of them counts is not known
+	if got := ids(build(entry("x", "a", 2), entry("y", "a", 4))); got != "x,y" {
+		t.Errorf("kept %q, want x,y", got)
+	}
+	// a race that explains why it has no laps is an outcome
+	dns := entry("dns", "a", 2)
+	dns.Remark = "DNS"
+	if got := ids(build(dns, entry("other", "a", 4))); got != "dns" {
+		t.Errorf("kept %q, want dns", got)
 	}
 }

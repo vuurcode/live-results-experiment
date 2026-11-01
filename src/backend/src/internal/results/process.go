@@ -55,6 +55,7 @@ type rawRace struct {
 }
 
 type rawCompetitor struct {
+	ID          string     `json:"id"`
 	Name        string     `json:"name"`
 	StartNumber flexString `json:"startNumber"`
 	Category    string     `json:"category"`
@@ -207,6 +208,34 @@ func HidesTimes(invalidReason, remark string) bool {
 	return false
 }
 
+// hasOutcome reports whether a race has anything of a result: laps, or a reason or remark that explains why not.
+func (r *rawRace) hasOutcome() bool {
+	return len(r.Laps) > 0 || r.InvalidReason != "" || r.Remark != ""
+}
+
+// dropSupersededRaces removes the races of a competitor that were replaced by a change of the draw. The data source
+// keeps the original entry beside the new one, so a competitor can be listed twice in a distance; once one of the
+// entries has an outcome the others are leftovers. While none has, they all stay: it is not known which one counts.
+func dropSupersededRaces(races []rawRace) []rawRace {
+	withOutcome := map[string]bool{}
+	for i := range races {
+		if id := races[i].Competitor.ID; id != "" && races[i].hasOutcome() {
+			withOutcome[id] = true
+		}
+	}
+	if len(withOutcome) == 0 {
+		return races
+	}
+	kept := make([]rawRace, 0, len(races))
+	for i := range races {
+		if withOutcome[races[i].Competitor.ID] && !races[i].hasOutcome() {
+			continue
+		}
+		kept = append(kept, races[i])
+	}
+	return kept
+}
+
 // Process turns raw source data into fully computed dashboard state.
 func Process(raw *RawData) *Processed {
 	out := &Processed{Name: raw.Name}
@@ -225,6 +254,7 @@ func Process(raw *RawData) *Processed {
 			totalLaps = extractInt(lapsRe, dist.Name)
 		} else {
 			distanceMeters = extractInt(metersRe, dist.Name)
+			races = dropSupersededRaces(races)
 		}
 
 		type sortable struct {

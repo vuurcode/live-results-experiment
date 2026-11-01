@@ -61,20 +61,12 @@ type Result struct {
 // the messages to broadcast.
 //
 // A reset is detected when any competitor's lap count is lower than the cached
-// value — laps never go backwards in a normal race.
+// value — laps never go backwards in a normal race — or when a race that was sent is no longer in its distance,
+// as when the draw changed: a client cannot remove a race by any other message.
 func (s *Store) Update(curr *results.Processed) Result {
 	var res Result
 
-reset:
-	for _, d := range curr.Distances {
-		for _, c := range d.Competitors {
-			if prev, ok := s.comps[c.ID]; ok && c.LapsCount < prev.comp.LapsCount && !results.HidesTimes(deref(c.InvalidReason), deref(c.Remark)) {
-				s.log.Warn("Reset detected, clearing cache", "name", c.Name, "from", prev.comp.LapsCount, "to", c.LapsCount)
-				res.Reset = true
-				break reset
-			}
-		}
-	}
+	res.Reset = s.racesVanished(curr) || s.lapsWentBack(curr)
 	if res.Reset {
 		s.clear()
 		res.Messages = append(res.Messages, wire.Wrap("reset", nil))
@@ -129,6 +121,42 @@ reset:
 	s.raceOrder = raceOrder
 	res.Messages = append(res.Messages, compMessages...)
 	return res
+}
+
+// lapsWentBack reports whether a competitor has fewer laps than in the cache, which is not a lap count that changes.
+func (s *Store) lapsWentBack(curr *results.Processed) bool {
+	for _, d := range curr.Distances {
+		for _, c := range d.Competitors {
+			if prev, ok := s.comps[c.ID]; ok && c.LapsCount < prev.comp.LapsCount && !results.HidesTimes(deref(c.InvalidReason), deref(c.Remark)) {
+				s.log.Warn("Reset detected, clearing cache", "name", c.Name, "from", prev.comp.LapsCount, "to", c.LapsCount)
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// racesVanished reports whether a race sent before is missing from a distance that curr still has. A distance that is
+// missing as a whole is not counted: that is an answer without results, not a change of the draw.
+func (s *Store) racesVanished(curr *results.Processed) bool {
+	now := make(map[string]struct{}, len(s.raceOrder))
+	dists := make(map[string]struct{}, len(curr.Distances))
+	for _, d := range curr.Distances {
+		dists[d.Meta.ID] = struct{}{}
+		for _, c := range d.Competitors {
+			now[c.ID] = struct{}{}
+		}
+	}
+	for _, id := range s.raceOrder {
+		if _, ok := now[id]; ok {
+			continue
+		}
+		if _, ok := dists[s.comps[id].comp.DistanceID]; ok {
+			s.log.Warn("Race removed from its distance, clearing cache", "race", id)
+			return true
+		}
+	}
+	return false
 }
 
 // Replay returns the latest state as messages: event_name, one distance_meta per

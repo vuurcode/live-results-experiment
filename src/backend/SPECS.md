@@ -28,7 +28,9 @@ All components:
 - [x] Feed status (`ok`, `not_live`, `unavailable`) with the data source's own message is sent to clients when it changes; data received, updates sent and rooms opening and closing are logged
 
 ### Data (unit specs: `src/internal/*/*_test.go`)
-- [x] Each fetch is parsed and diffed against the previous state; only changes are broadcast
+- [x] Each fetch is parsed and diffed against the previous state; only changes are broadcast. One reply holds every distance of the competition, so each poll checks the whole match, whichever distance or heat is live
+- [x] A competitor the data source lists twice in a distance (the original entry stays beside the entry of a changed draw) is shown once as soon as one of the entries has an outcome (laps, an invalid reason or a remark): the entries without are dropped. While none has, all are kept
+- [x] A race that was sent and is no longer in its distance (the draw changed) makes the room send `reset` and the whole state again; a distance missing as a whole does not
 - [x] Mass start: a distance with more than two races sharing one heat; the warm-up lap is dropped; total laps come from the title; positions and standings groups are not computed here
 - [x] Individual race distance: the first lap counts; the distance comes from the title; races grouped by heat, then time; complete only once every competitor has every expected lap
 - [x] Per competitor: id, start number, name, heat, lane, lap count, total time, formatted time (leading zeros stripped, 3 decimals truncated), laps remaining, finished rank; races that must not show a time (DNS, DQ, WDR) send none, and such a status does not reset the cache
