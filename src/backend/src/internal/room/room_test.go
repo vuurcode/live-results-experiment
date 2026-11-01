@@ -236,6 +236,7 @@ func TestIntervalBacksOffWhileNothingChangesAndRecoversOnAChange(t *testing.T) {
 			t.Fatalf("interval %v, want %v", got, d)
 		}
 	}
+	clock = clock.Add(time.Hour) // the room sat idle before the distance went live
 	r.Apply(live(0))
 	want(500 * time.Millisecond)
 	clock = clock.Add(299 * time.Second)

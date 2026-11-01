@@ -137,6 +137,7 @@ func (r *Room) Apply(curr *results.Processed) {
 	if every := r.paceFor(curr); every != r.every {
 		r.Log.Info("Fetch interval", "seconds", every)
 		r.every = every
+		r.changed = r.now() // a new pace starts with a fresh quiet window
 	}
 
 	res := r.st.Update(curr)
