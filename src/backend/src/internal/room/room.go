@@ -49,7 +49,10 @@ type Room struct {
 	Keep     bool        // the hub keeps the room open without clients; guarded by the hub
 
 	mu      sync.Mutex
-	every   float64     // seconds between upstream fetches now; follows what the data says
+	every   float64   // seconds between upstream fetches now; follows what the data says
+	quiet   bool      // whether the quiet pace applies, kept to log when it changes
+	changed time.Time // when the data last changed, or the room was opened
+	now     func() time.Time
 	epoch   string      // identifies this incarnation of the room; the numbers of a room opened anew mean something else
 	log     [][]byte    // the latest live messages, the last of them numbered seq, for clients that reconnect
 	seq     uint64      // number of the last message broadcast; a client's replay is the state as of this number
@@ -66,6 +69,7 @@ func New(id, url string, pace config.Intervals, cancel func()) *Room {
 	return &Room{
 		epoch: strconv.FormatInt(time.Now().UnixNano(), 36),
 		ID:    id, url: url, pace: pace, every: pace.NotStarted, Cancel: cancel,
+		now: time.Now, changed: time.Now(),
 		Log:     log,
 		st:      store.New(log),
 		clients: map[*Client]struct{}{},
@@ -92,11 +96,21 @@ func (r *Room) SetFeed(state, message string) {
 	r.broadcastLocked([][]byte{wire.Wrap("feed_status", wire.Marshal(next))})
 }
 
-// Interval is the wait before the next upstream fetch: slow while no distance is live, fast during a mass start.
+// Interval is the wait before the next upstream fetch: slow while no distance is live, fast during a mass start. A
+// live distance whose data has not changed for a while is fetched at the quiet pace, until it changes.
 func (r *Room) Interval() time.Duration {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return config.Duration(r.every)
+	every := r.every
+	quiet := every < r.pace.Quiet && r.now().Sub(r.changed) >= config.Duration(r.pace.QuietAfter)
+	if quiet {
+		every = r.pace.Quiet
+	}
+	if quiet != r.quiet {
+		r.quiet = quiet
+		r.Log.Info("Fetch interval", "seconds", every, "quiet", quiet)
+	}
+	return config.Duration(every)
 }
 
 // paceFor picks the fetch interval for what the data says is going on. A distance whose skaters have all finished
@@ -129,6 +143,7 @@ func (r *Room) Apply(curr *results.Processed) {
 	if len(res.Messages) == 0 {
 		return
 	}
+	r.changed = r.now()
 	if res.Reset { // what came before the reset is no use to a client that catches up
 		clear(r.log)
 		r.log = r.log[:0]

@@ -10,6 +10,8 @@ The limits and timings (`BACKEND_LIVE_RESULTS_INTERVAL_*`, `BACKEND_CATALOG_TTL_
 | `BACKEND_LIVE_RESULTS_INTERVAL_NOT_STARTED` | `15` | Seconds between live results requests per competition while no distance is live, or the live one has been skated out by everyone |
 | `BACKEND_LIVE_RESULTS_INTERVAL_MASS_START` | `0.5` | The same while a mass start is live |
 | `BACKEND_LIVE_RESULTS_INTERVAL_DISTANCE` | `0.5` | The same while any other distance is live. Every wait is spread by ±40%, so 0.5 means 0.3 to 0.7 seconds |
+| `BACKEND_LIVE_RESULTS_INTERVAL_QUIET` | `5` | The same while a live distance has had no change for `BACKEND_LIVE_RESULTS_QUIET_AFTER_SECONDS`; the first change brings the live interval back. It never makes a faster interval slower than itself, so the not-started pace stays as it is |
+| `BACKEND_LIVE_RESULTS_QUIET_AFTER_SECONDS` | `300` | Seconds without a change in the results before the quiet interval applies |
 | `BACKEND_VENUE_COUNTRY_CODE` | `NED` | Only venues in this country are listed |
 | `BACKEND_VENUE_DISCIPLINE` | `SpeedSkating.LongTrack` | Only venues and competitions of this discipline are listed |
 | `BACKEND_CATALOG_TTL_SECONDS` | `300` | Cache time of the competitions list (capped at one hour; venues are refetched at most once a year). Rooms of competitions that ended more than a day ago are closed within a minute |

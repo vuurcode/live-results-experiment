@@ -61,6 +61,8 @@ type Intervals struct {
 	NotStarted float64 // no distance is live yet (or any more)
 	MassStart  float64 // the live distance is a mass start
 	Distance   float64 // any other live distance
+	Quiet      float64 // a live distance that has not changed for QuietAfter seconds; ignored when it is not shorter than the live one
+	QuietAfter float64 // seconds without a change before the quiet interval applies
 }
 
 // Duration converts seconds to a duration.
@@ -84,6 +86,8 @@ func Load() Config {
 			NotStarted: number("BACKEND_LIVE_RESULTS_INTERVAL_NOT_STARTED", positive),
 			MassStart:  number("BACKEND_LIVE_RESULTS_INTERVAL_MASS_START", positive),
 			Distance:   number("BACKEND_LIVE_RESULTS_INTERVAL_DISTANCE", positive),
+			Quiet:      number("BACKEND_LIVE_RESULTS_INTERVAL_QUIET", positive),
+			QuietAfter: number("BACKEND_LIVE_RESULTS_QUIET_AFTER_SECONDS", positive),
 		},
 		ListenAddr:          getenv("BACKEND_LISTEN_ADDR", ":5000"),
 		RecordingsDir:       os.Getenv("BACKEND_RECORDINGS_DIR"),

@@ -218,3 +218,35 @@ func TestIntervalDropsBackAfterTheLastRace(t *testing.T) {
 		t.Fatalf("interval %v after the last race, want 15s", got)
 	}
 }
+
+func TestIntervalBacksOffWhileNothingChangesAndRecoversOnAChange(t *testing.T) {
+	pace := config.Intervals{NotStarted: 15, MassStart: 0.5, Distance: 0.5, Quiet: 5, QuietAfter: 300}
+	r := New("A", "http://x", pace, func() {})
+	clock := time.Date(2026, 3, 8, 10, 0, 0, 0, time.UTC)
+	r.now = func() time.Time { return clock }
+	r.changed = clock
+	live := func(laps int) *results.Processed {
+		p := processed(laps)
+		p.Distances[0].Meta.IsLive = true
+		return p
+	}
+	want := func(d time.Duration) {
+		t.Helper()
+		if got := r.Interval(); got != d {
+			t.Fatalf("interval %v, want %v", got, d)
+		}
+	}
+	r.Apply(live(0))
+	want(500 * time.Millisecond)
+	clock = clock.Add(299 * time.Second)
+	want(500 * time.Millisecond)
+	r.Apply(live(0)) // the same data is no change
+	clock = clock.Add(2 * time.Second)
+	want(5 * time.Second)
+	r.Apply(live(1))
+	want(500 * time.Millisecond)
+	clock = clock.Add(10 * time.Minute)
+	want(5 * time.Second)
+	r.Apply(processed(1)) // no distance live: the slow pace, which the quiet one must not speed up
+	want(15 * time.Second)
+}
