@@ -175,10 +175,8 @@ func hasOutcome(c results.Competitor) bool {
 // individual distance: it lands on exactly the laps the distance needs, so the race is corrected, not restarted.
 // A drop to any other count is as likely a stale reply and is not accepted at once.
 func dropsExtraLap(m results.DistanceMeta, from, to int) bool {
-	if m.IsMassStart || m.DistanceMeters == nil {
-		return false
-	}
-	return from > to && to == (*m.DistanceMeters+399)/400
+	needed, known := m.LapsNeeded()
+	return known && from > to && to == needed
 }
 
 // Replay returns the latest state as messages: event_name, one distance_meta per

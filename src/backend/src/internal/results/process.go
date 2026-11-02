@@ -135,6 +135,15 @@ type Distance struct {
 	Competitors []Competitor // stable broadcast order: laps desc, time asc, no-time last
 }
 
+// LapsNeeded is the number of laps of an individual distance on a 400 m track (the first one takes the remainder),
+// or false when the distance is a mass start or its length is unknown.
+func (m DistanceMeta) LapsNeeded() (int, bool) {
+	if m.IsMassStart || m.DistanceMeters == nil || *m.DistanceMeters <= 0 {
+		return 0, false
+	}
+	return (*m.DistanceMeters + 399) / 400, true
+}
+
 // Complete tells whether every skater of the distance has skated it out: all laps of a mass start, or the laps of an
 // individual distance on a 400 m track (the first one takes the remainder). Skaters with an invalid result count as
 // done, and a distance without skaters is not complete.
@@ -142,12 +151,9 @@ func (d Distance) Complete() bool {
 	if len(d.Competitors) == 0 {
 		return false
 	}
-	lapsNeeded := 0
-	if !d.Meta.IsMassStart {
-		if d.Meta.DistanceMeters == nil {
-			return false
-		}
-		lapsNeeded = (*d.Meta.DistanceMeters + 399) / 400
+	lapsNeeded, known := d.Meta.LapsNeeded()
+	if !d.Meta.IsMassStart && !known {
+		return false
 	}
 	for _, c := range d.Competitors {
 		if c.InvalidReason != nil {
