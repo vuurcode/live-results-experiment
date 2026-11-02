@@ -149,7 +149,7 @@ func (s *Store) regression(curr *results.Processed) string {
 		dists[d.Meta.ID] = struct{}{}
 		for _, c := range d.Competitors {
 			now[c.ID] = struct{}{}
-			if prev, ok := s.comps[c.ID]; ok && c.LapsCount < prev.comp.LapsCount && !results.HidesTimes(deref(c.InvalidReason), deref(c.Remark)) {
+			if prev, ok := s.comps[c.ID]; ok && c.LapsCount < prev.comp.LapsCount && !dropsExtraLap(d.Meta, prev.comp.LapsCount, c.LapsCount) && !hasOutcome(c) {
 				return fmt.Sprintf("laps of race %s from %d to %d", c.ID, prev.comp.LapsCount, c.LapsCount)
 			}
 		}
@@ -164,6 +164,21 @@ func (s *Store) regression(curr *results.Processed) string {
 		}
 	}
 	return ""
+}
+
+// hasOutcome tells whether the race carries a remark or invalid reason (DNF, DQ, ...) that explains its laps.
+func hasOutcome(c results.Competitor) bool {
+	return deref(c.InvalidReason) != "" || deref(c.Remark) != ""
+}
+
+// dropsExtraLap tells whether a drop in laps is the source taking back the lap it adds at the finish of an
+// individual distance: it lands on exactly the laps the distance needs, so the race is corrected, not restarted.
+// A drop to any other count is as likely a stale reply and is not accepted at once.
+func dropsExtraLap(m results.DistanceMeta, from, to int) bool {
+	if m.IsMassStart || m.DistanceMeters == nil {
+		return false
+	}
+	return from > to && to == (*m.DistanceMeters+399)/400
 }
 
 // Replay returns the latest state as messages: event_name, one distance_meta per

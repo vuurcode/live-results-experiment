@@ -67,7 +67,7 @@ func TestStoreDiff(t *testing.T) {
 		t.Errorf("unchanged data produced %s", types(res.Messages))
 	}
 
-	res = s.Update(snapshot(1, true))
+	res = s.Update(snapshot(3, true))
 	if got := types(res.Messages); got != "competitor_update" {
 		t.Errorf("lap update = %s, want one competitor_update", got)
 	}
@@ -77,7 +77,7 @@ func TestStoreDiff(t *testing.T) {
 	if got := types(replay); got != "event_name,distance_meta,competitor_update,competitor_update" {
 		t.Errorf("replay = %s", got)
 	}
-	if !strings.Contains(string(replay[2]), `"laps_count":1`) {
+	if !strings.Contains(string(replay[2]), `"laps_count":3`) {
 		t.Errorf("replay is stale: %s", replay[2])
 	}
 
@@ -179,5 +179,38 @@ func TestLapsThatStayDownAreAccepted(t *testing.T) {
 	}
 	if !strings.Contains(string(s.Replay()[2]), `"laps_count":25`) {
 		t.Errorf("replay still holds the old laps: %s", s.Replay()[2])
+	}
+}
+
+func TestExtraLapTakenBackAtTheFinishIsNoReset(t *testing.T) {
+	meters := 1000
+	with := func(laps int) *results.Processed {
+		p := snapshot(laps, true)
+		p.Distances[0].Meta.DistanceMeters = &meters
+		return p
+	}
+	s := New(slog.Default())
+	s.Update(with(5))
+	if res := s.Update(with(4)); !res.Held {
+		t.Errorf("4 laps of 1000 m is no finish, got %+v", res)
+	}
+	s.Update(with(4))
+	res := s.Update(with(3))
+	if res.Held || res.Reset || !strings.Contains(types(res.Messages), "competitor_update") {
+		t.Errorf("3 laps of 1000 m is a correction, got %+v", res)
+	}
+	if res := s.Update(with(1)); !res.Held {
+		t.Errorf("a drop below the laps needed is held, got %+v", res)
+	}
+}
+
+func TestFewerLapsWithARemarkIsNoReset(t *testing.T) {
+	s := New(slog.Default())
+	s.Update(snapshot(4, true))
+	curr := snapshot(2, true)
+	remark := "DNF"
+	curr.Distances[0].Competitors[0].Remark = &remark
+	if res := s.Update(curr); res.Held || res.Reset {
+		t.Errorf("a race marked DNF explains its laps, got %+v", res)
 	}
 }
