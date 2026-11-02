@@ -22,7 +22,9 @@ const (
 
 // Sink receives the data a fetcher gets; a room is one.
 type Sink interface {
-	Apply(*results.Processed)
+	// Apply takes the data and reports whether it was held back: a reply that goes back on what was sent is looked at
+	// again, even when it is the same as the one before.
+	Apply(*results.Processed) (held bool)
 	// SetFeed reports what the data source says: "ok", "not_live" or "unavailable".
 	SetFeed(state, message string)
 }
@@ -100,18 +102,19 @@ func (f *Fetcher) once(ctx context.Context) error {
 	}
 	f.wasLive = live
 	f.feed = feedState{"ok", ""}
+	held := false
 	if raw.Success != nil && !*raw.Success {
 		// once the competition is over the source answers without results; the last results stay for those who look afterwards
 		f.feed = feedState{"not_live", raw.ErrorMessage}
 		if !f.hasData {
-			f.Sink.Apply(results.Process(f.withFinal(&raw)))
+			held = f.Sink.Apply(results.Process(f.withFinal(&raw)))
 		}
 	} else {
-		f.Sink.Apply(results.Process(&raw))
+		held = f.Sink.Apply(results.Process(&raw))
 		f.hasData = true
 	}
 	f.Sink.SetFeed(f.feed.state, f.feed.message)
-	f.last, f.haveLast = sum, true
+	f.last, f.haveLast = sum, !held
 	return nil
 }
 

@@ -22,6 +22,15 @@ func snapshot(laps int, withTime bool) *results.Processed {
 	}}}
 }
 
+// repeat updates the store with the same reply n times and returns the last result.
+func repeat(s *Store, curr *results.Processed, n int) Result {
+	var res Result
+	for range n {
+		res = s.Update(curr)
+	}
+	return res
+}
+
 func types(msgs [][]byte) string {
 	var out []string
 	for _, m := range msgs {
@@ -72,8 +81,8 @@ func TestStoreDiff(t *testing.T) {
 		t.Errorf("replay is stale: %s", replay[2])
 	}
 
-	// Laps going backwards means the source restarted.
-	res = s.Update(snapshot(0, false))
+	// Laps going backwards means the source restarted, once that has been the answer long enough.
+	res = repeat(s, snapshot(0, false), HoldReplies)
 	if !res.Reset || types(res.Messages) != "reset,event_name,distance_meta,competitor_update,competitor_update" {
 		t.Errorf("reset update = %v %s", res.Reset, types(res.Messages))
 	}
@@ -97,7 +106,7 @@ func TestRaceRemovedFromItsDistanceResetsTheCache(t *testing.T) {
 	s.Update(snapshot(0, false))
 	curr := snapshot(0, false)
 	curr.Distances[0].Competitors = curr.Distances[0].Competitors[:1]
-	res := s.Update(curr)
+	res := repeat(s, curr, HoldReplies)
 	if !res.Reset || !strings.HasPrefix(types(res.Messages), "reset,") {
 		t.Fatalf("messages %q (reset %v), want a reset first", types(res.Messages), res.Reset)
 	}
@@ -112,5 +121,63 @@ func TestMissingDistanceIsNotAChangedDraw(t *testing.T) {
 	res := s.Update(&results.Processed{Name: "E"})
 	if res.Reset {
 		t.Error("an answer without the distance is not a change of its races")
+	}
+}
+
+// The data source now and then answers with an older version of the results. Replaying such a sequence must neither
+// reset the cache nor send anything for the stale replies, however often they come back.
+func TestReplayOfAFlickeringSourceNeverResets(t *testing.T) {
+	// laps of the first competitor per reply; a lower number is a stale reply between fresh ones
+	laps := []int{3, 4, 3, 4, 5, 4, 5, 5, 3, 3, 6, 7, 6, 7, 8}
+	s := New(slog.Default())
+	sent := 0
+	for i, n := range laps {
+		res := s.Update(snapshot(n, true))
+		if res.Reset {
+			t.Fatalf("reply %d (%d laps) reset the cache", i, n)
+		}
+		for _, c := range res.CompUpdates {
+			if c.ID != "1" {
+				continue
+			}
+			if c.LapsCount < sent {
+				t.Fatalf("reply %d sent %d laps after %d", i, c.LapsCount, sent)
+			}
+			sent = c.LapsCount
+		}
+	}
+	if sent != 8 {
+		t.Errorf("last laps sent %d, want 8", sent)
+	}
+}
+
+func TestRacesVanishingForAMomentDoNotReset(t *testing.T) {
+	s := New(slog.Default())
+	s.Update(snapshot(1, true))
+	empty := snapshot(1, true)
+	empty.Distances[0].Competitors = nil // the distance is there, its races are not
+	for i, curr := range []*results.Processed{empty, snapshot(1, true), empty, empty, snapshot(2, true)} {
+		if res := s.Update(curr); res.Reset {
+			t.Fatalf("reply %d reset the cache", i)
+		}
+	}
+	if got := len(s.Replay()); got != 4 {
+		t.Errorf("replay holds %d messages, want 4", got)
+	}
+}
+
+func TestLapsThatStayDownAreAccepted(t *testing.T) {
+	s := New(slog.Default())
+	s.Update(snapshot(26, true))
+	for i := 1; i < HoldReplies; i++ {
+		if res := s.Update(snapshot(25, true)); !res.Held || len(res.Messages) != 0 {
+			t.Fatalf("reply %d should be held, got %+v", i, res)
+		}
+	}
+	if res := s.Update(snapshot(25, true)); !res.Reset {
+		t.Error("laps that stay down for good are a reset in the end")
+	}
+	if !strings.Contains(string(s.Replay()[2]), `"laps_count":25`) {
+		t.Errorf("replay still holds the old laps: %s", s.Replay()[2])
 	}
 }

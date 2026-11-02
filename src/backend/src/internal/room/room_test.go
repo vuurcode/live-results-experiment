@@ -8,6 +8,7 @@ import (
 
 	"github.com/vuurcode/live-results-experiment/backend/internal/config"
 	"github.com/vuurcode/live-results-experiment/backend/internal/results"
+	"github.com/vuurcode/live-results-experiment/backend/internal/store"
 )
 
 var testPace = config.Intervals{NotStarted: 15, MassStart: 1, Distance: 5}
@@ -167,7 +168,9 @@ func TestLogStartsAtAReset(t *testing.T) {
 	r := New("A", "http://x", testPace, func() {})
 	r.Apply(processed(3))
 	epoch := epochOf(t, r.Register(nil))
-	r.Apply(processed(0)) // fewer laps than before: the source restarted
+	for range store.HoldReplies {
+		r.Apply(processed(0)) // fewer laps than before, for good: the source restarted
+	}
 
 	if got := strings.Join(drain(r.Register(&Resume{Epoch: epoch, Seq: 3})), ","); !strings.HasPrefix(got, "status,reset") {
 		t.Errorf("a client from before the reset got %s, want a catch-up that starts with the reset", got)

@@ -4,6 +4,7 @@ package store
 
 import (
 	"bytes"
+	"fmt"
 	"log/slog"
 
 	"github.com/vuurcode/live-results-experiment/backend/internal/results"
@@ -30,6 +31,7 @@ type Store struct {
 	comps     map[string]compEntry
 	distOrder []string
 	raceOrder []string
+	held      int          // how many replies in a row went back on what was sent, and were held
 	log       *slog.Logger // carries the competition the store belongs to
 }
 
@@ -47,8 +49,14 @@ func (s *Store) clear() {
 	s.raceOrder = nil
 }
 
+// HoldReplies is how many replies in a row have to go back on what was sent before the cache is reset. The data source
+// now and then answers with an older version of the results for a moment, and acting on one of those would make every
+// client step back and forward again.
+const HoldReplies = 3
+
 // Result is what an update changed.
 type Result struct {
+	Held        bool // the reply goes back on what was sent: it is held, and nothing changed
 	Reset       bool
 	NameChanged bool
 	DistUpdates int
@@ -60,13 +68,23 @@ type Result struct {
 // Update diffs curr against the cached state, updates the cache, and returns
 // the messages to broadcast.
 //
-// A reset is detected when any competitor's lap count is lower than the cached
-// value — laps never go backwards in a normal race — or when a race that was sent is no longer in its distance,
-// as when the draw changed: a client cannot remove a race by any other message.
+// A reply goes back on the cache when a competitor's lap count is lower than the cached value (laps never go
+// backwards in a normal race) or when a race that was sent is no longer in its distance, as when the draw changed: a
+// client cannot undo those by any other message than a reset. Such a reply is held until HoldReplies of them follow
+// each other, so that a stale one in between changes nothing.
 func (s *Store) Update(curr *results.Processed) Result {
 	var res Result
 
-	res.Reset = s.racesVanished(curr) || s.lapsWentBack(curr)
+	if why := s.regression(curr); why != "" {
+		if s.held++; s.held < HoldReplies {
+			res.Held = true
+			return res
+		}
+		s.log.Warn("Reset detected, clearing cache", "why", why)
+		res.Reset = true
+	}
+	s.held = 0
+
 	if res.Reset {
 		s.clear()
 		res.Messages = append(res.Messages, wire.Wrap("reset", nil))
@@ -123,40 +141,29 @@ func (s *Store) Update(curr *results.Processed) Result {
 	return res
 }
 
-// lapsWentBack reports whether a competitor has fewer laps than in the cache, which is not a lap count that changes.
-func (s *Store) lapsWentBack(curr *results.Processed) bool {
-	for _, d := range curr.Distances {
-		for _, c := range d.Competitors {
-			if prev, ok := s.comps[c.ID]; ok && c.LapsCount < prev.comp.LapsCount && !results.HidesTimes(deref(c.InvalidReason), deref(c.Remark)) {
-				s.log.Warn("Reset detected, clearing cache", "name", c.Name, "from", prev.comp.LapsCount, "to", c.LapsCount)
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// racesVanished reports whether a race sent before is missing from a distance that curr still has. A distance that is
-// missing as a whole is not counted: that is an answer without results, not a change of the draw.
-func (s *Store) racesVanished(curr *results.Processed) bool {
+// regression says what in curr goes back on the cache, or is empty when nothing does.
+func (s *Store) regression(curr *results.Processed) string {
 	now := make(map[string]struct{}, len(s.raceOrder))
 	dists := make(map[string]struct{}, len(curr.Distances))
 	for _, d := range curr.Distances {
 		dists[d.Meta.ID] = struct{}{}
 		for _, c := range d.Competitors {
 			now[c.ID] = struct{}{}
+			if prev, ok := s.comps[c.ID]; ok && c.LapsCount < prev.comp.LapsCount && !results.HidesTimes(deref(c.InvalidReason), deref(c.Remark)) {
+				return fmt.Sprintf("laps of race %s from %d to %d", c.ID, prev.comp.LapsCount, c.LapsCount)
+			}
 		}
 	}
+	// a distance missing as a whole is an answer without results, not a change of the draw
 	for _, id := range s.raceOrder {
 		if _, ok := now[id]; ok {
 			continue
 		}
 		if _, ok := dists[s.comps[id].comp.DistanceID]; ok {
-			s.log.Warn("Race removed from its distance, clearing cache", "race", id)
-			return true
+			return "race " + id + " removed from its distance"
 		}
 	}
-	return false
+	return ""
 }
 
 // Replay returns the latest state as messages: event_name, one distance_meta per

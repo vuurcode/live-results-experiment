@@ -13,8 +13,8 @@ import (
 
 type nopSink struct{}
 
-func (nopSink) Apply(*results.Processed) {}
-func (nopSink) SetFeed(string, string)   {}
+func (nopSink) Apply(*results.Processed) bool { return false }
+func (nopSink) SetFeed(string, string)        {}
 
 type noUA struct{}
 
@@ -48,8 +48,8 @@ func TestOnlyLiveRepliesAreRecorded(t *testing.T) {
 
 type countSink struct{ applied, feeds int }
 
-func (c *countSink) Apply(*results.Processed) { c.applied++ }
-func (c *countSink) SetFeed(string, string)   { c.feeds++ }
+func (c *countSink) Apply(*results.Processed) bool { c.applied++; return false }
+func (c *countSink) SetFeed(string, string)        { c.feeds++ }
 
 func TestAnUnchangedReplyIsNotProcessedAgain(t *testing.T) {
 	bodies := []string{`{"distances":[]}`, `{"distances":[]}`, `{"distances":[{"id":"d","races":[]}]}`}
@@ -69,6 +69,31 @@ func TestAnUnchangedReplyIsNotProcessedAgain(t *testing.T) {
 	}
 	if sink.applied != 2 || sink.feeds != 3 {
 		t.Fatalf("applied %d, feed set %d times, want 2 and 3", sink.applied, sink.feeds)
+	}
+}
+
+// holdSink holds back the first n replies it is given.
+type holdSink struct{ applied, hold int }
+
+func (h *holdSink) Apply(*results.Processed) bool { h.applied++; return h.applied <= h.hold }
+func (h *holdSink) SetFeed(string, string)        {}
+
+func TestAReplyThatIsHeldBackIsLookedAtAgain(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"distances":[]}`))
+	}))
+	defer ts.Close()
+
+	sink := &holdSink{hold: 2}
+	f := &Fetcher{URL: ts.URL, Sink: sink, UA: noUA{}, Client: ts.Client(), Log: slog.Default()}
+	for range 5 {
+		if err := f.once(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// the same reply comes in every time: it is applied until it is taken, and not again after that
+	if sink.applied != 3 {
+		t.Fatalf("applied %d times, want 3", sink.applied)
 	}
 }
 
@@ -95,8 +120,8 @@ func TestANotLiveReplyKeepsTheResultsOfTheCompetition(t *testing.T) {
 
 type lastSink struct{ distances int }
 
-func (l *lastSink) Apply(p *results.Processed) { l.distances = len(p.Distances) }
-func (l *lastSink) SetFeed(string, string)     {}
+func (l *lastSink) Apply(p *results.Processed) bool { l.distances = len(p.Distances); return false }
+func (l *lastSink) SetFeed(string, string)          {}
 
 func TestFinalResultsFillInForANotLiveReplyWithoutResults(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
