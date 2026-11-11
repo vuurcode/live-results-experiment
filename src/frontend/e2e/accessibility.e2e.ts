@@ -202,12 +202,17 @@ for (const [name, url, ready] of [
 ] as const) {
   for (const scheme of ['light', 'dark'] as const) {
     for (const width of [320, 390, 1280]) {
-      test(`the ${name} page (${scheme}, ${width}px): no axe violations`, async ({ page, request }) => {
+      test(`the ${name} page (${scheme}, ${width}px): no axe violations`, async ({ page }) => {
         await page.emulateMedia({ colorScheme: scheme });
         await page.setViewportSize({ width, height: 900 });
+        if (name === 'logs') {
+          // the log lists what arrives after the page opened, which depends on what the backend held before: a stored log does not
+          await page.addInitScript(() => {
+            const entry = { id: 1, batch: 1, at: Date.now() - 60_000, distanceId: 'dist-500', distanceName: '500 meter', raceId: 'r2', heat: 1, name: 'Competitor B', lane: 'red', past: false, isNew: false, changes: [{ field: 'status', from: null, to: 'DNF' }] };
+            if (!localStorage.getItem('eventLog:e2e-pairs')) localStorage.setItem('eventLog:e2e-pairs', JSON.stringify([entry]));
+          });
+        }
         await page.goto(url);
-        // the log lists what arrives after the page opened, so let the replay play again
-        if (name === 'logs') await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-pairs' } });
         await expect(page.locator(ready).first()).toBeVisible({ timeout: 15_000 });
         await expect(page.locator('html')).toHaveAttribute('data-coreui-theme', scheme);
         await settleTransitions(page);

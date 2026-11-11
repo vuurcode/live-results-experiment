@@ -431,3 +431,36 @@ test('without a mass start the settings page has no mass start section', async (
   await page.goto(settingsUrl('e2e-individual'));
   await expect(page.locator('.settings-heading')).toHaveText(['General']);
 });
+
+test.describe('a reset of the backend', () => {
+  test('keeps the cards on screen while the results come in again', async ({ page }) => {
+    let sent = false;
+    const seen: string[] = [];
+    await page.routeWebSocket(/\/ws/, (ws) => {
+      const server = ws.connectToServer();
+      ws.onMessage((m) => server.send(m));
+      server.onMessage((m) => {
+        ws.send(m);
+        seen.push(String(m));
+        if (!sent && seen.some((x) => x.includes('"competitor_update"'))) {
+          sent = true;
+          // a backend reset: the same results follow the reset message a moment later
+          setTimeout(() => {
+            ws.send(JSON.stringify({ type: 'reset', data: null }));
+            setTimeout(() => seen.forEach((x) => ws.send(x)), 300);
+          }, 1500);
+        }
+      });
+    });
+    await page.goto('/?competitionId=e2e-individual');
+    const cards = page.locator('.individual-competitor-card');
+    await expect(cards.first()).toBeVisible();
+    await expect.poll(() => sent).toBe(true);
+    await page.waitForTimeout(1600); // the reset message is in
+    // the page is rebuilt from the replay without ever being empty
+    for (let i = 0; i < 10; i++) {
+      expect(await cards.count()).toBeGreaterThan(0);
+      await page.waitForTimeout(100);
+    }
+  });
+});

@@ -20,22 +20,35 @@ test.describe('logs page', () => {
     expect(times).toEqual([...times].sort().reverse());
   });
 
-  test('a remark change is the badge of the cards, in the same colour', async ({ page, request }) => {
+  test('a remark change is the badge of the cards, in the same colour', async ({ page }) => {
+    // a stored log: the replay of the mock is no event when the backend still holds the same results
+    await page.addInitScript(() => {
+      const at = Date.now() - 60_000;
+      const entry = (id: number, change: { field: string; from: string | null; to: string | null }) => ({
+        id, batch: id, at: at + id * 1000, distanceId: 'dist-500', distanceName: '500 meter', raceId: `r${id}`, heat: 1, name: `Skater ${id}`, lane: 'red', past: false, isNew: false,
+        changes: [change],
+      });
+      if (!localStorage.getItem('eventLog:e2e-pairs')) {
+        localStorage.setItem('eventLog:e2e-pairs', JSON.stringify([entry(2, { field: 'status', from: null, to: 'DNF' }), entry(1, { field: 'remark', from: null, to: 'PR' })]));
+      }
+    });
     await page.goto(LOGS);
-    await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-pairs' } });
     const pb = page.locator('.logs-changes c-badge.individual-badge-purple', { hasText: 'PB' }).first();
-    await expect(pb).toBeVisible({ timeout: 20_000 });
+    await expect(pb).toBeVisible();
     await expect(pb).toHaveCSS('background-color', 'rgb(111, 66, 193)');
-    await expect(page.locator('.logs-changes c-badge.individual-badge-orange', { hasText: 'DNF' }).first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('.logs-changes c-badge.individual-badge-orange', { hasText: 'DNF' }).first()).toBeVisible();
   });
 
-  test('a skater is named in the colour of their lane, as on the cards', async ({ page, request }) => {
+  test('a skater is named in the colour of their lane, as on the cards', async ({ page }) => {
+    await page.addInitScript(() => {
+      const entry = { id: 1, batch: 1, at: Date.now() - 60_000, distanceId: 'dist-500', distanceName: '500 meter', raceId: 'r2', heat: 1, name: 'Competitor B', lane: 'red', past: false, isNew: false, changes: [{ field: 'lap', n: 1, from: '10.100', to: '10.300' }] };
+      if (!localStorage.getItem('eventLog:e2e-pairs')) localStorage.setItem('eventLog:e2e-pairs', JSON.stringify([entry]));
+    });
     await page.goto(LOGS);
-    await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-pairs' } });
     const name = page.locator('.logs-name[data-lane]', { hasText: /^Competitor [A-C]$/ }).first();
     await expect(name).toBeVisible({ timeout: 20_000 });
     const [text, lane, background] = await name.evaluate((el) => [el.textContent ?? '', el.getAttribute('data-lane') ?? '', getComputedStyle(el).backgroundColor]);
-    await page.goto('/?competitionId=e2e-pairs');
+    await page.locator('a.logs-heat').first().click(); // the heat of the event, whichever heat the dashboard opens on
     const card = page.locator('.individual-comp-name-text', { hasText: text }).first();
     await expect(card).toBeVisible();
     await expect(card).toHaveAttribute('data-lane', lane);
