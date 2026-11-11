@@ -1,4 +1,5 @@
 import type { CompetitorUpdate } from './data.models';
+import { LAP_WOBBLE_SECONDS, timeDiffSeconds } from './time.util';
 
 /** One thing that differs between two updates of a racer. A lap carries its number `n`. */
 export interface LogChange {
@@ -47,7 +48,7 @@ export function diffUpdate(prev: CompetitorUpdate | undefined, next: CompetitorU
   for (let i = 0; i < laps; i++) {
     const from = prev?.lap_times[i] ?? '';
     const to = next.lap_times[i] ?? '';
-    if (from !== to) changes.push({ field: 'lap', n: i + 1, from, to });
+    if (from !== to && (!from || !to || timeDiffSeconds(from, to) >= LAP_WOBBLE_SECONDS)) changes.push({ field: 'lap', n: i + 1, from, to });
   }
   compare('time', prev?.formatted_total_time, next.formatted_total_time);
   compare('rank', prev?.finished_rank, next.finished_rank);

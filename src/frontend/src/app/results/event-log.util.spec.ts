@@ -30,6 +30,13 @@ describe('diffUpdate', () => {
   });
 });
 
+describe('diffUpdate lap rounding', () => {
+  it('does not report a lap the data source rounds another way', () => {
+    expect(diffUpdate(update({ lap_times: ['49.440'] }), update({ lap_times: ['49.445'] }))).toEqual([]);
+    expect(diffUpdate(update({ lap_times: ['49.440'] }), update({ lap_times: ['49.520'] }))).toHaveLength(1);
+  });
+});
+
 describe('the stored log', () => {
   const entry = (id: number, at: number): LogEntry => ({ id, batch: id, at, distanceId: 'd', distanceName: '500', raceId: 'r', heat: 1, name: 'A', isNew: false, changes: [] });
   const store = (): Storage => {

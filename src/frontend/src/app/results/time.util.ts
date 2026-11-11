@@ -14,6 +14,15 @@ export function timeDiffSeconds(a: string, b: string): number {
   return Math.abs(parseSeconds(a) - parseSeconds(b));
 }
 
+/** Lap times that differ by less than this (seconds) are the data source rounding the same lap another way. */
+export const LAP_WOBBLE_SECONDS = 0.05;
+
+/** Whether two lists of lap times differ in a way worth showing: another number of laps, or a lap that is really another time. */
+export function lapsDiffer(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return true;
+  return a.some((lap, i) => lap !== b[i] && timeDiffSeconds(lap, b[i]) >= LAP_WOBBLE_SECONDS);
+}
+
 /**
  * Formats a duration given in seconds as "SS.mmm", "M:SS.mmm", or "H:MM:SS.mmm"
  * (hours/minutes omitted when zero), truncated to 3 decimal places.

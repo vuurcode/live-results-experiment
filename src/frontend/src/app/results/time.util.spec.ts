@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseSeconds,
   timeDiffSeconds,
+  lapsDiffer,
   formatDurationSeconds,
   truncateLapTime,
   splitLapTime,
@@ -120,5 +121,17 @@ describe('whole seconds', () => {
     expect(truncateLapTime('23.4', 3)).toBe('23.400');
     expect(splitFormattedTime('23')).toEqual(['23', '.0']);
     expect(splitLapTime('1:23')).toEqual(['1:23', '.0']);
+  });
+});
+
+describe('lapsDiffer', () => {
+  it('ignores a lap the data source rounds another way', () => {
+    expect(lapsDiffer(['49.440', '50.1'], ['49.445', '50.1'])).toBe(false);
+  });
+
+  it('sees another number of laps or a really other time', () => {
+    expect(lapsDiffer(['49.440'], ['49.440', '50.100'])).toBe(true);
+    expect(lapsDiffer(['22.120', '35.070'], ['35.070'])).toBe(true);
+    expect(lapsDiffer(['49.440'], ['49.520'])).toBe(true);
   });
 });
