@@ -129,7 +129,8 @@ func (r *Room) paceFor(curr *results.Processed) float64 {
 	return every
 }
 
-// Apply diffs freshly processed data and broadcasts the changes. It reports whether the data was held back instead.
+// Apply diffs freshly processed data and broadcasts the changes. It reports whether the data was held back, in whole or
+// in part, so that the next reply is looked at even when it is the same.
 func (r *Room) Apply(curr *results.Processed) (held bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -145,7 +146,7 @@ func (r *Room) Apply(curr *results.Processed) (held bool) {
 	}
 
 	if len(res.Messages) == 0 {
-		return false
+		return res.Pending
 	}
 	r.changed = r.now()
 	if res.Reset { // what came before the reset is no use to a client that catches up
@@ -155,7 +156,7 @@ func (r *Room) Apply(curr *results.Processed) (held bool) {
 	r.broadcastLocked(res.Messages)
 	// one summary line per update, however many competitors changed
 	r.Log.Info("Update", "competitors", len(res.CompUpdates), "new_laps", res.NewLaps, "distances", res.DistUpdates, "reset", res.Reset)
-	return false
+	return res.Pending
 }
 
 // broadcastLocked numbers the messages and sends them to every client. Replays carry no number: the status message

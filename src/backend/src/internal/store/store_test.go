@@ -214,3 +214,30 @@ func TestFewerLapsWithARemarkIsNoReset(t *testing.T) {
 		t.Errorf("a race marked DNF explains its laps, got %+v", res)
 	}
 }
+
+func TestInvalidReasonThatFlickersOffIsHeld(t *testing.T) {
+	withReason := func(reason string) *results.Processed {
+		p := snapshot(2, true)
+		if reason != "" {
+			p.Distances[0].Competitors[0].InvalidReason = &reason
+		}
+		return p
+	}
+	s := New(slog.Default())
+	s.Update(withReason("DNS"))
+	for i := 1; i < HoldReplies; i++ {
+		res := s.Update(withReason(""))
+		if len(res.CompUpdates) != 0 || !res.Pending {
+			t.Fatalf("reply %d without the reason should be pending and unsent: %+v", i, res)
+		}
+	}
+	if res := s.Update(withReason("DNS")); len(res.CompUpdates) != 0 {
+		t.Errorf("the reason coming back changes nothing, got %+v", res.CompUpdates)
+	}
+	for range HoldReplies {
+		s.Update(withReason(""))
+	}
+	if got := s.Replay(); !strings.Contains(string(got[2]), `"invalid_reason":null`) {
+		t.Errorf("a reason that stays away is taken back in the end: %s", got[2])
+	}
+}

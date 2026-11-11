@@ -31,8 +31,9 @@ type Store struct {
 	comps     map[string]compEntry
 	distOrder []string
 	raceOrder []string
-	held      int          // how many replies in a row went back on what was sent, and were held
-	log       *slog.Logger // carries the competition the store belongs to
+	held      int            // how many replies in a row went back on what was sent, and were held
+	cleared   map[string]int // per race, how many replies in a row lacked the invalid reason that was sent, and were held
+	log       *slog.Logger   // carries the competition the store belongs to
 }
 
 func New(log *slog.Logger) *Store {
@@ -47,16 +48,19 @@ func (s *Store) clear() {
 	s.comps = map[string]compEntry{}
 	s.distOrder = nil
 	s.raceOrder = nil
+	s.cleared = map[string]int{}
 }
 
-// HoldReplies is how many replies in a row have to go back on what was sent before the cache is reset. The data source
-// now and then answers with an older version of the results for a moment, and acting on one of those would make every
-// client step back and forward again.
-const HoldReplies = 3
+// HoldReplies is how many replies in a row have to go back on what was sent before the cache is reset (about four
+// seconds at the pace of a live distance). The data source now and then answers with an older version of the results,
+// for up to a few seconds, and acting on one of those would make every client step back and forward again. The same
+// number of replies in a row has to leave out an invalid reason (DNS, DQ, ...) that was sent before it is taken back.
+const HoldReplies = 8
 
 // Result is what an update changed.
 type Result struct {
 	Held        bool // the reply goes back on what was sent: it is held, and nothing changed
+	Pending     bool // part of the reply is held (an invalid reason that is left out), so the next reply has to be looked at even when it is the same
 	Reset       bool
 	NameChanged bool
 	DistUpdates int
@@ -112,8 +116,12 @@ func (s *Store) Update(curr *results.Processed) Result {
 		}
 
 		for _, c := range d.Competitors {
-			data := wire.Marshal(c)
 			prev, seen := s.comps[c.ID]
+			if seen && s.holdsClearedReason(prev.comp, c) {
+				raceOrder = append(raceOrder, c.ID)
+				continue
+			}
+			data := wire.Marshal(c)
 			if seen && bytes.Equal(prev.data, data) {
 				raceOrder = append(raceOrder, c.ID) // unchanged — still tracked for replay
 				continue
@@ -137,6 +145,7 @@ func (s *Store) Update(curr *results.Processed) Result {
 
 	s.distOrder = distOrder
 	s.raceOrder = raceOrder
+	res.Pending = len(s.cleared) > 0
 	res.Messages = append(res.Messages, compMessages...)
 	return res
 }
@@ -164,6 +173,20 @@ func (s *Store) regression(curr *results.Processed) string {
 		}
 	}
 	return ""
+}
+
+// holdsClearedReason tells whether the reply leaves out the invalid reason sent before and is not yet believed: the data
+// source flips such a reason on and off for a moment, and a client would show the badge, the laps and the badge again.
+func (s *Store) holdsClearedReason(prev, curr results.Competitor) bool {
+	if deref(prev.InvalidReason) == "" || deref(curr.InvalidReason) != "" {
+		delete(s.cleared, curr.ID)
+		return false
+	}
+	if s.cleared[curr.ID]++; s.cleared[curr.ID] < HoldReplies {
+		return true
+	}
+	delete(s.cleared, curr.ID)
+	return false
 }
 
 // hasOutcome tells whether the race carries a remark or invalid reason (DNF, DQ, ...) that explains its laps.
