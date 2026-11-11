@@ -232,15 +232,6 @@ export class DashboardComponent implements OnInit, AfterViewChecked {
       const pageTitle = this.ts.t('pageTitle');
       this.titleService.setTitle(name ? `${name} | ${pageTitle}` : pageTitle);
     });
-    this.dataService.reset$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-      this.liveEventNumber = null;
-      this.position = null;
-      this.positionKey = this.storedPositionKey();
-      this.pinned = this.positionKey !== null;
-      this.liveKey = null;
-      this.previousDistances = null;
-      this.cdr.markForCheck();
-    });
     this.sortedDistances$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(distances => {
       this.activeHeatKey = this.findActiveHeat(distances);
       this.queueFinishes(newFinishers(this.previousDistances, distances));

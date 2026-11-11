@@ -117,13 +117,65 @@ describe('DataService message handling', () => {
     expect((await distances())[0].processedRaces.map(r => r.is_final_lap).sort()).toEqual([false, true]);
   });
 
-  it('clears everything on reset', async () => {
-    apply({ type: 'event_name', data: { name: 'Cup' } });
+  it('keeps showing the state it had while the replay after a reset comes in', async () => {
+    vi.useFakeTimers();
+    try {
+      apply({ type: 'event_name', data: { name: 'Cup' } });
+      apply({ type: 'distance_meta', data: meta() });
+      apply({ type: 'competitor_update', data: competitor('a') });
+      publish();
+      apply({ type: 'reset' });
+      expect((await distances()).length).toBe(1);
+      expect(await firstValueFrom(service.eventName$)).toBe('Cup');
+      apply({ type: 'distance_meta', data: meta({ id: 'd2', heat_groups: [] }) });
+      await vi.advanceTimersByTimeAsync(300);
+      expect((await distances()).map(d => d.id)).toEqual(['d2']);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('logs the replay that follows a reset only where it differs from what was there', () => {
+    const pending = () => (service as unknown as { pendingLog: unknown[] }).pendingLog;
     apply({ type: 'distance_meta', data: meta() });
-    publish();
+    apply({ type: 'competitor_update', data: competitor('a', { lap_times: ['30.0'] }) }); // the first sighting is logged
+    pending().length = 0;
     apply({ type: 'reset' });
-    expect(await distances()).toEqual([]);
-    expect(await firstValueFrom(service.eventName$)).toBe('');
+    apply({ type: 'distance_meta', data: meta() });
+    apply({ type: 'competitor_update', data: competitor('a', { lap_times: ['30.0'] }) });
+    expect(pending()).toHaveLength(0);
+    apply({ type: 'reset' });
+    apply({ type: 'distance_meta', data: meta() });
+    apply({ type: 'competitor_update', data: competitor('a', { lap_times: [] }) });
+    expect(pending()).toHaveLength(1);
+  });
+
+  it('holds a not_live feed while results show, and drops it when the feed is live again', async () => {
+    vi.useFakeTimers();
+    try {
+      apply({ type: 'distance_meta', data: meta() });
+      apply({ type: 'competitor_update', data: competitor('a') });
+      apply({ type: 'feed_status', data: { state: 'not_live', message: 'x' } });
+      expect(await firstValueFrom(service.feed$)).toBeNull();
+      apply({ type: 'feed_status', data: { state: 'ok', message: '' } });
+      await vi.advanceTimersByTimeAsync(11_000);
+      expect(await firstValueFrom(service.feed$)).toMatchObject({ state: 'ok' });
+      apply({ type: 'feed_status', data: { state: 'not_live', message: 'x' } });
+      await vi.advanceTimersByTimeAsync(11_000);
+      expect(await firstValueFrom(service.feed$)).toMatchObject({ state: 'not_live' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('flashes and logs a lap only when it is really another time', () => {
+    apply({ type: 'distance_meta', data: meta() });
+    apply({ type: 'competitor_update', data: competitor('a', { lap_times: ['49.440'] }) });
+    const stamp = () => (service as unknown as { competitorMap: Map<string, Map<string, CompetitorUpdate>> }).competitorMap.get('d1')!.get('a')!.lapsUpdatedAt;
+    apply({ type: 'competitor_update', data: competitor('a', { lap_times: ['49.445'] }) });
+    expect(stamp()).toBeUndefined();
+    apply({ type: 'competitor_update', data: competitor('a', { lap_times: ['49.445', '50.100'] }) });
+    expect(stamp()).toBeDefined();
   });
 
   it('passes the feed status on', async () => {

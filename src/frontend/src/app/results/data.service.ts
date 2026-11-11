@@ -14,6 +14,7 @@ import {
   ProcessedDistance,
   StandingsGroup,
 } from './data.models';
+import { lapsDiffer } from './time.util';
 import { recomputePositions, recomputeGroups, resolveRaces } from './standings.util';
 import { FeedStatus, TodayCompetition } from './data.models';
 import { diffUpdate, entriesOfToday, isPastHeat, loadEventLog, saveEventLog, type LogEntry } from './event-log.util';
@@ -28,6 +29,10 @@ export interface BackendStatus {
 
 /** How long after `status` (ms) the messages still build the page up rather than report events, unless the page resumed. */
 const INITIAL_WINDOW_MS = 2000;
+/** How long (ms) after the last message of a replay that follows a `reset` the rebuilt state is shown; until then the previous one stays on screen. */
+const REBUILD_IDLE_MS = 250;
+/** How long (ms) a `not_live` reply is kept from the page while results are showing, so that a single such reply in between goes unnoticed. */
+const NOT_LIVE_DELAY_MS = 10_000;
 /** How many events the log keeps. */
 const LOG_LIMIT = 500;
 /** Updates less than this apart (ms) belong to the same poll of the data source. */
@@ -99,8 +104,6 @@ export class DataService {
     switchMap(() => from(this.todayCompetitions())),
     shareReplay({ bufferSize: 1, refCount: true }), // the picker and the venue preselection share one request
   );
-  private resetSubject = new Subject<void>();
-  reset$ = this.resetSubject.asObservable();
   /** The page came back from suspension and the connection was renewed. */
   private resumed = new Subject<void>();
   resumed$ = this.resumed.asObservable();
@@ -146,6 +149,11 @@ export class DataService {
   /** Messages that build the page up from nothing (the replay, or the data of a room opened anew, sent right after `status`): the starting point, not events for the log. */
   private initialMessages = new WeakSet<BackendMessage>();
   private initialUntil = 0;
+  /** Whether a replay after `reset` is being built; the page keeps the state it had until the replay has arrived. */
+  private rebuildTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The competitors as they were when a reset came, what the replay that follows is compared with for the log. */
+  private beforeReset: Map<string, Map<string, CompetitorUpdate>> | null = null;
+  private notLiveTimer: ReturnType<typeof setTimeout> | null = null;
 
   private noCompetition = false;
   private ngZone = inject(NgZone);
@@ -291,7 +299,9 @@ export class DataService {
       const msg = this.queue.shift();
       if (msg) changed = this.applyMessage(msg) || changed;
     }
-    if (changed) {
+    if (changed && this.rebuildTimer) {
+      this.awaitRebuild();
+    } else if (changed) {
       // Flush groups immediately so the strip renders on initial load
       // (debounce will still update it again after the threshold delay)
       this.flushDisplayedGroups();
@@ -315,7 +325,7 @@ export class DataService {
         }));
         return false;
       case 'feed_status':
-        this.ngZone.run(() => this.feedSubject.next(msg.data));
+        this.applyFeedStatus(msg.data);
         return false;
       case 'event_name':
         this.ngZone.run(() => this.eventNameSubject.next(msg.data.name));
@@ -339,17 +349,42 @@ export class DataService {
     }
   }
 
+  /**
+   * The replay that follows is the whole state again, so what is held is dropped. The page keeps showing the state it
+   * had until the replay has come in, and not the half of it that is there at any moment: a reset is mostly the data
+   * source stepping back and forward again, which must not blank the page or move the viewer.
+   */
   private applyReset(): void {
+    this.beforeReset ??= this.competitorMap;
     this.distanceMap.clear();
-    this.competitorMap.clear();
+    this.competitorMap = new Map();
     for (const timer of this.groupDebounceTimers.values()) clearTimeout(timer);
     this.groupDebounceTimers.clear();
-    this.ngZone.run(() => {
-      this.eventNameSubject.next('');
-      this.processedDataSubject.next([]);
-      this.displayedGroupsSubject.next(new Map());
-      this.resetSubject.next();
-    });
+    this.awaitRebuild();
+  }
+
+  /** Shows the state once no message of the replay has come in for a moment. */
+  private awaitRebuild(): void {
+    if (this.rebuildTimer) clearTimeout(this.rebuildTimer);
+    this.rebuildTimer = setTimeout(() => {
+      this.rebuildTimer = null;
+      this.beforeReset = null;
+      this.flushDisplayedGroups();
+      this.ngZone.run(() => this.publishState());
+    }, REBUILD_IDLE_MS);
+  }
+
+  /** `not_live` while results show is held for a while: the data source says it now and then in the middle of a competition. */
+  private applyFeedStatus(feed: FeedStatus): void {
+    if (this.notLiveTimer) { clearTimeout(this.notLiveTimer); this.notLiveTimer = null; }
+    if (feed.state === 'not_live' && (this.competitorMap.size > 0 || this.beforeReset)) {
+      this.notLiveTimer = setTimeout(() => {
+        this.notLiveTimer = null;
+        this.ngZone.run(() => this.feedSubject.next(feed));
+      }, NOT_LIVE_DELAY_MS);
+      return;
+    }
+    this.ngZone.run(() => this.feedSubject.next(feed));
   }
 
   private applyDistanceMeta(meta: DistanceMeta): boolean {
@@ -388,7 +423,7 @@ export class DataService {
     const dist = this.distanceMap.get(comp.distance_id);
     if (dist) {
       const existing = distComps.get(comp.id);
-      const lapsChanged = existing != null && existing.lap_times.join() !== comp.lap_times.join();
+      const lapsChanged = existing != null && lapsDiffer(existing.lap_times, comp.lap_times);
       comp.lapsUpdatedAt = lapsChanged ? comp.lastUpdated : existing?.lapsUpdatedAt;
 
       // Ensure frontend-only fields are preserved / initialised
@@ -449,14 +484,16 @@ export class DataService {
   }
 
   private logUpdate(comp: CompetitorUpdate): void {
-    const prev = this.competitorMap.get(comp.distance_id)?.get(comp.id);
+    const prev = this.competitorMap.get(comp.distance_id)?.get(comp.id) ?? this.beforeReset?.get(comp.distance_id)?.get(comp.id);
+    const changes = diffUpdate(prev, comp);
+    if (prev && changes.length === 0) return;
     const now = Date.now();
     if (now - this.lastLogAt > BATCH_GAP_MS) this.logBatch++;
     this.lastLogAt = now;
     this.pendingLog.push({
       id: this.logCounter++, batch: this.logBatch, at: now, distanceId: comp.distance_id, distanceName: this.distanceMap.get(comp.distance_id)?.name ?? '',
       raceId: comp.id, heat: comp.heat, name: comp.name, lane: comp.lane,
-      past: isPastHeat(this.competitorMap.get(comp.distance_id)?.values() ?? [], comp.heat), isNew: !prev, changes: diffUpdate(prev, comp),
+      past: isPastHeat(this.competitorMap.get(comp.distance_id)?.values() ?? [], comp.heat), isNew: !prev, changes,
     });
   }
 
