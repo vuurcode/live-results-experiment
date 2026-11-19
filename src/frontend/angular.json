@@ -49,7 +49,14 @@
                 }
               ],
               "outputHashing": "all",
-              "optimization": { "scripts": true, "styles": { "minify": true, "inlineCritical": false }, "fonts": true }
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false
+                },
+                "fonts": true
+              }
             },
             "development": {
               "optimization": false,
@@ -74,6 +81,80 @@
         },
         "test": {
           "builder": "@angular/build:unit-test"
+        }
+      }
+    },
+    "dts": {
+      "projectType": "application",
+      "schematics": {
+        "@schematics/angular:component": {
+          "style": "scss"
+        }
+      },
+      "root": "",
+      "sourceRoot": "src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "src/dts-app/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "inlineStyleLanguage": "scss",
+            "assets": [
+              {
+                "glob": "{favicon.ico,favicon.png,icon.png,apple-touch-icon.png,dts-transponder-*.webp}",
+                "input": "public"
+              }
+            ],
+            "styles": [],
+            "index": "src/dts-app/index.html",
+            "outputPath": "dist/dts",
+            "baseHref": "/dts/"
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "250kB",
+                  "maximumError": "400kB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "22kB",
+                  "maximumError": "24kB"
+                }
+              ],
+              "outputHashing": "all",
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false
+                },
+                "fonts": true
+              }
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "dts:build:production"
+            },
+            "development": {
+              "buildTarget": "dts:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
         }
       }
     }

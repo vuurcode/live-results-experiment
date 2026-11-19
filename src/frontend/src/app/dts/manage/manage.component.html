@@ -1,0 +1,313 @@
+<main class="dts">
+  <header class="bar">
+    <div class="side">
+      @if (admin) {
+        @if (competitorId) {
+          <a class="back" [href]="competitorHref()">← {{ t('adminBackList') }}</a>
+        } @else {
+          <button type="button" class="back" (click)="back()">← {{ t('adminBack') }}</button>
+        }
+        @if (signLink() && !competitorId) {
+          <button type="button" class="signbtn" [attr.aria-expanded]="linkOpen()" aria-controls="signlink" [title]="t('tipAdminSignLink')" (click)="linkOpen.set(!linkOpen())">{{ t('createdSign') }}</button>
+        }
+      }
+    </div>
+    <div class="headline">
+      <h1><span class="brand">{{ t('appName') }}</span> {{ t('manageTitle') }}</h1>
+      @if (state() && !competitorId) {
+        <span class="pill" [title]="changedTitle()"><span class="dot" [class.ok]="changeAge() === 'fresh'" [class.warn]="changeAge() === 'aging'" [class.bad]="changeAge() === 'old'" aria-hidden="true"></span>{{ changedText() }}</span>
+      }
+    </div>
+    <div class="side end">
+      <button type="button" class="link lang" (click)="text.toggle()" [attr.aria-label]="'NL / EN: ' + t('language')" [title]="t('tipLanguage')">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c3.5 3.2 3.5 14.8 0 18M12 3c-3.5 3.2-3.5 14.8 0 18" /></svg>
+        <span [class.on]="text.lang() === 'nl'" [attr.aria-current]="text.lang() === 'nl' ? 'true' : null">NL</span>
+        <span aria-hidden="true">/</span>
+        <span [class.on]="text.lang() === 'en'" [attr.aria-current]="text.lang() === 'en' ? 'true' : null">EN</span>
+      </button>
+    </div>
+  </header>
+
+  @if (admin && !competitorId && linkOpen() && signLink(); as link) {
+    <div class="signlink" id="signlink">
+      <div class="linkrow"><p class="url">{{ link }}</p></div>
+      @if (qr(link); as q) {
+        <svg class="qr" [attr.viewBox]="'0 0 ' + q.size + ' ' + q.size" role="img" [attr.aria-label]="t('qrLabel')" shape-rendering="crispEdges">
+          <rect width="100%" height="100%" fill="#fff" />
+          <path [attr.d]="q.path" fill="#000" />
+        </svg>
+      }
+      <div class="linkactions"><button type="button" class="copy" (click)="copy(link)" [attr.aria-label]="copied() === link ? t('copied') : t('copy')" [title]="t('tipCopy')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">@if (copied() === link) { <path d="M5 13l4 4L19 7" /> } @else { <rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /> }</svg></button><button type="button" class="copy print" (click)="printQr()" [attr.aria-label]="t('printQr')" [title]="t('printQr')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2" /><rect x="7" y="14" width="10" height="7" /></svg></button></div>
+      <p class="banner sharewarn" role="note"><span><strong>{{ t('qrDoNotShare') }}</strong> {{ t('qrNote') }}</span></p>
+    </div>
+  }
+
+  @if (denied()) {
+    <p class="lead">{{ t(noKey) }}</p>
+  } @else if (!state()) {
+    <p class="lead">{{ t('loading') }}</p>
+  } @else {
+    @if (state(); as st) {
+      @if (admin && competitorId) {
+        @if (competitor(); as c) {
+          <section class="competitor" aria-labelledby="competitor-title">
+            <h2 id="competitor-title">{{ c.entry.name }}@if (c.entry.signed) { <span class="tick" role="img" [attr.aria-label]="t('signedAt')" [title]="c.entry.signedAt ? clockOf(c.entry.signedAt) : ''">✓</span>}</h2>
+            <p class="state">{{ c.entry.signed ? (c.entry.changed ? t('legendChanged') : t('legendSigned')) : t('notSigned') }}@if (c.entry.signedAt) { · {{ clockOf(c.entry.signedAt) }}}</p>
+            <ul class="badges" [attr.aria-label]="t('badgesLabel')">
+              <li><span class="badge cap"><span class="k">{{ t('fieldCap') }}</span><span class="v">{{ c.entry.cap || t('noneSet') }}</span></span></li>
+              <li><span class="badge"><span class="k">{{ t('race') }}</span><span class="v">{{ c.race.title }}</span></span></li>
+              <li><span class="badge"><span class="k"><img class="chip" src="/dts-transponder-red.webp" alt="" width="66" height="44" />{{ t('t1') }}</span><span class="v" [class.none]="!c.entry.t1">{{ c.entry.t1 || t('noneSet') }}</span></span></li>
+              <li><span class="badge"><span class="k"><img class="chip" src="/dts-transponder-blue.webp" alt="" width="66" height="44" />{{ t('t2') }}</span><span class="v" [class.none]="!c.entry.t2">{{ c.entry.t2 || t('noneSet') }}</span></span></li>
+            </ul>
+            @if (signHref('rider', c.entry.id); as href) {
+              <a class="big" [href]="href">{{ t('openInSigner') }}</a>
+            }
+          </section>
+          @if (competitorNotes().length) {
+          <section>
+            <h2>{{ t('notesHeading') }}</h2>
+              <ul class="notes">
+                @for (n of competitorNotes(); track n.id) {
+                  <li [class.warning]="n.level === 'warning' && !n.resolved"><strong>{{ n.text }}</strong> <small>({{ by(n) }}, {{ clockOf(n.at) }})</small></li>
+                }
+              </ul>
+          </section>
+          }
+          @if (competitorActions().length) {
+            <section class="log">
+              <h2>{{ t('actionsHeading') }}</h2>
+              <ul>
+                @for (a of competitorActions(); track a.id) {
+                  <li><time>{{ clockOf(a.at) }}</time> {{ actionText(a) }}</li>
+                }
+              </ul>
+            </section>
+          }
+        } @else {
+          <p class="banner warn" role="status">{{ t('competitorMissing') }}</p>
+        }
+      } @else {
+      <section class="status" aria-label="status">
+        <div class="pills">
+          @if (stale()) {
+            <span class="pill" role="status"><span class="dot bad" aria-hidden="true"></span>{{ t('manageStale', { time: clockOf(st.now) }) }}</span>
+          }
+        </div>
+        @if (message()) {
+          <p class="banner" role="status">{{ message() }}</p>
+        }
+      </section>
+
+      <div class="legend" role="group" [attr.aria-label]="t('filterLabel')">
+        <span class="legendlabel" aria-hidden="true">{{ t('filterShow') }}</span>
+        <button type="button" class="num" data-state="open" [attr.aria-pressed]="filter().has('open')" [title]="t('tipFilter')" (click)="toggleFilter('open')">{{ t('legendOpen') }}</button>
+        <button type="button" class="num" data-state="signed" [attr.aria-pressed]="filter().has('signed')" [title]="t('tipFilter')" (click)="toggleFilter('signed')"><span aria-hidden="true" class="mark">✓</span>{{ t('legendSigned') }}</button>
+        <button type="button" class="num" data-state="changed" [attr.aria-pressed]="filter().has('changed')" [title]="t('tipFilter')" (click)="toggleFilter('changed')"><span aria-hidden="true" class="mark">✎</span>{{ t('legendChanged') }}</button>
+        <button type="button" class="num" data-state="note" [attr.aria-pressed]="filter().has('note')" [title]="t('tipFilter')" (click)="toggleFilter('note')"><span aria-hidden="true" class="mark">!</span>{{ t('legendNote') }}</button>
+      @if (filter().size) {
+          <span class="filterhint" role="status">{{ t('filterActive') }} <button type="button" class="link" (click)="filter.set(emptyFilter)">{{ t('filterClear') }}</button></span>
+        }
+      </div>
+
+      <div class="races">
+      @for (r of byStart(st.races); track r.id) {
+        <div class="race-wrap">
+          @for (p of problems(r); track p.key) {
+            @if (!dismissed().isHidden(p.key)) {
+              <p class="banner warn" role="status">
+                <span>{{ p.text }}</span>
+                <button type="button" class="small" (click)="dismissed().dismiss(p.key)" [title]="t('tipDismiss')">{{ t('dismiss') }}</button>
+              </p>
+            }
+          }
+        <section class="race" [id]="'race-' + r.id" [class.locked]="r.closed">
+          <div class="race-head">
+            <button type="button" class="fold" [attr.aria-expanded]="!isCollapsed(r)" [attr.aria-label]="(isCollapsed(r) ? t('expand') : t('collapse')) + ' ' + r.title" [title]="isCollapsed(r) ? t('expand') : t('collapse')" (click)="toggleCollapsed(r)">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">@if (isCollapsed(r)) { <path d="M9 6l6 6-6 6" /> } @else { <path d="M6 9l6 6 6-6" /> }</svg>
+            </button>
+            <h2>@if (titleParts(r.title); as tp) {<span class="title-rest">{{ tp.before }}@if (tp.time) {<span class="starttime">{{ tp.time }}</span>}{{ tp.sep }}</span><strong class="category">{{ tp.category }}</strong>} @if (r.closed) { <span class="lockpill"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg> {{ t('adminClosed') }}</span> }</h2>
+            <button type="button" class="download" [class.waiting]="!hasAdded(r) || (admin && !r.closed)" [attr.aria-disabled]="!hasAdded(r) || (admin && !r.closed) ? 'true' : null" (click)="hasAdded(r) && (!admin || r.closed) && download(r.id, 'mdsnew')" [attr.aria-label]="t('mdsNewShort') + ' ' + r.title" [title]="!hasAdded(r) ? t('noNewRiders') : admin && !r.closed ? t('needClosed') : t('tipDownloadMdsNew')">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></svg>
+              {{ t('mdsNewShort') }}
+            </button>
+            <button type="button" class="download" [class.waiting]="admin && !r.closed" [attr.aria-disabled]="admin && !r.closed ? 'true' : null" (click)="(!admin || r.closed) && download(r.id, 'tekenlijst')" [attr.aria-label]="t('mdsShort') + ' ' + r.title" [title]="admin && !r.closed ? t('needClosed') : t('tipDownloadMds')">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></svg>
+              {{ t('mdsShort') }}
+            </button>
+            @if (admin) {
+              <button type="button" class="download pdf" [class.waiting]="!r.closed" [attr.aria-disabled]="!r.closed ? 'true' : null" (click)="r.closed && downloadPdf(r)" [attr.aria-label]="t('pdfShort') + ' ' + r.title" [title]="!r.closed ? t('needClosed') : t('tipDownloadPdf')">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>
+                {{ t('pdfShort') }}
+              </button>
+              <button type="button" class="close" [class.closed]="r.closed" [title]="r.closed ? t('tipAdminOpen') : t('tipAdminClose')" (click)="setClosed(r)">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" />@if (r.closed) { <path d="M8 11V8a4 4 0 0 1 7.5-2" /> } @else { <path d="M8 11V8a4 4 0 0 1 8 0v3" /> }</svg>
+                {{ r.closed ? t('adminOpen') : t('adminClose') }}
+              </button>
+            }
+          </div>
+          @if (!hasAdded(r)) {
+            <p class="nonew">{{ t('noNewShort') }}</p>
+          }
+          <p class="count"><strong>{{ t('signedOf', { signed: r.signed, total: total(r) }) }}</strong> <span class="pct" aria-hidden="true">{{ total(r) ? ((r.signed / total(r)) * 100).toFixed(0) : 0 }}%</span></p>
+          <div class="progress" role="progressbar" aria-valuemin="0" [attr.aria-valuemax]="total(r)" [attr.aria-valuenow]="r.signed" [attr.aria-label]="t('signedOf', { signed: r.signed, total: total(r) })">
+            <span class="fill" [style.width.%]="total(r) ? (r.signed / total(r)) * 100 : 0"></span>
+          </div>
+          <div class="foldwrap" [class.shut]="isCollapsed(r)" [attr.inert]="isCollapsed(r) ? '' : null">
+          <div class="foldinner">
+          @if (cutoffLeft(r) >= 0) {
+            <p class="closing">{{ t('closesIn', { min: cutoffLeft(r) }) }} ({{ t('cutoffTime', { time: clockOf(r.cutoffAt) }) }})</p>
+          }
+
+          @if (warningsOf(r); as ws) {
+            @if (ws.length) {
+              <ul class="race-warnings" [attr.aria-label]="t('warningsHeading')">
+                @for (w of ws; track $index) {
+                  <li class="warning" [class.severe]="w.level === 'severe'"><strong>{{ w.level === 'severe' ? t('warnSevere') : t('warnLight') }}</strong> {{ warningText(w, r) }}</li>
+                }
+              </ul>
+            }
+          }
+
+          @if (!admin) {
+          <details class="cutoffwrap">
+          <summary>{{ t('cutoffLabel') }}: {{ r.cutoffMinutes }}</summary>
+          <div class="cutoff">
+            <label>
+              <span>{{ t('cutoffLabel') }}</span>
+              <input type="number" min="0" max="240" step="1" inputmode="numeric" [value]="cutoffDraft()[r.id] ?? r.cutoffMinutes" (input)="setDraft(r.id, $event)" />
+            </label>
+            @if (draftTime(r)) {
+              <span>{{ t('cutoffTime', { time: draftTime(r) }) }}</span>
+            }
+            <button type="button" [disabled]="!draftValid(r.id)" (click)="saveCutoff(r)">{{ t('save') }}</button>
+            @if (r.cutoffCustom) {
+              <button type="button" (click)="saveCutoff(r, true)">{{ t('cutoffReset') }}</button>
+            }
+          </div>
+          </details>
+          }
+
+          <ul class="numbers" [attr.aria-label]="t('numbersLabel')">
+            @if (admin && addHref(r); as href) {
+              <li class="addnew">
+                <a [attr.href]="r.closed ? null : href" [attr.role]="r.closed ? 'link' : null" [attr.aria-disabled]="r.closed ? 'true' : null" [title]="t('tipAdd')"><span class="plus" aria-hidden="true">+</span><span class="label">{{ t('addNew') }}</span><span class="visually-hidden"> {{ t('addRacer') }}, {{ r.title }}</span></a>
+              </li>
+            }
+            @for (e of shown(r); track e.id) {
+              <li class="num" [attr.data-state]="stateOf(e)" [class.fresh]="fresh().has(e.id)" [class.late]="e.signed && (e.minutesLate ?? 0) > 0" [title]="tipOf(e)" [attr.aria-label]="stateLabel(e)">
+                @if (admin) {
+                  <a class="numlink" [href]="competitorHref(e.id)" [attr.target]="competitorId ? null : '_blank'" [attr.rel]="competitorId ? null : 'noopener'" [attr.aria-label]="t('tipCompetitor', { cap: e.cap }) + ', ' + stateLabel(e) + (competitorId ? '' : ', ' + t('newTab'))"><span aria-hidden="true" class="mark">{{ markOf(e) }}</span>{{ e.cap }}</a>
+                } @else {
+                  <span aria-hidden="true" class="mark">{{ markOf(e) }}</span>{{ e.cap }}
+                }
+              </li>
+            }
+          </ul>
+          @if (admin && notesOf(r).length) {
+            <details class="race-notes">
+              <summary><svg class="chev" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6" /></svg>{{ t('notesHeading') }} <span class="badge-count">{{ notesOf(r).length }}</span></summary>
+              <ul class="notes">
+                @for (n of notesOf(r); track n.id) {
+                  <li [class.warning]="n.level === 'warning' && !n.resolved" [class.done]="n.resolved">
+                    <strong>{{ entryOf(n.entry) }}</strong> {{ n.text }}
+                    <small>{{ n.resolved ? t('noteResolved', { who: n.resolvedBy ?? '' }) : '(' + by(n) + ', ' + clockOf(n.at) + ')' }}</small>
+                  </li>
+                }
+              </ul>
+            </details>
+          }
+          </div>
+          </div>
+        </section>
+        </div>
+      }
+      </div>
+      @if (admin) {
+        <button type="button" class="all source" (click)="downloadSource()" [title]="t('tipDownloadSource')">{{ t('downloadSource') }}</button>
+      }
+
+      <div class="panels">
+      @if (!admin) {
+      <section>
+        <h2>{{ t('notesHeading') }}</h2>
+        <ul class="notes">
+          @for (n of openNotes(); track n.id) {
+            <li [class.warning]="n.level === 'warning'">
+              <strong>{{ entryOf(n.entry) }}</strong> {{ n.text }} <small>({{ by(n) }}, {{ clockOf(n.at) }})</small>
+              @if (!admin) {
+                <button type="button" (click)="resolve(n)">{{ t('resolve') }}</button>
+              }
+            </li>
+          }
+          @for (n of doneNotes(); track n.id) {
+            <li class="done">{{ entryOf(n.entry) }} {{ n.text }} <small>{{ t('noteResolved', { who: n.resolvedBy ?? '' }) }}</small></li>
+          }
+        </ul>
+        <h3>{{ t('noteAddHeading') }}</h3>
+        <form (submit)="$event.preventDefault(); addNote()">
+        <label>
+          <span>{{ t('noteWho') }}</span>
+          <input type="text" autocomplete="off" [value]="noteQuery()" (input)="setQuery($event)" />
+        </label>
+        @if (!noteTarget()) {
+          <div class="picks">
+            @for (c of candidates(); track c.id) {
+              <button type="button" (click)="pickTarget(c)">{{ entryOf(c.id) }}</button>
+            }
+          </div>
+        }
+        <div class="levels">
+          <button type="button" [class.on]="noteLevel() === 'note'" (click)="noteLevel.set('note')">{{ t('levelNote') }}</button>
+          <button type="button" [class.on]="noteLevel() === 'warning'" (click)="noteLevel.set('warning')">{{ t('levelWarning') }}</button>
+        </div>
+        <label>
+          <span>{{ t('noteText') }}</span>
+          <input type="text" maxlength="200" [value]="noteText()" (input)="setNoteText($event)" />
+        </label>
+        <button type="submit" class="primary" [disabled]="!noteTarget() || !noteText().trim()">{{ t('noteAdd') }}</button>
+        </form>
+      </section>
+      }
+
+      <section>
+        <h2>{{ t('devicesHeading') }}</h2>
+        <ul class="devices">
+          @for (d of st.devices; track d.id; let i = $index) {
+            <li [class.alert]="d.clockOff">
+              <div class="devrow">
+                <strong>{{ deviceLabel(d, i) }}</strong>
+                @if (admin) {
+                  <button type="button" class="small danger" [title]="t('tipDeviceRemove')" (click)="removeDevice(d)">{{ t('deviceRemove') }}</button>
+                }
+              </div>
+              <small class="detail">{{ t('deviceSeen', { when: ago(d.lastSeen) }) }}, {{ t('deviceSigns', { n: d.signs }) }}, {{ t('deviceOps', { n: d.changes }) }}@if (d.clockOff) { <br />{{ t('deviceClock', { sec: deviceClockSeconds(d.offsetMs) }) }} }</small>
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (st.latestActions.length) {
+      <section class="log">
+        <h2>{{ t('actionsHeading') }}</h2>
+        <ul>
+          @for (a of st.latestActions; track a.id) {
+            <li>
+              <time>{{ clockOf(a.at) }}</time>
+              @if (raceOfEntry(a.entry); as race) {
+                <a [href]="'#race-' + race.id">{{ race.name }}</a>
+              } @else if (admin && a.entry) {
+                <a [href]="competitorHref(a.entry)" [attr.target]="competitorId ? null : '_blank'" [attr.rel]="competitorId ? null : 'noopener'">{{ competitorOf(a.entry) }}@if (!competitorId) {<span class="visually-hidden"> ({{ t('newTab') }})</span>}</a>
+              } @else {
+                {{ competitorOf(a.entry ?? '') }}
+              }
+              {{ actionText(a) }}@if (whoOf(a); as who) { <small class="by">{{ who }}</small> }
+            </li>
+          }
+        </ul>
+      </section>
+      }
+      </div>
+      }
+    }
+  }
+</main>

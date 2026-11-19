@@ -1,0 +1,283 @@
+import { expect, test } from '@playwright/test';
+import { local, open, upload } from './dts-helpers';
+import { sampleXml } from './dts-sample';
+
+test.describe('dts sign page', () => {
+  test.use({ locale: 'nl-NL' });
+
+  test('uploads a file, signs a racer and shows it on the manage page', async ({ page, context }) => {
+    const links = await upload(page);
+    await expect(page.getByText('NO1', { exact: false }).first()).toBeVisible();
+    await open(page, '11', /11\s+Aardappel/);
+    await expect(page.locator('.badge.cap .v')).toHaveText('11');
+    await page.getByRole('button', { name: 'Markeer als getekend' }).click();
+    await expect(page.getByText('In sync met server')).toBeVisible();
+    await page.getByRole('button', { name: 'Terug' }).click();
+    await expect(page.getByText('1 van 2 getekend')).toBeVisible();
+
+    const manage = await context.newPage();
+    await manage.goto(links.manage.replace(/^https?:\/\/[^/]+/, ''));
+    await expect(manage.getByText(/Laatste wijziging (zojuist|\d+ min geleden)/)).toBeVisible();
+    await expect(manage.locator('.race', { hasText: 'NO1' }).locator('.count strong')).toHaveText(/^1 van /);
+  });
+
+  test('names the page in the tab, searches with the enter key and keeps the downloads at the bottom', async ({ page }) => {
+    await page.goto('/dts/sign?new=1');
+    await expect(page).toHaveTitle('Nieuwe tekenlijst · DTS Tekenlijst');
+    await upload(page);
+    await expect(page).toHaveTitle('DTS Tekenlijst');
+    await page.getByLabel('Zoek op beennummer of naam').fill('11');
+    await page.getByLabel('Zoek op beennummer of naam').press('Enter');
+    await expect(page.locator('.badge.cap .v')).toHaveText('11');
+    await expect(page).toHaveTitle('Nummer 11 · DTS Tekenlijst');
+    await page.getByRole('button', { name: 'Terug' }).click();
+    const box = await page.locator('.downloads').boundingBox();
+    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan(page.viewportSize()!.height * 0.6);
+    await page.getByRole('button', { name: /Wissel naar English/ }).click();
+    await expect(page).toHaveTitle('DTS Sign-in');
+    await expect(page.locator('.lang span.on')).toHaveText('EN');
+  });
+
+  test('keeps several sessions side by side, each addressed by ?s= in its own tab', async ({ page, context }) => {
+    await upload(page);
+    await expect(page).toHaveURL(/\?s=[0-9a-f]+$/);
+    const first = new URL(page.url()).searchParams.get('s')!;
+    await open(page, '11', /11\s+Aardappel/);
+    await page.getByRole('button', { name: 'Markeer als getekend' }).click();
+    await expect(page.getByText('In sync met server')).toBeVisible();
+
+    const other = await context.newPage();
+    await other.goto('/dts/sign?new=1');
+    await other.setInputFiles('input[type=file]', { name: 'DTS_two.xml', mimeType: 'text/xml', buffer: Buffer.from(sampleXml()) });
+    await expect(other.getByRole('heading', { name: /Klaar/ })).toBeVisible();
+    const second = local((await other.locator('.url').first().textContent())!.trim()).split('#')[1].split('.')[0];
+    await other.getByRole('button', { name: 'Verder' }).click();
+    expect(second).not.toBe(first);
+
+    // a reload returns to the same session in each tab, without the keys in the address
+    await page.goto(`/dts/sign?s=${first}`);
+    await other.goto(`/dts/sign?s=${second}`);
+    await expect(page.getByLabel('Beennummer of naam')).toBeVisible();
+    await expect(other.getByLabel('Beennummer of naam')).toBeVisible();
+    expect(new URL(page.url()).searchParams.get('s')).toBe(first);
+    expect(new URL(other.url()).searchParams.get('s')).toBe(second);
+
+    // the first has the signed racer, the second does not
+    await open(page, '11', /11\s+Aardappel/);
+    await expect(page.locator('.tick')).toBeVisible();
+    await open(other, '11', /11\s+Aardappel/);
+    await expect(other.locator('.state')).toContainText('Nog niet getekend');
+
+    // switching: the list names both and the link goes to the other one
+    await page.goto(`/dts/sign?s=${first}`);
+    const list = page.locator('.sessions');
+    await list.locator('summary').click();
+    await expect(list.locator('li')).toHaveCount(2);
+    await list.locator('li').getByRole('button').click();
+    await expect(page).toHaveURL(new RegExp(`\\?s=${second}`));
+  });
+
+  test('says so when the stored copy is gone', async ({ page }) => {
+    await upload(page);
+    const id = new URL(page.url()).searchParams.get('s')!;
+    await expect(page.getByText('In sync met server')).toBeVisible();
+    // cleared while the page is open: noticed and written back
+    await page.evaluate(() => new Promise<void>((done) => {
+      const req = indexedDB.open('dts-sign', 1);
+      req.onsuccess = () => {
+        const tx = req.result.transaction('kv', 'readwrite');
+        tx.objectStore('kv').clear();
+        tx.oncomplete = () => done();
+      };
+    }));
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await expect(page.getByRole('alert').filter({ hasText: 'gewist terwijl de pagina openstond' })).toBeVisible();
+    // cleared before the page was opened: the address names a list the device no longer has
+    await page.evaluate(() => new Promise<void>((done) => {
+      const req = indexedDB.open('dts-sign', 1);
+      req.onsuccess = () => {
+        const tx = req.result.transaction('kv', 'readwrite');
+        tx.objectStore('kv').clear();
+        tx.oncomplete = () => done();
+      };
+    }));
+    await page.goto(`/dts/sign?s=${id}`);
+    await expect(page.getByRole('heading', { name: 'Deze tekenlijst staat niet op dit apparaat' })).toBeVisible();
+  });
+
+  test('does not warn a signer when a race starts far from now', async ({ page }) => {
+    await upload(page, sampleXml({ firstStartInMinutes: 22030, secondStartInMinutes: 22090 }));
+    await expect(page.getByText('de start is over')).toHaveCount(0);
+  });
+
+  test('shows when the list was last updated next to the sync status', async ({ page }) => {
+    await upload(page);
+    await expect(page.getByRole('status').filter({ hasText: /In sync met server · Laatst bijgewerkt \d\d:\d\d/ })).toBeVisible();
+  });
+
+  test('keeps the language in the address', async ({ page }) => {
+    await page.goto('/dts/sign?new=1&lang=en');
+    await expect(page).toHaveTitle('New sign-in list · DTS Sign-in');
+    await page.getByRole('button', { name: /Switch to|Wissel naar/ }).click();
+    await expect(page).toHaveURL(/lang=nl/);
+  });
+
+  test('signs straight away after the cutoff while the race is open', async ({ page }) => {
+    await upload(page); // NO-2 starts in 20 minutes, its cutoff (30 minutes before the start) has passed
+    await open(page, '21', /21\s+Citroen/);
+    await page.getByRole('button', { name: 'Markeer als getekend' }).click();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByText('In sync met server')).toBeVisible();
+    await page.getByRole('button', { name: 'Terug' }).click();
+    await open(page, '21', /21\s+Citroen/);
+    await expect(page.locator('.tick')).toBeVisible();
+    await expect(page.locator('.state')).toHaveText('Getekend');
+  });
+
+  test('removes a transponder by saving it empty, without a remove button', async ({ page }) => {
+    await upload(page);
+    await open(page, '12', /12\s+Bakker/);
+    await page.getByRole('button', { name: 'Transponder 2' }).click();
+    await expect(page.getByRole('button', { name: 'Verwijderen' })).toHaveCount(0);
+    await page.getByLabel('Transponder 2').fill('ZZ99999');
+    await page.getByRole('button', { name: 'Opslaan' }).click();
+    await expect(page.locator('.badges')).toContainText('ZZ-99999');
+    await page.getByRole('button', { name: 'Transponder 2' }).click();
+    await page.getByLabel('Transponder 2').fill('');
+    await page.getByRole('button', { name: 'Opslaan' }).click();
+    await expect(page.locator('.badges')).not.toContainText('ZZ-99999');
+  });
+
+  test('opens a competitor from a row of the log', async ({ page }) => {
+    await upload(page);
+    await open(page, '11', /11\s+Aardappel/);
+    await page.getByRole('button', { name: 'Markeer als getekend' }).click();
+    await expect(page.getByText('In sync met server')).toBeVisible();
+    await page.getByRole('button', { name: 'Terug' }).click();
+    await page.locator('.log summary').click();
+    await page.locator('.log').getByRole('button', { name: /^11 Aardappel/ }).click();
+    await expect(page.locator('.badge.cap .v')).toHaveText('11');
+  });
+
+  test('warns, but does not block, on a cap number used twice in a race', async ({ page }) => {
+    await upload(page);
+    await open(page, '12', /12\s+Bakker/);
+    await page.getByRole('button', { name: /^Beennummer/ }).click();
+    await page.getByLabel('Beennummer', { exact: true }).fill('11');
+    await expect(page.getByRole('alert')).toContainText('Nummer 11 is al in gebruik door Aardappel');
+    await page.getByRole('button', { name: 'Opslaan' }).click();
+    await expect(page.locator('.badge.cap .v')).toHaveText('11');
+    await expect(page.getByRole('alert').first()).toContainText('al in gebruik');
+  });
+
+  test('refuses a malformed transponder with a plain sentence', async ({ page }) => {
+    await upload(page);
+    await open(page, '11', /11\s+Aardappel/);
+    await page.getByRole('button', { name: 'Transponder 2' }).click();
+    await page.getByLabel('Transponder 2').fill('12345');
+    await expect(page.getByRole('alert')).toContainText('twee letters');
+    await expect(page.getByRole('button', { name: 'Opslaan' })).toBeDisabled();
+  });
+
+  test('keeps working offline and sends everything when the connection is back', async ({ page, context }) => {
+    await upload(page);
+    await context.setOffline(true);
+    await open(page, '11', /11\s+Aardappel/);
+    await page.getByRole('button', { name: 'Markeer als getekend' }).click();
+    await expect(page.getByText(/nog niet gesynchroniseerd|Geen verbinding/)).toBeVisible();
+    await context.setOffline(false);
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await expect(page.getByText('In sync met server')).toBeVisible({ timeout: 20000 });
+  });
+
+  test('limits what is typed in the add form and adds the transponder hyphen', async ({ page }) => {
+    await upload(page);
+    await page.getByRole('button', { name: 'Nieuwe deelnemer' }).first().click();
+    await page.getByLabel('Naam', { exact: true }).fill('  Esselink, Eva');
+    await expect(page.getByLabel('Naam', { exact: true })).toHaveValue('Esselink, Eva');
+    await page.getByLabel('Beennummer', { exact: true }).pressSequentially('x 12345');
+    await expect(page.getByLabel('Beennummer', { exact: true })).toHaveValue('X123');
+    await expect(page.getByLabel('Transponder 1')).toHaveAttribute('placeholder', 'AA-12345');
+    await expect(page.getByLabel(/Transponder 2/)).toHaveAttribute('placeholder', 'AA-12345');
+    await page.getByLabel('Transponder 1').pressSequentially('zz 99999999');
+    await expect(page.getByLabel('Transponder 1')).toHaveValue('ZZ-99999');
+    await expect(page.getByRole('button', { name: 'Toevoegen' })).toBeEnabled();
+    await page.getByLabel('Transponder 1').fill('');
+    await expect(page.getByRole('button', { name: 'Toevoegen' })).toBeDisabled();
+  });
+
+  test('adds a racer with all fields in one form', async ({ page }) => {
+    await upload(page);
+    await page.getByRole('button', { name: 'Nieuwe deelnemer' }).first().click();
+    await expect(page.getByRole('button', { name: 'Toevoegen' })).toBeDisabled();
+    await page.getByLabel('Naam', { exact: true }).fill('Esselink, Eva');
+    await page.getByLabel('Beennummer', { exact: true }).fill('x5');
+    await page.getByLabel('Transponder 1').fill('zz99999');
+    await page.getByLabel('Nu tekenen?').check();
+    await page.getByRole('button', { name: 'Toevoegen' }).click();
+    await expect(page.locator('.badge.cap .v')).toHaveText('X5');
+    await expect(page.locator('.tick')).toBeVisible();
+  });
+
+  test('lets the manage page change the cutoff of a race', async ({ page, context }) => {
+    const links = await upload(page);
+    const manage = await context.newPage();
+    await manage.goto(links.manage.replace(/^https?:\/\/[^/]+/, ''));
+    const race = manage.locator('.race', { hasText: 'NO2' });
+    await race.locator('.cutoffwrap summary').click();
+    await race.getByLabel('Minuten voor de start').fill('10');
+    await race.getByRole('button', { name: 'Opslaan' }).click();
+    await expect(manage.getByText('Opgeslagen')).toBeVisible();
+    await page.bringToFront();
+    await page.reload();
+    await open(page, '21', /21\s+Citroen/);
+    await page.getByRole('button', { name: 'Markeer als getekend' }).click();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+
+  test('has no horizontal scroll at 320px and big targets', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await upload(page);
+    await open(page, '11', /11\s+Aardappel/);
+    await expect(page.getByRole('button', { name: 'Markeer als getekend' })).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+    for (const b of await page.locator('button.big').all()) expect((await b.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(63);
+  });
+
+  test('offers a signer no way to start a list and explains a device without one', async ({ page }) => {
+    await page.goto('/dts/sign');
+    await expect(page.getByRole('heading', { name: 'Deze tekenlijst staat niet op dit apparaat' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Alle tekenlijsten' })).toHaveCount(0);
+    await upload(page);
+    await expect(page.getByRole('button', { name: 'Nieuwe tekenlijst' })).toHaveCount(0);
+  });
+
+  test('shows a race overview with the numbers as status badges and returns to it from a racer', async ({ page }) => {
+    await upload(page);
+    await open(page, '11', /11\s+Aardappel/);
+    await page.getByRole('button', { name: 'Markeer als getekend' }).click();
+    await expect(page.getByText('In sync met server')).toBeVisible();
+    await page.getByRole('button', { name: 'Terug' }).click();
+    const fold = page.locator('.race-fold', { hasText: 'NO1' });
+    await expect(fold).toHaveAttribute('open', '');
+    await expect(fold.locator('.numbers .num[data-state="signed"]')).toHaveText(/11/);
+    await expect(fold.locator('.numbers .num[data-state="open"]').first()).toBeVisible();
+    await fold.locator('.numbers .num[data-state="open"]').first().click();
+    await page.getByRole('button', { name: 'Terug' }).click();
+    await expect(page.getByLabel('Beennummer of naam')).toBeVisible();
+  });
+
+  test('gives each screen its own address that survives a reload and the back button', async ({ page }) => {
+    await upload(page);
+    await open(page, '11', /11\s+Aardappel/);
+    await expect(page).toHaveURL(/view=rider&rider=/);
+    await page.reload();
+    await expect(page.locator('.badge.cap .v')).toHaveText('11');
+    await page.goBack();
+    await expect(page.getByLabel('Beennummer of naam')).toBeVisible();
+    await expect(page).not.toHaveURL(/view=/);
+    await page.goForward();
+    await expect(page.locator('.badge.cap .v')).toHaveText('11');
+  });
+});

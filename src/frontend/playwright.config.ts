@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
-import { BACKEND_PORT, MOCK_PORT, MOCK_URL, WEB_PORT } from './e2e/env';
+import { BACKEND_PORT, DTS_PORT, DTS_WEB_PORT, MOCK_PORT, MOCK_URL, WEB_PORT } from './e2e/env';
 
 const ci = !!process.env['CI'];
 const srcRoot = path.resolve(__dirname, '..');
@@ -17,7 +17,19 @@ export default defineConfig({
   retries: ci ? 1 : 0,
   reporter: ci ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: { baseURL: `http://localhost:${WEB_PORT}`, trace: 'retain-on-failure' },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // The DTS pages run in every browser and on a phone, on demand: DTS_BROWSERS=1 npx playwright test dts- --project=firefox
+    ...(process.env['DTS_BROWSERS']
+      ? [
+          { name: 'dts-phone', testMatch: '**/dts-*.e2e.ts', use: { ...devices['Pixel 7'] } },
+          { name: 'firefox', testMatch: '**/dts-*.e2e.ts', use: { ...devices['Desktop Firefox'] } },
+          { name: 'webkit', testMatch: '**/dts-*.e2e.ts', use: { ...devices['Desktop Safari'] } },
+          { name: 'iphone', testMatch: '**/dts-*.e2e.ts', use: { ...devices['iPhone 14'] } },
+          { name: 'msedge', testMatch: '**/dts-*.e2e.ts', use: { ...devices['Desktop Edge'], channel: 'msedge' } },
+        ]
+      : []),
+  ],
   webServer: [
     {
       command: 'go run .',
@@ -50,7 +62,29 @@ export default defineConfig({
       },
     },
     {
-      command: `npx ng serve --port ${WEB_PORT} --proxy-config e2e/proxy.conf.json`,
+      command: 'go run ./cmd/dts',
+      cwd: path.join(srcRoot, 'dts'),
+      port: DTS_PORT,
+      reuseExistingServer: !ci,
+      env: {
+        DTS_LISTEN_ADDR: `:${DTS_PORT}`,
+        DTS_DATA_DIR: path.join(__dirname, 'test-results/dts-data'),
+        DTS_TIMEZONE: 'Local',
+        DTS_ADMIN_SECRET: 'dev-admin-secret',
+        DTS_CREATES_PER_HOUR: '100000',
+        DTS_CREATES_BURST: '100000',
+      },
+    },
+    {
+      // the DTS pages are their own application; the dashboard dev server proxies /dts/ to it
+      command: `npx ng serve dts --host 127.0.0.1 --port ${DTS_WEB_PORT}`,
+      cwd: __dirname,
+      url: `http://127.0.0.1:${DTS_WEB_PORT}/dts/`,
+      reuseExistingServer: !ci,
+      timeout: 180_000,
+    },
+    {
+      command: `npx ng serve dashboard --port ${WEB_PORT} --proxy-config e2e/proxy.conf.json`,
       cwd: __dirname,
       url: `http://localhost:${WEB_PORT}`,
       reuseExistingServer: !ci,

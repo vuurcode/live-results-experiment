@@ -409,7 +409,7 @@ test('the competition picker replaces the event name, times then city then name,
   await expect(page.getByRole('heading', { level: 1 })).toHaveClass(/visually-hidden/);
   const labels = await select.locator('option').allTextContents();
   const running = labels.find((l) => l.includes('E2E Individual Event'))!;
-  expect(running.trim()).toMatch(/^(🔴 |⚪ )?\d{2}:\d{2}( - \d{2}:\d{2})? · Mockville · E2E Individual Event$/);
+  expect(running.trim()).toMatch(/^(🔴 |⚪ )?\d{2}:\d{2}( - \d{2}:\d{2})? Mockville · E2E Individual Event$/);
 });
 
 test('the settings page holds the general settings and, in a mass start match, the mass start ones under their own headings', async ({ page, request }) => {

@@ -77,3 +77,20 @@ describe('keepScreenAwake', () => {
     expect(() => keepScreenAwake({}, f.doc as never)()).not.toThrow();
   });
 });
+
+describe('keepScreenAwake with an idle limit', () => {
+  it('releases the lock after the idle time and takes it again on the next touch', async () => {
+    const f = fakes();
+    const events: Record<string, () => void> = {};
+    f.doc.addEventListener = (t: string, l: () => void) => { events[t] = l; };
+    f.doc.removeEventListener = () => undefined;
+    keepScreenAwake(f.host, f.doc as never, 20);
+    await settle();
+    expect(f.state.requests).toBe(1);
+    await new Promise((r) => setTimeout(r, 40));
+    expect(f.state.releases).toBe(1);
+    events['pointerdown']();
+    await settle();
+    expect(f.state.requests).toBe(2);
+  });
+});
