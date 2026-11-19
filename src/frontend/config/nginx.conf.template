@@ -22,6 +22,8 @@ gzip_types text/css application/javascript text/javascript application/json imag
 server {
     listen ${FRONTEND_LISTEN_PORT};
     root /usr/share/nginx/html;
+    # The container listens on a port the hosting does not expose and sees plain http: redirects stay relative to the address the client used.
+    absolute_redirect off;
 
     # Every location includes the security headers itself: a location with an add_header of its own drops the inherited ones.
     # Files with a hash in their name never change: cache them for good.
