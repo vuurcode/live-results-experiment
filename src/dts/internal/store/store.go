@@ -791,7 +791,8 @@ func withoutClosed(sess *Session, ops []dts.Op) []dts.Op {
 		if sess.Meta.Closed[race] {
 			continue
 		}
-		if op.Kind == dts.OpAddRacer {
+		// replay rejects a racer added under an id that is taken, so the id keeps the race of the entry that has it
+		if _, taken := raceOf[op.ID]; op.Kind == dts.OpAddRacer && !taken {
 			raceOf[op.ID] = op.Race
 		}
 		out = append(out, op)

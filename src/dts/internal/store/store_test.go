@@ -344,3 +344,28 @@ func TestSyncStoresNothingWhenOneLineIsInvalid(t *testing.T) {
 		t.Errorf("%d operations stored", len(sess.Ops))
 	}
 }
+
+func TestAClosedRaceStaysClosedToARacerAddedUnderTheIdOfOneOfItsEntries(t *testing.T) {
+	s, _ := newStore(t)
+	two := strings.Replace(sample, "<DTS_Licentiehouder>", `<DTS_Wedstrijd><WedstrijdID>4</WedstrijdID><Start>2026-01-10T20:10:00</Start><CategorieCode>NO2</CategorieCode></DTS_Wedstrijd>
+<DTS_Licentiehouder>`, 1)
+	id, _, _, _ := s.Create([]byte(two))
+	if err := s.SetClosed(id, "3", true); err != nil {
+		t.Fatal(err)
+	}
+	// one batch: a racer added to the open race under the id of an entry of the closed one, then a change to that id
+	add := dts.Op{ID: "1001@3", At: now, Kind: dts.OpAddRacer, Who: "Someone", Race: "4", Cap: "X1", T1: "AA-12345"}
+	sign := dts.Op{ID: "s1", At: now.Add(time.Second), Kind: dts.OpSign, Entry: "1001@3", Value: "1"}
+	if _, err := s.AppendOps(id, []dts.Op{add, sign}); err != nil {
+		t.Fatal(err)
+	}
+	sess, err := s.Load(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, o := range sess.Ops {
+		if o.ID == "s1" {
+			t.Errorf("the change to an entry of a closed race was stored: %+v", o)
+		}
+	}
+}
