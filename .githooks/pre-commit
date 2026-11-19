@@ -22,6 +22,7 @@ go_module() {
 
 go_module src/backend/src
 go_module src/mockserver
+go_module src/dts
 
 if touched src/frontend/; then
 	echo "pre-commit: src/frontend"

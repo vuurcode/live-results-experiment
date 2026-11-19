@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -59,7 +60,7 @@ func newEnv(t *testing.T) *env {
 }
 
 func (e *env) do(method, path, key, body string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(method, path, strings.NewReader(body))
+	req := httptest.NewRequestWithContext(context.Background(), method, path, strings.NewReader(body))
 	req.RemoteAddr = "192.0.2.1:1234"
 	if key != "" {
 		req.Header.Set("Authorization", "Bearer "+key)
@@ -90,8 +91,8 @@ func ops(t *testing.T, list ...map[string]any) string {
 	return string(b)
 }
 
-func op(id string, min int, kind, entry, value string) map[string]any {
-	return map[string]any{"id": id, "at": base.Add(time.Duration(min) * time.Minute), "kind": kind, "entry": entry, "value": value}
+func op(id string, mins int, kind, entry, value string) map[string]any {
+	return map[string]any{"id": id, "at": base.Add(time.Duration(mins) * time.Minute), "kind": kind, "entry": entry, "value": value}
 }
 
 func TestRolesAndHeaders(t *testing.T) {
@@ -307,7 +308,7 @@ func TestUploadTooBig(t *testing.T) {
 
 func TestClientIP(t *testing.T) {
 	s := &Server{cfg: Config{ClientIPHeader: "X-Forwarded-For"}}
-	r := httptest.NewRequest("GET", "/", nil)
+	r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	r.RemoteAddr = "10.0.0.1:1"
 	r.Header.Set("X-Forwarded-For", "1.1.1.1, 203.0.113.9")
 	if got := s.clientIP(r); got != "203.0.113.9" {
@@ -360,7 +361,7 @@ func TestSyncTwoDevicesConverge(t *testing.T) {
 		t.Fatalf("B should receive all three operations: %d %s", code, out["ops"])
 	}
 	// A asks again from its cursor and gets only B's
-	code, out = e.sync(e.sk, syncBody("dev-a", "Desk 1", [3]int{2, 0, 0}, base))
+	_, out = e.sync(e.sk, syncBody("dev-a", "Desk 1", [3]int{2, 0, 0}, base))
 	got = nil
 	json.Unmarshal(out["ops"], &got)
 	if len(got) != 1 || got[0]["id"] != "b1" {

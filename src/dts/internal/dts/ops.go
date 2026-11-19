@@ -179,7 +179,7 @@ func validNewLicence(s string) bool {
 		return false
 	}
 	for _, r := range s {
-		if r > unicode.MaxASCII || !(unicode.IsLetter(r) || unicode.IsDigit(r)) {
+		if r > unicode.MaxASCII || (!unicode.IsLetter(r) && !unicode.IsDigit(r)) {
 			return false
 		}
 	}

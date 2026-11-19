@@ -1,6 +1,9 @@
 package dts
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestWarnings(t *testing.T) {
 	d := mustParse(t)
@@ -61,7 +64,7 @@ func TestWarningsIgnoreTheSameRiderInTwoRaces(t *testing.T) {
 	if w := Warnings(same); len(w) != 0 {
 		t.Fatalf("one rider: %+v", w)
 	}
-	other := append(same, Entry{ID: "2@13", Licence: "1002", RaceID: "13", Cap: "2", T1: "AA-11111"})
+	other := append(slices.Clone(same), Entry{ID: "2@13", Licence: "1002", RaceID: "13", Cap: "2", T1: "AA-11111"})
 	if w := Warnings(other); len(w) == 0 {
 		t.Fatal("two riders on one transponder must warn")
 	}

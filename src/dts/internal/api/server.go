@@ -212,11 +212,11 @@ func contains(rs []store.Role, r store.Role) bool {
 	return false
 }
 
-func readBody(w http.ResponseWriter, r *http.Request, max int64) ([]byte, bool) {
-	if max <= 0 { // like the store, 0 means no limit
-		max = math.MaxInt64
+func readBody(w http.ResponseWriter, r *http.Request, limit int64) ([]byte, bool) {
+	if limit <= 0 { // like the store, 0 means no limit
+		limit = math.MaxInt64
 	}
-	b, err := io.ReadAll(http.MaxBytesReader(w, r.Body, max))
+	b, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit))
 	if err != nil {
 		http.Error(w, "too big", http.StatusRequestEntityTooLarge)
 		return nil, false
@@ -224,9 +224,9 @@ func readBody(w http.ResponseWriter, r *http.Request, max int64) ([]byte, bool) 
 	return b, true
 }
 
-func decode[T any](w http.ResponseWriter, r *http.Request, max int64) (T, bool) {
+func decode[T any](w http.ResponseWriter, r *http.Request, limit int64) (T, bool) {
 	var v T
-	b, ok := readBody(w, r, max)
+	b, ok := readBody(w, r, limit)
 	if !ok {
 		return v, false
 	}
@@ -526,7 +526,7 @@ func (s *Server) writeExport(w http.ResponseWriter, r *http.Request, id string) 
 	h := w.Header()
 	h.Set("Content-Type", contentType)
 	h.Set("Content-Disposition", `attachment; filename="`+name+`"`)
-	_, _ = w.Write(out)
+	_, _ = w.Write(out) //nolint:gosec // a download served as an attachment, not rendered
 }
 
 func (s *Server) remove(w http.ResponseWriter, r *http.Request) {

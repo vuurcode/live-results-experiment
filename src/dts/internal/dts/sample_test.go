@@ -36,4 +36,4 @@ func mustParse(t *testing.T) *Doc {
 
 var t0 = time.Date(2026, 1, 10, 17, 0, 0, 0, time.UTC)
 
-func at(min int) time.Time { return t0.Add(time.Duration(min) * time.Minute) }
+func at(mins int) time.Time { return t0.Add(time.Duration(mins) * time.Minute) }

@@ -278,7 +278,7 @@ func newRow(e Entry, order []string, multi bool, eol string) string {
 func (d *Doc) check(out, src []byte, entries []Entry, race string) error {
 	got, err := Parse(out)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrExport, err)
+		return fmt.Errorf("%w: %w", ErrExport, err)
 	}
 	want := map[string]Entry{}
 	for _, e := range wantedEntries(entries, race) {

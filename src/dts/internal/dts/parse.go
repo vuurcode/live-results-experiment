@@ -3,6 +3,7 @@ package dts
 import (
 	"bytes"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -19,11 +20,11 @@ func Parse(data []byte) (*Doc, error) {
 	seenRoot := false
 	for {
 		tok, err := dec.Token()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("%w: %v", ErrInvalid, err)
+			return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
 		}
 		start, ok := tok.(xml.StartElement)
 		if !ok {
@@ -40,14 +41,14 @@ func Parse(data []byte) (*Doc, error) {
 		case "DTS_Wedstrijd", "DTS_Licentiehouder", "DTS_Deelname":
 			fields, err := readFields(dec)
 			if err != nil {
-				return nil, fmt.Errorf("%w: %v", ErrInvalid, err)
+				return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
 			}
 			if err := doc.add(start.Name.Local, fields); err != nil {
 				return nil, err
 			}
 		default:
 			if err := dec.Skip(); err != nil {
-				return nil, fmt.Errorf("%w: %v", ErrInvalid, err)
+				return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
 			}
 		}
 	}

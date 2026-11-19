@@ -32,8 +32,8 @@ func newStore(t *testing.T) (*Store, *time.Time) {
 	return s, &clock
 }
 
-func op(id string, min int) dts.Op {
-	return dts.Op{ID: id, At: now.Add(time.Duration(min) * time.Minute), Kind: dts.OpCap, Entry: "1001@3", Value: "5"}
+func op(id string, mins int) dts.Op {
+	return dts.Op{ID: id, At: now.Add(time.Duration(mins) * time.Minute), Kind: dts.OpCap, Entry: "1001@3", Value: "5"}
 }
 
 func TestCreateAndAuth(t *testing.T) {
