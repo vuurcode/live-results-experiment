@@ -129,6 +129,10 @@ func (d *Doc) apply(entries []Entry, op Op) ([]Entry, error) {
 		if _, ok := d.Race(op.Race); !ok {
 			return entries, fmt.Errorf("unknown race %q", op.Race)
 		}
+		// an entry id names one entry: a racer added under the id of another would be reached by that id's later operations
+		if slices.ContainsFunc(entries, func(e Entry) bool { return e.ID == op.ID }) {
+			return entries, fmt.Errorf("entry id %q is already in use", op.ID)
+		}
 		e := Entry{ID: op.ID, RaceID: op.Race, Cap: op.Cap, T1: op.T1, T2: op.T2, Signed: op.Signed, Added: true}
 		if rider, ok := d.Riders[strings.TrimSpace(op.Who)]; ok {
 			e.Licence, e.Name, e.Added = rider.Licence, rider.Name, false

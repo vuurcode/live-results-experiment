@@ -76,3 +76,11 @@ func TestAddRacer(t *testing.T) {
 		t.Errorf("a free-form name is an added racer: %+v", e)
 	}
 }
+
+func TestAddRacerCannotTakeTheIdOfAnExistingEntry(t *testing.T) {
+	d := mustParse(t)
+	entries, rej := d.Replay([]Op{{ID: "1001@3", At: at(1), Kind: OpAddRacer, Who: "Someone", Race: "3", Cap: "X1", T1: "AA-12345"}})
+	if len(rej) != 1 || len(entries) != len(d.Entries) {
+		t.Fatalf("entries %d, rejected %+v", len(entries), rej)
+	}
+}
