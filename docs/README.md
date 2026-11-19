@@ -6,5 +6,6 @@
 - [Backend configuration](backend-configuration.md) and [frontend configuration](frontend-configuration.md): settings
 - [Frontend structure](frontend-structure.md): where things live in the page
 - [Mockserver](mockserver.md): the fake timing source
+- [DTS sign-in](dts.md): the experimental, separate sign-in tool
 
 Each component's `SPECS.md` lists what it must do and how that is tested.

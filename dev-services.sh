@@ -35,6 +35,16 @@ run_go() {
   run_go /app/src/backend/src backend ./cmd/server
 ) &
 
+# The experimental DTS sign-in service (docs/dts.md); its sessions are throwaway in development.
+(DTS_ADMIN_SECRET=dev-admin-secret DTS_DATA_DIR=${DTS_DATA_DIR:-/tmp/dts-data} DTS_RETENTION_DAYS=1 run_go /app/src/dts dts ./cmd/dts) &
+
+# The DTS pages are their own Angular application; the dashboard dev server proxies /dts/ to it.
+(
+  cd /app/src/frontend || exit 1
+  [ -x node_modules/.bin/ng ] || npm ci
+  exec npm run start:dts -- --poll 2000
+) &
+
 (
   cd /app/src/frontend || exit 1
   [ -x node_modules/.bin/ng ] || npm ci

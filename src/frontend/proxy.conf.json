@@ -1,4 +1,9 @@
 {
+  "^/dts(/|$)": {
+    "target": "http://localhost:4201",
+    "ws": true,
+    "changeOrigin": true
+  },
   "/ws": {
     "target": "ws://backend:5000",
     "ws": true,
@@ -6,6 +11,15 @@
   },
   "/api": {
     "target": "http://backend:5000",
+    "changeOrigin": true
+  },
+  "/dts-api/admin": {
+    "target": "http://backend:5002",
+    "changeOrigin": true,
+    "headers": { "Authorization": "Bearer dev-admin-secret" }
+  },
+  "/dts-api": {
+    "target": "http://backend:5002",
     "changeOrigin": true
   }
 }

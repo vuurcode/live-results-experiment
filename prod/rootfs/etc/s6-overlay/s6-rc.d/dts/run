@@ -1,0 +1,6 @@
+#!/command/with-contenv sh
+# Experimental and unrelated to the live results: only nginx is reachable from outside, so the service listens on loopback.
+# The client address for the rate limit comes from BACKEND_CLIENT_IP_HEADER, shared with the live results (nginx's X-Forwarded-For
+# when unset). If it dies, s6 restarts it on its own; the container keeps serving the live results.
+export DTS_LISTEN_ADDR=127.0.0.1:5002 DTS_CLIENT_IP_HEADER="${BACKEND_CLIENT_IP_HEADER:-X-Forwarded-For}"
+exec s6-setuidgid nobody /usr/local/bin/dts

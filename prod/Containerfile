@@ -26,6 +26,15 @@ ENV CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
 COPY src/mockserver/go.mod src/mockserver/main.go src/mockserver/generate.go src/mockserver/startlist.go ./
 RUN go build -trimpath -ldflags="-s -w" -o /mockserver .
 
+# DTS sign-in service build (standard library only)
+FROM golang:1.27.3-alpine@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS dts
+WORKDIR /src
+ENV CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
+COPY src/dts/go.mod ./
+COPY src/dts/cmd/ ./cmd/
+COPY src/dts/internal/ ./internal/
+RUN go build -trimpath -ldflags="-s -w" -o /dts ./cmd/dts
+
 # s6-overlay release archives, verified against the published checksums (one stage per architecture)
 FROM scratch AS s6-amd64
 ADD --checksum=sha256:5379750ed30a84bbd2e2dd74847ba6b5bd29cd0b2e3ea2ec58049b57eb2eda12 https://github.com/just-containers/s6-overlay/releases/download/v3.2.3.2/s6-overlay-noarch.tar.xz /noarch.tar.xz
@@ -47,10 +56,12 @@ FROM nginx:alpine-slim
 # BACKEND_LIVE_RESULTS_INTERVAL_* seconds between requests to the upstream source per competition) are passed through as is.
 # BACKEND_RECORDINGS_DIR is where the followed competitions are recorded (empty: no recording); mount a volume there to keep
 # them across deploys. BACKEND_RECORDINGS_API_KEY, set as a secret, switches on the API to list, download and delete them.
-# MOCKSERVER_ENABLED=true adds a demo match, simulated and restarted every few minutes, to the competition list.
+# DTS_DATA_DIR is where the sign-in sessions of the experimental DTS part are kept (empty: the service is off); the other DTS_* settings
+# are described in docs/dts.md. DTS_MANAGE_PASSWORD, set as a secret, puts basic auth (user DTS_MANAGE_USERNAME, default manage) on the manage page. The admin page /dts/ needs DTS_ADMIN_PASSWORD (user DTS_ADMIN_USERNAME, default admin; without it nobody gets in) and its API needs DTS_ADMIN_SECRET (without it the API is off); both are set as secrets. MOCKSERVER_ENABLED=true adds a demo match, simulated and restarted every few minutes, to the competition list.
 ENV FRONTEND_LISTEN_PORT="8080" \
     FRONTEND_BACKEND_UPSTREAM="127.0.0.1:5000" \
     BACKEND_RECORDINGS_DIR="/data/recordings" \
+    DTS_DATA_DIR="/data/dts" \
     FRONTEND_BACKEND_URL="" \
     FRONTEND_CSP_CONNECT_SRC="'self'" \
     FRONTEND_CSP_FRAME_ANCESTORS="'none'" \
@@ -61,7 +72,9 @@ RUN --mount=type=bind,from=s6,target=/s6 tar -C / -Jxpf /s6/noarch.tar.xz && tar
 COPY --from=backend /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=backend /backend /usr/local/bin/backend
 COPY --from=mockserver /mockserver /usr/local/bin/mockserver
+COPY --from=dts /dts /usr/local/bin/dts
 COPY --from=frontend /app/dist/dashboard/browser /usr/share/nginx/html
+COPY --from=frontend /app/dist/dts/browser /usr/share/nginx/html/dts
 COPY src/frontend/config/nginx.conf.template /etc/nginx/default.conf.template
 COPY src/frontend/config/security-headers.conf /etc/nginx/security-headers.conf.template
 COPY src/frontend/public/env-inject.js /etc/nginx/env-inject.js.template

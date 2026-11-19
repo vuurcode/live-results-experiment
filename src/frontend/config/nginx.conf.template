@@ -1,5 +1,16 @@
-# Template: FRONTEND_LISTEN_PORT and FRONTEND_BACKEND_UPSTREAM (host:port of the backend) are filled in when the container starts.
+# Template: FRONTEND_LISTEN_PORT, FRONTEND_BACKEND_UPSTREAM (host:port of the backend) and FRONTEND_CLIENT_IP_VAR (the nginx variable
+# holding the client address header, $remote_addr without one) are filled in when the container starts.
 server_tokens off;
+
+# Basic auth has no lockout of its own: the locations behind a password allow a client address a steady 30 requests a minute
+# (the pages poll the API, so a short burst is fine). The service counts wrong keys itself; this covers the passwords.
+# The client address is the last entry of the header the hosting sets (BACKEND_CLIENT_IP_HEADER), else the connection's address.
+map ${FRONTEND_CLIENT_IP_VAR} $dts_client {
+    default $remote_addr;
+    ~(?<last>[^,\s]+)\s*$ $last;
+}
+limit_req_zone $dts_client zone=dts_auth:2m rate=30r/m;
+limit_req_status 429;
 
 # text assets compress to about a quarter; the websocket and already compressed images are left alone
 gzip on;
@@ -24,6 +35,26 @@ server {
         add_header Cache-Control "no-cache" always;
         include /etc/nginx/security-headers.conf;
     }
+    # /dts is the admin page; the app is served from the trailing-slash form
+    location = /dts {
+        return 302 /dts/;
+    }
+    # The admin page asks for a username and password; without DTS_ADMIN_PASSWORD the include denies everyone.
+    location = /dts/ {
+        include /etc/nginx/dts-admin-auth.conf;
+        limit_req zone=dts_auth burst=60 nodelay;
+        add_header Cache-Control "no-cache" always;
+        include /etc/nginx/security-headers.conf;
+        try_files /dts/index.html =404;
+    }
+    location = /dts/index.html {
+        add_header Cache-Control "no-cache" always;
+        include /etc/nginx/security-headers.conf;
+    }
+    location = /dts-sw.js {
+        add_header Cache-Control "no-cache" always;
+        include /etc/nginx/security-headers.conf;
+    }
     location = /env-inject.js {
         add_header Cache-Control "no-cache" always;
         include /etc/nginx/security-headers.conf;
@@ -33,6 +64,21 @@ server {
         add_header Cache-Control "public, max-age=86400" always;
         include /etc/nginx/security-headers.conf;
         try_files $uri =404;
+    }
+    # The DTS pages are their own application with their own index; its files are served by the rules above.
+    # The manage page asks for a username and password against abuse (the include is empty unless DTS_MANAGE_PASSWORD is set).
+    # The sign page and /dts-api are not behind it: the sessions are protected by their keys.
+    location ~ ^/dts/(manage|list)(/|$) {
+        include /etc/nginx/dts-manage-auth.conf;
+        limit_req zone=dts_auth burst=60 nodelay;
+        add_header Cache-Control "no-cache" always;
+        include /etc/nginx/security-headers.conf;
+        try_files /dts/index.html =404;
+    }
+    location /dts/ {
+        add_header Cache-Control "no-cache" always;
+        include /etc/nginx/security-headers.conf;
+        try_files $uri /dts/index.html;
     }
     location / {
         add_header Cache-Control "no-cache" always;
@@ -49,6 +95,35 @@ server {
         proxy_pass http://${FRONTEND_BACKEND_UPSTREAM};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    # The experimental DTS sign-in service. It is reached only through here; nginx appends the client address to
+    # X-Forwarded-For, which the service reads (DTS_CLIENT_IP_HEADER) for its rate limit. An upload is a few MB of XML.
+    # The admin endpoints sit behind the same login; nginx adds the secret the service requires, so the browser never holds it.
+    location ^~ /dts-api/admin/ {
+        include /etc/nginx/dts-admin-auth.conf;
+        limit_req zone=dts_auth burst=60 nodelay;
+        include /etc/nginx/dts-admin-secret.conf;
+        include /etc/nginx/security-headers.conf;
+        proxy_hide_header Content-Security-Policy;
+        proxy_hide_header X-Content-Type-Options;
+        proxy_hide_header Referrer-Policy;
+        proxy_hide_header X-Robots-Tag;
+        proxy_pass http://127.0.0.1:5002;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    location ^~ /dts-api/ {
+        include /etc/nginx/security-headers.conf;
+        proxy_hide_header Content-Security-Policy;
+        proxy_hide_header X-Content-Type-Options;
+        proxy_hide_header Referrer-Policy;
+        proxy_hide_header X-Robots-Tag;
+        client_max_body_size 6m;
+        proxy_pass http://127.0.0.1:5002;
+        proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
