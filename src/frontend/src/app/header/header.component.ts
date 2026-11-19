@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, Input, afterNextRender, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Input, afterNextRender, inject } from '@angular/core';
 import { AsyncPipe, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ButtonModule, FormModule, OffcanvasModule, PlaceholderModule } from '@coreui/angular';
@@ -20,7 +20,6 @@ import { TranslatePipe } from '../i18n/translate.pipe';
 export class HeaderComponent {
   protected dataService = inject(DataService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
-  private cdr = inject(ChangeDetectorRef);
 
   /** The event name is the heading of the page; other pages have a heading of their own. */
   @Input() primary = false;
@@ -56,27 +55,13 @@ export class HeaderComponent {
   /** Length of the shown option text; on narrow screens a longer one gets a smaller font. */
   protected selectedLabelLength(competitions: TodayCompetition[]): number {
     const m = competitions.find(x => x.id === this.dataService.competitionId);
-    return m ? `⚪ 00:00 - 00:00 · ${m.venue.city} · ${m.name}`.length : 20;
+    return m ? `⚪ 00:00 - 00:00 ${m.venue.city} · ${m.name}`.length : 20;
   }
 
   /** Open another competition; the page reads its competitionId on load. */
   protected openCompetition(event: Event): void {
     const id = (event.target as HTMLSelectElement).value;
     if (id) window.location.search = `?competitionId=${encodeURIComponent(id)}`;
-  }
-
-  protected demoStarting = false;
-
-  /** Starts the demo match on the backend, unless it is running, and opens it. */
-  protected async startDemo(): Promise<void> {
-    this.demoStarting = true;
-    const id = await this.dataService.startDemo();
-    if (id) {
-      window.location.search = `?competitionId=${encodeURIComponent(id)}`;
-      return;
-    }
-    this.demoStarting = false;
-    this.cdr.markForCheck();
   }
 
   protected isTodayCompetition(competitions: TodayCompetition[], id: string): boolean {

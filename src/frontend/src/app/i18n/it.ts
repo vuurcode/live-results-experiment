@@ -33,7 +33,6 @@ export const it: Translations = {
   menuStartList: 'Lista di partenza',
   menuMain: 'Vista dal vivo',
   menuSettings: 'Impostazioni',
-  menuDemo: 'Avvia una demo registrata',
   menuCreditBy: 'Creato da',
   menuCreditFree: 'Libero per uso pubblico',
   settingsTitle: 'Impostazioni',

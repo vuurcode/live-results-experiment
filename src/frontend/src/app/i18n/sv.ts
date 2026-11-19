@@ -33,7 +33,6 @@ export const sv: Translations = {
   menuStartList: 'Startlista',
   menuMain: 'Liveläge',
   menuSettings: 'Inställningar',
-  menuDemo: 'Starta en inspelad demo',
   menuCreditBy: 'Skapad av',
   menuCreditFree: 'Fri för allmänt bruk',
   settingsTitle: 'Inställningar',
