@@ -10,7 +10,7 @@
 | `settings/` | `SettingsService`: the viewer's persisted settings | unit specs next to it |
 | `i18n/` | One file per language, and the `TranslateService`; `languages.spec.ts` checks they all carry the same keys | |
 
-Next to these, in `app/`: `wake-lock.ts` (keeps the screen on) and `color-scheme.ts` (follows the system's light or dark setting).
+Next to these, in `app/`: `wake-lock.ts` (keeps the screen on), `app-update.ts` (reloads the page when the hosted build names other bundles; both applications start it) and `color-scheme.ts` (follows the system's light or dark setting).
 
 - A new viewer setting is one `Setting` in `settings.service.ts` plus its control in the dashboard template.
 - A new race code goes in `results/race-codes.ts`, with the rule that uses it next to it.
