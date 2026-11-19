@@ -11,7 +11,7 @@ COPY src/frontend/ ./
 RUN npm run build
 
 # Backend build: image pinned by digest; modules pinned in go.mod and verified against go.sum
-FROM golang:1.27.3-alpine@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS backend
+FROM golang:1.27.3-alpine@sha256:fa3d596898d9f126af7c01d14ee7597bab3f39cccf392ef36b69fe77cd681f18 AS backend
 WORKDIR /src
 ENV CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
 COPY src/backend/src/go.mod src/backend/src/go.sum ./
@@ -20,14 +20,14 @@ COPY src/backend/src/ ./
 RUN go build -trimpath -ldflags="-s -w" -o /backend ./cmd/server
 
 # Mockserver build (standard library only); the container starts it only when MOCKSERVER_ENABLED is true
-FROM golang:1.27.3-alpine@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS mockserver
+FROM golang:1.27.3-alpine@sha256:fa3d596898d9f126af7c01d14ee7597bab3f39cccf392ef36b69fe77cd681f18 AS mockserver
 WORKDIR /src
 ENV CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
 COPY src/mockserver/go.mod src/mockserver/main.go src/mockserver/generate.go src/mockserver/startlist.go ./
 RUN go build -trimpath -ldflags="-s -w" -o /mockserver .
 
 # DTS sign-in service build (standard library only)
-FROM golang:1.27.3-alpine@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS dts
+FROM golang:1.27.3-alpine@sha256:fa3d596898d9f126af7c01d14ee7597bab3f39cccf392ef36b69fe77cd681f18 AS dts
 WORKDIR /src
 ENV CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
 COPY src/dts/go.mod ./
