@@ -16,8 +16,8 @@ envsubst '${FRONTEND_BACKEND_URL}' < /etc/nginx/env-inject.js.template > /usr/sh
 # The DTS passwords guard personal data and are only rate limited, not locked out: a short one is refused at start.
 for name in DTS_MANAGE_PASSWORD DTS_ADMIN_PASSWORD DTS_ADMIN_SECRET; do
     eval "value=\${$name:-}"
-    if [ -n "$value" ] && [ "${#value}" -lt 16 ]; then
-        echo "$name must be at least 16 characters" >&2
+    if [ -n "$value" ] && [ "${#value}" -lt 8 ]; then
+        echo "$name must be at least 8 characters" >&2
         exit 1
     fi
 done
