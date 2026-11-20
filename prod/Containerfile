@@ -57,7 +57,7 @@ FROM nginx:alpine-slim
 # BACKEND_RECORDINGS_DIR is where the followed competitions are recorded (empty: no recording); mount a volume there to keep
 # them across deploys. BACKEND_RECORDINGS_API_KEY, set as a secret, switches on the API to list, download and delete them.
 # DTS_DATA_DIR is where the sign-in sessions of the experimental DTS part are kept (empty: the service is off); the other DTS_* settings
-# are described in docs/dts.md. The admin, manage and list pages under /dts/ share one login: DTS_ADMIN_PASSWORD (user DTS_ADMIN_USERNAME, default admin; without it nobody gets in) and its API needs DTS_ADMIN_SECRET (without it the API is off); both are set as secrets. MOCKSERVER_ENABLED=true adds a demo match, simulated and restarted every few minutes, to the competition list.
+# are described in docs/dts.md. Everything under /dts-admin/ and /dts-api/admin/ shares one login: DTS_ADMIN_PASSWORD (user DTS_ADMIN_USERNAME, default admin; without it nobody gets in) and its API needs DTS_ADMIN_SECRET (without it the API is off); both are set as secrets. MOCKSERVER_ENABLED=true adds a demo match, simulated and restarted every few minutes, to the competition list.
 ENV FRONTEND_LISTEN_PORT="8080" \
     FRONTEND_BACKEND_UPSTREAM="127.0.0.1:5000" \
     BACKEND_RECORDINGS_DIR="/data/recordings" \
@@ -75,6 +75,7 @@ COPY --from=mockserver /mockserver /usr/local/bin/mockserver
 COPY --from=dts /dts /usr/local/bin/dts
 COPY --from=frontend /app/dist/dashboard/browser /usr/share/nginx/html
 COPY --from=frontend /app/dist/dts/browser /usr/share/nginx/html/dts
+COPY --from=frontend /app/dist/dts-admin/browser /usr/share/nginx/html/dts-admin
 COPY src/frontend/config/nginx.conf.template /etc/nginx/default.conf.template
 COPY src/frontend/config/security-headers.conf /etc/nginx/security-headers.conf.template
 COPY src/frontend/public/env-inject.js /etc/nginx/env-inject.js.template

@@ -26,6 +26,20 @@ server {
     absolute_redirect off;
 
     # Every location includes the security headers itself: a location with an add_header of its own drops the inherited ones.
+    # The management application's files sit behind its login like its pages. They are matched here, before the
+    # general file rules below, because a regular expression location outranks the /dts-admin/ prefix location, which therefore is not marked ^~.
+    location ~ "^/dts-admin/.+-[A-Z0-9]{8}\.(js|css)$" {
+        include /etc/nginx/dts-admin-auth.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        include /etc/nginx/security-headers.conf;
+        try_files $uri =404;
+    }
+    location ~* "^/dts-admin/.+\.[a-z0-9]+$" {
+        include /etc/nginx/dts-admin-auth.conf;
+        add_header Cache-Control "no-cache" always;
+        include /etc/nginx/security-headers.conf;
+        try_files $uri =404;
+    }
     # Files with a hash in their name never change: cache them for good.
     location ~ "^/.+-[A-Z0-9]{8}\.(js|css)$" {
         add_header Cache-Control "public, max-age=31536000, immutable" always;
@@ -37,19 +51,31 @@ server {
         add_header Cache-Control "no-cache" always;
         include /etc/nginx/security-headers.conf;
     }
-    # /dts is the admin page; the app is served from the trailing-slash form
+    # /dts is the signers' application; it is served from the trailing-slash form
     location = /dts {
         return 302 /dts/;
     }
-    # The admin page asks for the one DTS login; without DTS_ADMIN_PASSWORD the include denies everyone.
-    location = /dts/ {
+    # /dts-admin is the management application. Everything under it asks for the one DTS login; without
+    # DTS_ADMIN_PASSWORD the include denies everyone. It shares no page with the signers' application.
+    location = /dts-admin {
+        return 302 /dts-admin/;
+    }
+    # The addresses the management pages had before they moved
+    location ~ "^/dts/(list|manage)/?$" {
+        return 302 /dts-admin/list$is_args$args;
+    }
+    location /dts-admin/ {
         include /etc/nginx/dts-admin-auth.conf;
         limit_req zone=dts_auth burst=60 nodelay;
         add_header Cache-Control "no-cache" always;
         include /etc/nginx/security-headers.conf;
-        try_files /dts/index.html =404;
+        try_files $uri /dts-admin/index.html;
     }
     location = /dts/index.html {
+        add_header Cache-Control "no-cache" always;
+        include /etc/nginx/security-headers.conf;
+    }
+    location = /dts-admin-sw.js {
         add_header Cache-Control "no-cache" always;
         include /etc/nginx/security-headers.conf;
     }
@@ -67,16 +93,7 @@ server {
         include /etc/nginx/security-headers.conf;
         try_files $uri =404;
     }
-    # The DTS pages are their own application with their own index; its files are served by the rules above.
-    # The manage and list pages use the same login as the admin page.
-    # The sign page and /dts-api are not behind it: the sessions are protected by their keys.
-    location ~ ^/dts/(manage|list)(/|$) {
-        include /etc/nginx/dts-admin-auth.conf;
-        limit_req zone=dts_auth burst=60 nodelay;
-        add_header Cache-Control "no-cache" always;
-        include /etc/nginx/security-headers.conf;
-        try_files /dts/index.html =404;
-    }
+    # The sign pages and /dts-api are not behind the login: the sessions are protected by their keys.
     location /dts/ {
         add_header Cache-Control "no-cache" always;
         include /etc/nginx/security-headers.conf;
@@ -107,6 +124,7 @@ server {
         include /etc/nginx/dts-admin-auth.conf;
         limit_req zone=dts_auth burst=60 nodelay;
         include /etc/nginx/dts-admin-secret.conf;
+        client_max_body_size 6m;
         include /etc/nginx/security-headers.conf;
         proxy_hide_header Content-Security-Policy;
         proxy_hide_header X-Content-Type-Options;

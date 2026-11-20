@@ -15,9 +15,10 @@ ENV PATH="/usr/local/go/bin:/root/.local/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1 \
     CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
 
-# gcc and libc6-dev are for `CGO_ENABLED=1 go test -race`; builds stay cgo-free (CGO_ENABLED=0 above)
+# gcc and libc6-dev are for `CGO_ENABLED=1 go test -race`; builds stay cgo-free (CGO_ENABLED=0 above).
+# nginx and envsubst (gettext-base) run the nginx config check of src/frontend/e2e/nginx-check.sh; the service is never started at boot.
 # hadolint ignore=DL3008 # dev-only image: follow Debian's current package versions
-RUN apt-get update && apt-get install -y --no-install-recommends bash curl jq git libstdc++6 gcc libc6-dev \
+RUN apt-get update && apt-get install -y --no-install-recommends bash curl jq git libstdc++6 gcc libc6-dev nginx-light gettext-base \
     && rm -rf /var/lib/apt/lists/*
 
 # Node from the official image

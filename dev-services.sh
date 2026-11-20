@@ -45,6 +45,13 @@ run_go() {
   exec npm run start:dts -- --poll 2000
 ) &
 
+# The management pages are a third Angular application, proxied under /dts-admin/.
+(
+  cd /app/src/frontend || exit 1
+  [ -x node_modules/.bin/ng ] || npm ci
+  exec npm run start:dts-admin -- --poll 2000
+) &
+
 (
   cd /app/src/frontend || exit 1
   [ -x node_modules/.bin/ng ] || npm ci

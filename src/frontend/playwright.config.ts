@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
-import { BACKEND_PORT, DTS_PORT, DTS_WEB_PORT, MOCK_PORT, MOCK_URL, WEB_PORT } from './e2e/env';
+import { BACKEND_PORT, DTS_ADMIN_WEB_PORT, DTS_PORT, DTS_WEB_PORT, MOCK_PORT, MOCK_URL, WEB_PORT } from './e2e/env';
 
 const ci = !!process.env['CI'];
 const srcRoot = path.resolve(__dirname, '..');
@@ -80,6 +80,14 @@ export default defineConfig({
       command: `npx ng serve dts --host 127.0.0.1 --port ${DTS_WEB_PORT}`,
       cwd: __dirname,
       url: `http://127.0.0.1:${DTS_WEB_PORT}/dts/`,
+      reuseExistingServer: !ci,
+      timeout: 180_000,
+    },
+    {
+      // the management pages are another application; the dashboard dev server proxies /dts-admin/ to it
+      command: `npx ng serve dts-admin --host 127.0.0.1 --port ${DTS_ADMIN_WEB_PORT}`,
+      cwd: __dirname,
+      url: `http://127.0.0.1:${DTS_ADMIN_WEB_PORT}/dts-admin/`,
       reuseExistingServer: !ci,
       timeout: 180_000,
     },

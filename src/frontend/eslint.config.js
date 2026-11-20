@@ -20,6 +20,19 @@ module.exports = tseslint.config(
     },
   },
   {
+    // The signers' application and the management application share libraries but no page.
+    files: ['src/app/dts/**/*.ts', 'src/dts-app/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [{ regex: '(^|/)dts-admin(-app)?(/|$)', message: 'The sign application must not import from the management application.' }] }],
+    },
+  },
+  {
+    files: ['src/app/dts-admin/**/*.ts', 'src/dts-admin-app/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [{ regex: '(^|/)(dts/sign/|dts-sign-engine|dts-app/)', message: 'The management application must not import the sign page or its engine.' }] }],
+    },
+  },
+  {
     files: ['**/*.html'],
     extends: [...angular.configs.templateRecommended, ...angular.configs.templateAccessibility],
     rules: {
