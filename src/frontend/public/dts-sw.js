@@ -3,7 +3,7 @@
  * back to the last copy; the hashed script and style files never change, so they are kept for good. The API and
  * everything outside the DTS pages go straight to the network.
  */
-const CACHE = 'dts-shell-v3';
+const CACHE = 'dts-shell-v4';
 const SHELL = '/dts-shell';
 const SHELL_URL = '/dts/sign';
 const WAIT_MS = 3500;
@@ -74,6 +74,18 @@ async function asset(request) {
   return res;
 }
 
+/** Scripts and styles without a hash in their name (a development server) are fetched fresh, and the last copy serves when there is no connection. */
+async function fresh(request) {
+  const cache = await caches.open(CACHE);
+  try {
+    const res = await fetch(request);
+    if (res.ok) cache.put(request, res.clone());
+    return res;
+  } catch {
+    return (await cache.match(request)) ?? Response.error();
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
@@ -85,5 +97,7 @@ self.addEventListener('fetch', (event) => {
   }
   if (ASSET.test(url.pathname) || /^\/(icon|apple-touch-icon)\.png$/.test(url.pathname) || /^\/dts-transponder-(red|blue)\.webp$/.test(url.pathname)) {
     event.respondWith(asset(request));
+  } else if (url.pathname.startsWith(BASE) && (request.destination === 'script' || request.destination === 'style')) {
+    event.respondWith(fresh(request));
   }
 });

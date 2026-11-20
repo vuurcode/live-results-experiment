@@ -141,6 +141,5 @@ export interface DtsSyncAnswer {
 export interface DtsCreated {
   id: string;
   signKey: string;
-  manageKey: string;
   warnings: string[];
 }

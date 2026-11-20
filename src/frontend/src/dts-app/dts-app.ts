@@ -1,24 +1,11 @@
-import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, Type, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { DtsSignComponent } from '../app/dts/sign/sign.component';
 
-/** Shows the manage page under /dts/manage, the admin page on /dts/ and the sign page everywhere else under /dts/. */
+/** The signers' application under /dts/: the sign page and nothing else. */
 @Component({
   selector: 'app-dts-root',
-  imports: [NgComponentOutlet],
+  imports: [DtsSignComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: '@if (page(); as p) { <ng-container *ngComponentOutlet="p" /> }',
+  template: '<app-dts-sign />',
 })
-export class DtsApp implements OnInit {
-  protected readonly page = signal<Type<unknown> | null>(null);
-
-  async ngOnInit(): Promise<void> {
-    if (location.pathname === '/dts') history.replaceState(history.state, '', `/dts/${location.search}${location.hash}`);
-    if (location.pathname === '/dts/') {
-      this.page.set((await import('../app/dts/home/home.component')).DtsHomeComponent);
-    } else if (location.pathname.startsWith('/dts/manage') || location.pathname.startsWith('/dts/list')) {
-      this.page.set((await import('../app/dts/manage/manage.component')).DtsManageComponent);
-    } else {
-      this.page.set((await import('../app/dts/sign/sign.component')).DtsSignComponent);
-    }
-  }
-}
+export class DtsApp {}

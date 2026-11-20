@@ -26,6 +26,26 @@ export async function dtsAdminRequest(path: string, timeoutMs = TIMEOUT_MS): Pro
 }
 const TIMEOUT_MS = 12000;
 
+/** A change through the admin API (a JSON body, or the bytes of an upload); the proxy in front adds the admin credentials. */
+export async function dtsAdminSend(path: string, options: { method: string; json?: unknown; body?: BodyInit; timeoutMs?: number }): Promise<DtsResponse> {
+  const headers: Record<string, string> = {};
+  let body = options.body;
+  if (options.json !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(options.json);
+  }
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), options.timeoutMs ?? TIMEOUT_MS);
+  try {
+    const res = await fetch(`${DTS_ADMIN_API}${path}`, { method: options.method, headers, body, signal: ctl.signal, cache: 'no-store', referrerPolicy: 'no-referrer' });
+    return { status: res.status, headers: res.headers, text: await res.text() };
+  } catch {
+    throw new DtsNetworkError('network');
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function dtsRequest(
   path: string,
   options: { method?: string; key?: string; body?: BodyInit; json?: unknown; timeoutMs?: number } = {},

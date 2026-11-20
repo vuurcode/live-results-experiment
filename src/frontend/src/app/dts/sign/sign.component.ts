@@ -9,11 +9,11 @@ import { qrEncode, qrPath } from '../qr';
 import { homeScreenHint, installable } from '../dts-pwa';
 import { applyOp, byCapOpenFirst, clock, findRacers, minutesToCutoff, normalizeCap, raceProblems, normalizeTransponder, splitName, typeCap, editTransponder, transponderKeyboard, validCap, validTransponder, warningsFor, watermarkOf } from '../dts.logic';
 import { warningSentence } from '../dts-warning-text';
-import type { DtsAction, DtsCreated, DtsEntry, DtsRace, DtsWarning } from '../dts.models';
+import type { DtsAction, DtsEntry, DtsRace, DtsWarning } from '../dts.models';
 import type { DtsKey } from '../dts.strings';
 import { keepScreenAwake } from '../../wake-lock';
 
-type Screen = 'start' | 'created' | 'loading' | 'home' | 'rider' | 'edit' | 'add' | 'share' | 'failed' | 'denied' | 'missing' | 'name' | 'race';
+type Screen = 'loading' | 'home' | 'rider' | 'edit' | 'add' | 'share' | 'failed' | 'denied' | 'missing' | 'name' | 'race' | 'landing';
 type Field = 'cap' | 'transponder1' | 'transponder2' | 'race' | 'note';
 
 
@@ -88,6 +88,15 @@ export class DtsSignComponent implements OnInit {
   }
 
   protected readonly screen = signal<Screen>('loading');
+  /** The front page's explanation of how a signer gets in, shown after pressing the sign button. */
+  protected readonly signHint = signal(false);
+
+  /** The front page's sign button: continues the most recent list of this device, or explains how to get one. */
+  protected signIn(): void {
+    const latest = this.sessions()[0];
+    if (latest) location.assign(`/dts/?s=${latest.id}`);
+    else this.signHint.update((v) => !v);
+  }
   protected readonly typed = signal('');
   protected readonly riderId = signal('');
   /** The race whose overview is open, or the one a rider was opened from (the rider's back button returns there). */
@@ -96,9 +105,6 @@ export class DtsSignComponent implements OnInit {
   protected readonly field = signal<Field>('cap');
   protected readonly input = signal('');
   protected readonly noteDraft = signal('');
-  protected readonly createdLinks = signal<DtsCreated | null>(null);
-  protected readonly uploadError = signal<DtsKey | ''>('');
-  protected readonly uploading = signal(false);
   protected readonly message = signal('');
   protected readonly copied = signal('');
   /** Entries by number, with the signed ones after the open ones. */
@@ -107,7 +113,15 @@ export class DtsSignComponent implements OnInit {
   protected readonly nameDraft = signal('');
 
   // add-a-racer flow
-  protected readonly draft = signal({ who: '', licence: '', race: '', cap: '', t1: '', t2: '', signed: false });
+  protected readonly draft = signal({
+    who: '',
+    licence: '',
+    race: '',
+    cap: '',
+    t1: '',
+    t2: '',
+    signed: false,
+  });
 
   protected readonly state = this.engine.state;
 
@@ -167,12 +181,6 @@ export class DtsSignComponent implements OnInit {
       this.homeHint.set(homeScreenHint());
     }
     const timer = setInterval(() => this.nowMs.set(Date.now()), 15000);
-    // the manage page marks the links it opens in this tab (the referrer is not sent); back from that first entry returns to it
-    const marks = new URLSearchParams(location.search);
-    if (marks.get('from') === 'list') {
-      marks.delete('from');
-      history.replaceState({ fromManage: true }, '', `${location.pathname}?${marks}${location.hash}`);
-    }
     addEventListener('popstate', this.onPop);
     this.destroy.onDestroy(() => removeEventListener('popstate', this.onPop));
     const release = keepScreenAwake(navigator as never, document, 30 * 60 * 1000);
@@ -200,13 +208,14 @@ export class DtsSignComponent implements OnInit {
         this.screen.set('denied');
         return;
       }
-      this.screen.set('loading');
-      if (new URLSearchParams(location.search).has('new')) {
-        this.screen.set('start');
+      // without ?s= the front page lets the person choose, also on a device that has lists
+      if (!wanted) {
+        this.screen.set('landing');
         void this.loadSessions();
         return;
       }
-      void this.engine.resume(wanted ?? undefined).then((ok) => {
+      this.screen.set('loading');
+      void this.engine.resume(wanted).then((ok) => {
         if (ok) opened(this.engine.sessionId());
         // a ?s= this device has no copy of needs the full link
         else this.screen.set('missing');
@@ -236,6 +245,16 @@ export class DtsSignComponent implements OnInit {
   /** The sessions this device has a copy of, to switch between. */
   protected sessions = signal<DtsSessionMeta[]>([]);
 
+  /** Removes a list's copy from this device after asking; the server and the other devices keep theirs. */
+  protected async forgetList(m: DtsSessionMeta): Promise<void> {
+    if (!confirm(this.t('forgetListConfirm', { name: this.sessionParts(m).title }))) return;
+    const current = m.id === this.engine.sessionId();
+    if (current) this.engine.stop();
+    await this.engine.forget(m.id);
+    if (current) location.assign('/dts/');
+    else await this.loadSessions();
+  }
+
   private async loadSessions(): Promise<void> {
     this.sessions.set(await this.engine.knownSessions());
   }
@@ -246,7 +265,11 @@ export class DtsSignComponent implements OnInit {
     const titles = m.label.split('\n').filter(Boolean);
     const split = titles.map((t) => t.split(' - '));
     if (split.length === 0 || split.some((p) => p.length < 3)) return { title: titles.join(', ') || m.id.slice(0, 6), races: '', when };
-    return { title: split[0].slice(0, -2).join(' - '), races: split.map((p) => p.slice(-2).join(' ')).join(' · '), when };
+    return {
+      title: split[0].slice(0, -2).join(' - '),
+      races: split.map((p) => p.slice(-2).join(' ')).join(' · '),
+      when,
+    };
   }
 
   protected go(url: string): void {
@@ -262,25 +285,6 @@ export class DtsSignComponent implements OnInit {
     q.set('s', id);
     q.delete('new');
     history.replaceState(history.state, '', `${location.pathname}?${q}${location.hash}`);
-  }
-
-  // ---- start ----
-
-  protected async pick(event: Event): Promise<void> {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file) return;
-    this.uploading.set(true);
-    this.uploadError.set('');
-    const r = await this.engine.create(await file.text());
-    this.uploading.set(false);
-    if (typeof r === 'string') {
-      this.uploadError.set(({ rate: 'startRate', invalid: 'startInvalid', offline: 'startOffline', full: 'startFull' } as const)[r]);
-      return;
-    }
-    this.keepInUrl(r.id);
-    history.replaceState(history.state, '', `${location.pathname}${location.search}#${r.id}.${r.signKey}`);
-    this.createdLinks.set(r);
-    this.screen.set('created');
   }
 
   protected signLink = (): string => this.engine.link();
@@ -300,17 +304,10 @@ export class DtsSignComponent implements OnInit {
   protected printQr(): void {
     window.print();
   }
-  protected manageLink = (): string => this.engine.manageLink() ?? '';
 
-  /** Leaves the created screen for the overview page, whose link is not shown. */
-  protected openOverview(): void {
-    this.go(this.manageLink());
-  }
-
-  protected async copy(which: 'sign' | 'manage'): Promise<void> {
-    const value = which === 'sign' ? this.signLink() : this.manageLink();
+  protected async copy(which: 'sign'): Promise<void> {
     try {
-      await navigator.clipboard.writeText(value);
+      await navigator.clipboard.writeText(this.signLink());
       this.copied.set(which);
     } catch {
       this.copied.set('');
@@ -382,18 +379,13 @@ export class DtsSignComponent implements OnInit {
   private readonly notedEntries = computed(() => new Set((this.state()?.notes ?? []).filter((n) => !n.resolved).map((n) => n.entry)));
 
   /** The screens that have a way back; it sits in the header, top left. */
-  protected readonly canGoBack = computed(() => ['start', 'race', 'rider', 'edit', 'add', 'share'].includes(this.screen()));
+  protected readonly canGoBack = computed(() => ['race', 'rider', 'edit', 'add', 'share'].includes(this.screen()));
 
   protected goBack(): void {
-    if (history.state?.fromManage) {
-      history.back();
-      return;
-    }
     switch (this.screen()) {
       case 'rider': this.back(); break;
       case 'edit': this.screen.set('rider'); break;
       case 'add': this.home(); break;
-      case 'start': location.assign('/dts/'); break;
       default: this.home();
     }
   }
@@ -503,7 +495,15 @@ export class DtsSignComponent implements OnInit {
   }
 
   protected fieldTitle(f: Field): DtsKey {
-    return ({ cap: 'fieldCap', transponder1: 'fieldT1', transponder2: 'fieldT2', race: 'fieldRace', note: 'fieldNote' } as const)[f];
+    return (
+      {
+        cap: 'fieldCap',
+        transponder1: 'fieldT1',
+        transponder2: 'fieldT2',
+        race: 'fieldRace',
+        note: 'fieldNote',
+      } as const
+    )[f];
   }
 
   /** The warnings the typed value would cause, shown before saving. */
@@ -711,8 +711,6 @@ export class DtsSignComponent implements OnInit {
     const name = this.t('appName');
     let page = '';
     switch (this.screen()) {
-      case 'start': page = this.t('tabNew'); break;
-      case 'created': page = this.t('tabLinks'); break;
       case 'rider': page = this.t('tabNumber', { cap: this.rider()?.cap || '–' }); break;
       case 'edit': page = this.t(this.fieldTitle(this.field())); break;
       case 'add': page = this.t('tabAdd'); break;

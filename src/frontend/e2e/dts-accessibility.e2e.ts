@@ -18,8 +18,8 @@ test.describe('dts accessibility', () => {
   for (const scheme of ['light', 'dark'] as const) {
     test(`sign screens and the manage page have no axe violations (${scheme})`, async ({ page, context }) => {
       await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
-      await page.goto('/dts/sign?new=1');
-      await scan(page, 'start');
+      await page.goto('/dts-admin/new');
+      await scan(page, 'new session');
       const links = await upload(page);
       await scan(page, 'home');
       await scan(page, 'home with the races expanded');
@@ -46,13 +46,13 @@ test.describe('dts accessibility', () => {
       await scan(manage, 'manage with a filter pressed');
 
       await page.bringToFront();
-      await page.goto('/dts/');
+      await page.goto('/dts-admin/');
       await expect(page.getByRole('heading', { name: 'Tekenlijsten beheren' })).toBeVisible();
       await expect(page.locator('.sessions > li').first()).toBeVisible();
       await scan(page, 'admin page');
 
       await page.locator('.sessions > li').first().getByRole('button', { name: 'Details' }).click();
-      await expect(page).toHaveURL(/\/dts\/list\?s=/);
+      await expect(page).toHaveURL(/\/dts-admin\/list\?s=/);
       await expect(page.locator('a.numlink').first()).toBeVisible();
       await scan(page, 'admin list with the numbers');
       const popup = page.waitForEvent('popup');
@@ -61,6 +61,23 @@ test.describe('dts accessibility', () => {
       await details.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
       await expect(details.locator('.state').first()).toBeVisible();
       await scan(details, 'admin competitor details');
+      await details.getByRole('link', { name: 'Gegevens aanpassen' }).click();
+      await expect(details.getByRole('heading', { name: 'Deelnemer aanpassen' })).toBeVisible();
+      await scan(details, 'admin edit competitor');
+      await details.goto(page.url().replace('/list', '/add'));
+      await expect(details.getByRole('heading', { name: 'Nieuwe deelnemer' })).toBeVisible();
+      await details.getByLabel('Beennummer', { exact: true }).fill('zz');
+      await details.getByLabel('Transponder 1').fill('x');
+      await expect(details.getByRole('alert').first()).toBeVisible();
+      await scan(details, 'admin add competitor with errors');
+    });
+
+    test(`the front page has no axe violations (${scheme})`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
+      await page.goto('/dts/');
+      await page.getByRole('button', { name: 'Tekenen' }).click();
+      await expect(page.getByText('Open de link of scan de QR-code')).toBeVisible();
+      await scan(page, 'front page');
     });
 
     test(`the pages stay accessible with races far from now and on a narrow window (${scheme})`, async ({ page }) => {

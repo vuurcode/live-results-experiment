@@ -1,8 +1,8 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { DtsNetworkError, dtsRequest, fileNameOf, parseJson, randomId, saveBlob, sha256Hex } from './dts-api';
+import { DtsNetworkError, dtsRequest, fileNameOf, parseJson, randomId, saveBlob } from './dts-api';
 import { askPersistence, openKv, type DtsKv, type DtsLocal, type DtsSessionMeta } from './dts-storage';
 import { applyOp, clockOffset, syncDelay, warningsFor } from './dts.logic';
-import type { DtsAction, DtsCreated, DtsNoteEvent, DtsOp, DtsOpKind, DtsState, DtsSyncAnswer } from './dts.models';
+import type { DtsAction, DtsNoteEvent, DtsOp, DtsOpKind, DtsState, DtsSyncAnswer } from './dts.models';
 
 export type SyncStatus = 'idle' | 'syncing' | 'offline' | 'denied' | 'deleted';
 
@@ -57,7 +57,6 @@ export class DtsSignEngine {
   readonly lastSync = signal<number | null>(null);
   readonly offset = signal(0);
   readonly sessionId = signal('');
-  readonly manageKey = signal<string | undefined>(undefined);
   readonly joined = computed(() => this.state() !== null);
 
   get signKey(): string {
@@ -94,7 +93,6 @@ export class DtsSignEngine {
     this.actions.set([]);
     this.notices.set([]);
     this.pending.set(0);
-    this.manageKey.set(undefined);
     this.status.set('deleted');
   }
 
@@ -134,29 +132,7 @@ export class DtsSignEngine {
     return 'ok';
   }
 
-  /** Uploads a file and opens the session it makes. */
-  async create(xml: string): Promise<DtsCreated | 'rate' | 'invalid' | 'offline' | 'full'> {
-    let res;
-    try {
-      res = await dtsRequest('', { method: 'POST', body: xml, timeoutMs: 60000 });
-    } catch {
-      return 'offline';
-    }
-    if (res.status === 429) return 'rate';
-    if (res.status === 503) return 'full';
-    if (res.status !== 201) return 'invalid';
-    const created = parseJson<DtsCreated>(res);
-    const kv = await this.store();
-    const device = (await kv.get<{ id: string; name: string }>('device')) ?? { id: randomId(), name: '' };
-    await kv.set('device', device);
-    const local = this.blank(created.id, created.signKey, xml, await sha256Hex(created.manageKey), device);
-    local.manageKey = created.manageKey;
-    await this.adopt(local);
-    await this.syncNow();
-    this.start();
-    return created;
-  }
-
+  /** An empty local copy of a session, before its first sync. */
   private blank(id: string, signKey: string, xml: string, manageHash: string, device: { id: string; name: string }): DtsLocal {
     return {
       id, signKey, manageHash, xml, deviceId: device.id, deviceName: device.name, ops: {}, actions: {}, noteEvents: {},
@@ -167,7 +143,6 @@ export class DtsSignEngine {
   private async adopt(local: DtsLocal): Promise<void> {
     this.local = local;
     this.sessionId.set(local.id);
-    this.manageKey.set(local.manageKey);
     this.deviceName.set(local.deviceName);
     this.nameAsked.set(local.nameAsked !== false);
     await this.save();
@@ -199,7 +174,6 @@ export class DtsSignEngine {
       l.pendingActions.push(...newActions);
       l.pendingNotes.push(...newNotes);
       l.cursor = { ops: Math.max(l.cursor.ops, other.cursor.ops), actions: Math.max(l.cursor.actions, other.cursor.actions), notes: Math.max(l.cursor.notes, other.cursor.notes) };
-      if (!l.manageKey && other.manageKey) l.manageKey = other.manageKey;
     }
     await kv.set(`s:${l.id}`, l);
     this.written = true;
@@ -502,9 +476,5 @@ export class DtsSignEngine {
   /** The link to share with another phone. */
   link(): string {
     return `${location.origin}/dts/sign#${this.local?.id}.${this.local?.signKey}`;
-  }
-  manageLink(): string | null {
-    const l = this.local;
-    return l?.manageKey ? `${location.origin}/dts/manage#${l.id}.${l.manageKey}` : null;
   }
 }

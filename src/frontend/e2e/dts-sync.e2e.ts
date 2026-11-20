@@ -10,7 +10,8 @@ test.describe('dts sync, restore and install', () => {
     share.searchParams.set('view', 'share');
     await page.goto(share.toString());
     await expect(page.getByRole('img', { name: /QR-code/ })).toBeVisible();
-    await page.goto('/dts/sign');
+    await page.goto('/dts/');
+    await page.getByRole('button', { name: 'Tekenen' }).click();
     await expect(page.getByRole('heading', { name: 'DTS Tekenlijst' })).toBeVisible();
     await expect(page.getByLabel('Beennummer of naam')).toBeVisible();
   });

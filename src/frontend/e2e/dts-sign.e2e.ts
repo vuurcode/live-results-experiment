@@ -1,9 +1,40 @@
 import { expect, test } from '@playwright/test';
-import { local, open, upload } from './dts-helpers';
+import { local, nameDevice, open, upload } from './dts-helpers';
 import { sampleXml } from './dts-sample';
 
 test.describe('dts sign page', () => {
   test.use({ locale: 'nl-NL' });
+
+  test('the front page offers signing and management', async ({ page }) => {
+    await page.goto('/dts/');
+    await expect(page.getByRole('heading', { name: 'Wat wil je doen?' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Beheren' })).toHaveAttribute('href', '/dts-admin/');
+    await page.getByRole('button', { name: 'Tekenen' }).click();
+    await expect(page.getByText('Open de link of scan de QR-code')).toBeVisible();
+  });
+
+  test('the front page still lets a device with a list choose', async ({ page }) => {
+    await upload(page);
+    await page.goto('/dts/');
+    await expect(page.getByRole('heading', { name: 'Wat wil je doen?' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Beheren' })).toBeVisible();
+    await page.getByRole('button', { name: 'Tekenen' }).click();
+    await expect(page).toHaveURL(/\/dts\/\?s=|\/dts\/sign\?s=/);
+    await expect(page.getByLabel('Beennummer of naam')).toBeVisible();
+  });
+
+  test('removes a list from this device after asking', async ({ page }) => {
+    await upload(page);
+    await page.locator('details.sessions > summary').click();
+    page.once('dialog', (d) => void d.dismiss());
+    await page.getByRole('button', { name: /^Wissen/ }).click();
+    await expect(page.getByLabel('Beennummer of naam')).toBeVisible();
+    page.once('dialog', (d) => void d.accept());
+    await page.getByRole('button', { name: /^Wissen/ }).click();
+    await expect(page.getByRole('heading', { name: 'Wat wil je doen?' })).toBeVisible();
+    await page.getByRole('button', { name: 'Tekenen' }).click();
+    await expect(page.getByText('Open de link of scan de QR-code')).toBeVisible();
+  });
 
   test('uploads a file, signs a racer and shows it on the manage page', async ({ page, context }) => {
     const links = await upload(page);
@@ -22,7 +53,7 @@ test.describe('dts sign page', () => {
   });
 
   test('names the page in the tab, searches with the enter key and keeps the downloads at the bottom', async ({ page }) => {
-    await page.goto('/dts/sign?new=1');
+    await page.goto('/dts-admin/new');
     await expect(page).toHaveTitle('Nieuwe tekenlijst · DTS Tekenlijst');
     await upload(page);
     await expect(page).toHaveTitle('DTS Tekenlijst');
@@ -40,23 +71,28 @@ test.describe('dts sign page', () => {
 
   test('keeps several sessions side by side, each addressed by ?s= in its own tab', async ({ page, context }) => {
     await upload(page);
-    await expect(page).toHaveURL(/\?s=[0-9a-f]+$/);
+    await expect(page).toHaveURL(/\?s=[0-9a-f]+(#.*)?$/);
     const first = new URL(page.url()).searchParams.get('s')!;
     await open(page, '11', /11\s+Aardappel/);
     await page.getByRole('button', { name: 'Markeer als getekend' }).click();
     await expect(page.getByText('In sync met server')).toBeVisible();
 
     const other = await context.newPage();
-    await other.goto('/dts/sign?new=1');
-    await other.setInputFiles('input[type=file]', { name: 'DTS_two.xml', mimeType: 'text/xml', buffer: Buffer.from(sampleXml()) });
+    await other.goto('/dts-admin/new');
+    await other.setInputFiles('input[type=file]', {
+      name: 'DTS_two.xml',
+      mimeType: 'text/xml',
+      buffer: Buffer.from(sampleXml()),
+    });
     await expect(other.getByRole('heading', { name: /Klaar/ })).toBeVisible();
-    const second = local((await other.locator('.url').first().textContent())!.trim()).split('#')[1].split('.')[0];
-    await other.getByRole('button', { name: 'Verder' }).click();
+    const secondLink = local((await other.locator('.url').first().textContent())!.trim());
+    const second = secondLink.split('#')[1].split('.')[0];
     expect(second).not.toBe(first);
 
     // a reload returns to the same session in each tab, without the keys in the address
     await page.goto(`/dts/sign?s=${first}`);
-    await other.goto(`/dts/sign?s=${second}`);
+    await other.goto(secondLink);
+    await nameDevice(other, 'Balie 2');
     await expect(page.getByLabel('Beennummer of naam')).toBeVisible();
     await expect(other.getByLabel('Beennummer of naam')).toBeVisible();
     expect(new URL(page.url()).searchParams.get('s')).toBe(first);
@@ -73,7 +109,7 @@ test.describe('dts sign page', () => {
     const list = page.locator('.sessions');
     await list.locator('summary').click();
     await expect(list.locator('li')).toHaveCount(2);
-    await list.locator('li').getByRole('button').click();
+    await list.locator('li').locator('button.session').click();
     await expect(page).toHaveURL(new RegExp(`\\?s=${second}`));
   });
 
@@ -116,8 +152,8 @@ test.describe('dts sign page', () => {
   });
 
   test('keeps the language in the address', async ({ page }) => {
-    await page.goto('/dts/sign?new=1&lang=en');
-    await expect(page).toHaveTitle('New sign-in list · DTS Sign-in');
+    const links = await upload(page);
+    await page.goto(`/dts/sign?lang=en#${links.sign.split('#')[1]}`);
     await page.getByRole('button', { name: /Switch to|Wissel naar/ }).click();
     await expect(page).toHaveURL(/lang=nl/);
   });
@@ -246,7 +282,7 @@ test.describe('dts sign page', () => {
   });
 
   test('offers a signer no way to start a list and explains a device without one', async ({ page }) => {
-    await page.goto('/dts/sign');
+    await page.goto(`/dts/sign?s=${'0'.repeat(32)}`);
     await expect(page.getByRole('heading', { name: 'Deze tekenlijst staat niet op dit apparaat' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Alle tekenlijsten' })).toHaveCount(0);
     await upload(page);
@@ -279,5 +315,16 @@ test.describe('dts sign page', () => {
     await expect(page).not.toHaveURL(/view=/);
     await page.goForward();
     await expect(page.locator('.badge.cap .v')).toHaveText('11');
+  });
+
+  test('has no way to create or manage a list on the signers address', async ({ page }) => {
+    const links = await upload(page);
+    const id = links.sign.split('#')[1].split('.')[0];
+    for (const path of ['/dts/', '/dts/new', `/dts/list?s=${id}`, `/dts/edit?s=${id}`]) {
+      await page.goto(path);
+      await expect(page.locator('input[type=file]'), path).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: 'Tekenlijsten beheren' }), path).toHaveCount(0);
+      await expect(page.locator('.race'), path).toHaveCount(0);
+    }
   });
 });

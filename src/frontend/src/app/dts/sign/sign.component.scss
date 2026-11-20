@@ -222,6 +222,7 @@ ul { margin: 0; padding-left: 1.25rem; }
   button:not(:disabled):hover, .file:not(.disabled):hover { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 14%, var(--button)); }
   .danger:not(:disabled):hover { background: var(--bad-bg); border-color: var(--bad-fg); filter: brightness(0.95); }
   .primary:not(:disabled):hover { background: var(--primary); filter: brightness(1.12); }
+  .choice:not(:disabled):hover { background: var(--primary); filter: brightness(1.12); }
   .link:not(:disabled):hover { background: none; text-decoration-thickness: 3px; }
   .lang:hover { background: color-mix(in srgb, var(--primary) 14%, var(--button)); }
 }
@@ -241,6 +242,8 @@ ul { margin: 0; padding-left: 1.25rem; }
   .session { display: flex; flex-direction: column; gap: 0.15rem; width: 100%; padding: 0.6rem 1rem; box-sizing: border-box; }
   button.session { border: 3px solid var(--line); border-radius: 12px; background: var(--button); text-decoration: none; }
   .session small { font-size: 1rem; color: var(--muted); }
+  li { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; align-items: stretch; }
+  .forget { padding: 0.4rem 0.8rem; }
 }
 
 .numbers, .legend { --numw: 4.5rem; }
@@ -414,3 +417,7 @@ main[data-screen='edit'] .field > .label { display: flex; align-items: center; j
 main[data-screen='edit'] input.huge { text-align: center; }
 main[data-screen='edit'] h1 { text-align: center; }
 main[data-screen='edit'] .muted { text-align: center; }
+
+.choices { display: flex; flex-direction: column; gap: 1rem; }
+.choice { display: flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 7rem; padding: 1rem; border: 0; border-radius: 16px; background: var(--primary); color: var(--on-primary); font: inherit; font-size: 1.8rem; font-weight: 800; text-decoration: none; cursor: pointer; }
+.choice:focus-visible { outline: 3px solid var(--fg); outline-offset: 3px; }

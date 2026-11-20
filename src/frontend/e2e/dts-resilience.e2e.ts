@@ -77,6 +77,31 @@ test.describe('dts survives a lost connection and a suspended phone', () => {
     await expect(manage.locator('.race', { hasText: 'NO1' }).locator('.count strong')).toHaveText(/^1 van /);
   });
 
+  test('survives a reload without connection, with a pending signature, and sends it afterwards', async ({ page, context }) => {
+    const links = await upload(page);
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    // the first visit loads before the worker controls the page; a second load puts every file in the cache
+    await page.reload();
+    await expect(page.getByLabel('Beennummer of naam')).toBeVisible();
+    await context.setOffline(true);
+    await open(page, '11', /11\s+Aardappel/);
+    await page.getByRole('button', { name: 'Markeer als getekend' }).click();
+    await expect(page.locator('.tick')).toBeVisible();
+
+    // a refresh and a visit to the front page without connection both find the app and the copy on the device
+    await page.reload();
+    await expect(page.locator('.tick')).toBeVisible();
+    await page.goto('/dts/');
+    await expect(page.getByRole('button', { name: 'Tekenen' })).toBeVisible();
+
+    await context.setOffline(false);
+    await page.goto(local(links.sign));
+    await expect(page.getByText('In sync met server')).toBeVisible({ timeout: 20000 });
+    const manage = await context.newPage();
+    await manage.goto(local(links.manage));
+    await expect(manage.locator('.race', { hasText: 'NO1' }).locator('.count strong')).toHaveText(/^1 van /);
+  });
+
   test('does not poll the host while the page is hidden more than every 30 seconds', async ({ page }) => {
     await upload(page);
     await page.clock.install();

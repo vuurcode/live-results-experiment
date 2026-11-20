@@ -4,8 +4,7 @@ import type { DtsAction, DtsCursor, DtsNoteEvent, DtsOp, DtsState } from './dts.
 export interface DtsLocal {
   id: string;
   signKey: string;
-  /** Only the device that uploaded the file has the manage key. */
-  manageKey?: string;
+  /** Kept so a restore of this copy keeps the session's manage hash; it opens no endpoint. */
   manageHash: string;
   xml: string;
   deviceId: string;
