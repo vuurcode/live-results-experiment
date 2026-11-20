@@ -24,9 +24,10 @@ function typing(doc: Document): boolean {
  * on the sign-in page) runs the new code without anyone refreshing it. The page itself is never cached (`no-cache`),
  * so fetching it shows what is hosted now. The check runs every `intervalMs`, and at once when the tab becomes visible
  * again or the connection returns. A reload waits while someone is typing, and never follows another within 30 seconds, so a
- * stale proxy cannot make the page reload in a loop. Returns a function that stops checking.
+ * stale proxy cannot make the page reload in a loop. `pageUrl` is the page to fetch (the base address by default): it must be
+ * one that asks for no login, or every visitor gets a password prompt. Returns a function that stops checking.
  */
-export function reloadOnNewBuild(intervalMs = 60_000, doc: Document = document, win: Window = window): () => void {
+export function reloadOnNewBuild(intervalMs = 60_000, doc: Document = document, win: Window = window, pageUrl: string = doc.baseURI): () => void {
   const running = bundlesOf(doc, doc.baseURI);
   if (!running.length) return () => undefined;
   let busy = false;
@@ -36,7 +37,7 @@ export function reloadOnNewBuild(intervalMs = 60_000, doc: Document = document, 
     busy = true;
     try {
       void win.navigator.serviceWorker?.getRegistration().then((r) => r?.update()).catch(() => undefined);
-      const res = await fetch(doc.baseURI, { cache: 'no-store', headers: { Accept: 'text/html' } });
+      const res = await fetch(pageUrl, { cache: 'no-store', headers: { Accept: 'text/html' } });
       if (!res.ok) return;
       const hosted = bundlesOf(new DOMParser().parseFromString(await res.text(), 'text/html'), doc.baseURI);
       if (!bundlesChanged(running, hosted) || typing(doc)) return;
