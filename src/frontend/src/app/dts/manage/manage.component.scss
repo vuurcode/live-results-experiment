@@ -262,6 +262,7 @@ button.copy { flex: none; display: inline-flex; align-items: center; justify-con
 .devices .detail { display: block; color: var(--muted); font-size: 0.85rem; }
 .log li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.6rem; padding: 0.4rem 0; }
 .log .by { margin-left: auto; color: var(--muted); font-size: 0.78rem; }
+.log a { color: var(--primary); }
 .race { scroll-margin-top: 1rem; }
 .addnew a:not([aria-disabled='true']):hover { background: color-mix(in srgb, var(--open-bg) 80%, var(--primary)); }
 
@@ -273,3 +274,21 @@ button.copy { flex: none; display: inline-flex; align-items: center; justify-con
 .race-head h2 .title-rest { font-size: 0.85rem; font-weight: 400; color: var(--muted); }
 .race-head h2 .title-rest .starttime { font-weight: 700; }
 .legend .num { height: 2.5rem; padding: 0 0.7rem; font-size: 0.9rem; }
+
+.steps { list-style: none; margin: 0.5rem 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); gap: 0.75rem; }
+.steps li { position: relative; isolation: isolate; counter-increment: step; background: var(--card); border-radius: 12px; padding: 0.75rem 0.75rem 0.75rem 4.5rem; align-content: flex-start; min-height: 7.5rem; display: flex; flex-wrap: wrap; flex-direction: row; align-items: flex-start; gap: 1rem; text-align: left; font-weight: 600; font-size: 1.1rem; min-width: 0; }
+.steps li[data-n='7'] { counter-set: step 7; } .steps li[data-n='8'] { counter-set: step 8; } .steps li[data-n='9'] { counter-set: step 9; }
+.steps li .what { flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; }
+.steps li .what::before { content: counter(step); position: absolute; left: 0.9rem; width: 3.4rem; text-align: center; top: 3.75rem; transform: translateY(-50%); font-size: 5.5rem; font-weight: 800; line-height: 1; color: color-mix(in srgb, var(--fg) 18%, transparent); z-index: -1; pointer-events: none; }
+.steps li .what::after { content: attr(data-step); position: absolute; left: 0.9rem; width: 3.4rem; text-align: center; top: 0.6rem; font-size: 0.9rem; font-weight: 800; letter-spacing: 0.05em; line-height: 1; color: color-mix(in srgb, var(--fg) 18%, transparent); z-index: -1; pointer-events: none; }
+.steps svg { flex: none; width: min(8rem, 28vw); height: auto; }
+.steps svg .paper { fill: var(--bg); stroke: var(--fg); stroke-width: 2; }
+.steps svg .stroke { fill: none; stroke: var(--fg); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.steps svg .accent { fill: none; stroke: var(--primary); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.mdsfold { flex: 1 1 100%; }
+.mdsfold summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; justify-content: center; color: var(--primary); text-decoration: underline; }
+.mds { display: block; width: 100%; max-width: 48rem; height: auto; margin: 0.5rem auto 0; border: 2px solid var(--line); border-radius: 8px; }
+@media print { .nextsteps { display: none; } }
+.steps .stepbtn { margin: 0 auto; flex: none; }
+.steps .break { flex: 1 1 100%; height: 0; margin: -0.5rem 0; }
+.steps li .what { min-height: 6.5rem; display: flex; align-items: center; }

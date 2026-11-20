@@ -126,6 +126,7 @@
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">@if (isCollapsed(r)) { <path d="M9 6l6 6-6 6" /> } @else { <path d="M6 9l6 6 6-6" /> }</svg>
             </button>
             <h2>@if (titleParts(r.title); as tp) {<span class="title-rest">{{ tp.before }}@if (tp.time) {<span class="starttime">{{ tp.time }}</span>}{{ tp.sep }}</span><strong class="category">{{ tp.category }}</strong>} @if (r.closed) { <span class="lockpill"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg> {{ t('adminClosed') }}</span> }</h2>
+            @if (!admin || competitorId) {
             <button type="button" class="download" [class.waiting]="!hasAdded(r) || (admin && !r.closed)" [attr.aria-disabled]="!hasAdded(r) || (admin && !r.closed) ? 'true' : null" (click)="hasAdded(r) && (!admin || r.closed) && download(r.id, 'mdsnew')" [attr.aria-label]="t('mdsNewShort') + ' ' + r.title" [title]="!hasAdded(r) ? t('noNewRiders') : admin && !r.closed ? t('needClosed') : t('tipDownloadMdsNew')">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></svg>
               {{ t('mdsNewShort') }}
@@ -134,17 +135,48 @@
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></svg>
               {{ t('mdsShort') }}
             </button>
+            }
             @if (admin) {
-              <button type="button" class="download pdf" [class.waiting]="!r.closed" [attr.aria-disabled]="!r.closed ? 'true' : null" (click)="r.closed && downloadPdf(r)" [attr.aria-label]="t('pdfShort') + ' ' + r.title" [title]="!r.closed ? t('needClosed') : t('tipDownloadPdf')">
-                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>
-                {{ t('pdfShort') }}
-              </button>
               <button type="button" class="close" [class.closed]="r.closed" [title]="r.closed ? t('tipAdminOpen') : t('tipAdminClose')" (click)="setClosed(r)">
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" />@if (r.closed) { <path d="M8 11V8a4 4 0 0 1 7.5-2" /> } @else { <path d="M8 11V8a4 4 0 0 1 8 0v3" /> }</svg>
                 {{ r.closed ? t('adminOpen') : t('adminClose') }}
               </button>
             }
           </div>
+          @if (admin && !competitorId && r.closed) {
+            <ol class="steps nextsteps" [attr.aria-label]="t('nextSteps')">
+              @if (hasAdded(r)) {
+                <li data-n="7">
+                  <svg viewBox="0 0 96 72" aria-hidden="true" focusable="false">
+                    <circle cx="36" cy="24" r="10" class="paper" />
+                    <path d="M16 62c0-12 9-20 20-20s20 8 20 20" class="stroke" />
+                    <path d="M68 30v22M57 41h22" class="accent" />
+                  </svg>
+                  <span class="what" [attr.data-step]="t('stepWord')">{{ t('adminStep6') }}</span>
+                  <span class="break" aria-hidden="true"></span><button type="button" class="download stepbtn" (click)="download(r.id, 'mdsnew')" [attr.aria-label]="t('mdsNewShort') + ' ' + r.title"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></svg> {{ t('mdsNewShort') }}</button>
+                  <details class="mdsfold"><summary>{{ t('mdsShowDeelname') }}</summary><img class="mds" src="/dts-mds-deelname-import.png" [alt]="t('mdsDeelnameAlt')" width="1902" height="218" loading="lazy" /></details>
+                </li>
+              }
+              <li data-n="8">
+                <svg viewBox="0 0 96 72" aria-hidden="true" focusable="false">
+                  <rect x="20" y="8" width="44" height="56" rx="4" class="paper" />
+                  <path d="M28 22h28M28 32h28M28 42h18" class="stroke" />
+                  <path d="M58 50h26M77 43l7 7-7 7" class="accent" />
+                </svg>
+                <span class="what" [attr.data-step]="t('stepWord')">{{ t('adminStep7') }}</span>
+                <span class="break" aria-hidden="true"></span><button type="button" class="download stepbtn" (click)="download(r.id, 'tekenlijst')" [attr.aria-label]="t('mdsShort') + ' ' + r.title"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></svg> {{ t('mdsShort') }}</button>
+                <details class="mdsfold"><summary>{{ t('mdsShowImport') }}</summary><img class="mds" src="/dts-mds-import.png" [alt]="t('mdsImportAlt')" width="1442" height="773" loading="lazy" /></details>
+              </li>
+              <li data-n="9">
+                <svg viewBox="0 0 96 72" aria-hidden="true" focusable="false">
+                  <path d="M28 6h26l14 14v46H28z" class="paper" />
+                  <path d="M54 6v14h14M36 34h24M36 44h24M36 54h14" class="stroke" />
+                </svg>
+                <span class="what" [attr.data-step]="t('stepWord')">{{ t('adminStep8') }}</span>
+                <span class="break" aria-hidden="true"></span><button type="button" class="download stepbtn pdf" (click)="downloadPdf(r)" [attr.aria-label]="t('pdfShort') + ' ' + r.title"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg> {{ t('pdfShort') }}</button>
+              </li>
+            </ol>
+          }
           @if (!hasAdded(r)) {
             <p class="nonew">{{ t('noNewShort') }}</p>
           }

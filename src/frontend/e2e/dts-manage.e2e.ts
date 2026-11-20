@@ -263,11 +263,11 @@ test.describe('dts manage page', () => {
     await expect(admin.getByRole('button', { name: 'Opslaan' })).toHaveCount(0);
     const dts = admin.getByRole('button', { name: /^MDS-tekenlijst .*NO1$/ });
     const pdfButton = admin.getByRole('button', { name: /^PDF .*NO1$/ });
-    await expect(dts).toHaveAttribute('aria-disabled', 'true');
-    await expect(dts).toHaveAttribute('title', /Sluit eerst/);
-    await expect(pdfButton).toHaveAttribute('aria-disabled', 'true');
+    // the downloads sit in the next steps, which appear when the race is closed
+    await expect(dts).toHaveCount(0);
+    await expect(pdfButton).toHaveCount(0);
     await race.getByRole('button', { name: 'Inschrijving sluiten' }).click();
-    await expect(dts).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(race.locator('.nextsteps').getByRole('button', { name: /^MDS-tekenlijst/ })).toBeVisible();
     await race.getByRole('button', { name: /^Uitklappen/ }).click();
     const [one] = await Promise.all([admin.waitForEvent('download'), dts.click()]);
     expect(await (await import('node:fs/promises')).readFile(await one.path(), 'utf8')).toContain('<Getekend>1</Getekend>');

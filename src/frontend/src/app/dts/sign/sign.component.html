@@ -78,7 +78,7 @@
             <path d="M34 22h28M34 32h28M34 42h20" class="stroke" />
             <path d="M48 62V50M42 55l6-6 6 6" class="accent" />
           </svg>
-          <span class="what">{{ t('adminStep1') }}</span>
+          <span class="what" [attr.data-step]="t('stepWord')">{{ t('adminStep1') }}</span>
           <label class="big primary file new" [class.disabled]="uploading()" [title]="t('tipNewSession')">
             {{ uploading() ? t('startBusy') : t('sessionNew') }}
             <input type="file" accept=".xml,text/xml" (change)="pick($event)" [disabled]="uploading()" />
@@ -93,7 +93,7 @@
             <rect x="28" y="6" width="40" height="60" rx="4" class="paper" />
             <path d="M36 14h10v10H36zM50 14h10v10H50zM36 28h10v10H36zM52 30h6v6h-6zM36 44h24M36 52h18" class="fill" />
           </svg>
-          <span class="what">{{ t('adminStepQr') }}</span>
+          <span class="what" [attr.data-step]="t('stepWord')">{{ t('adminStepQr') }}</span>
         </li>
         <li class="jury">
           <svg viewBox="0 0 96 72" aria-hidden="true" focusable="false">
@@ -102,7 +102,7 @@
             <rect x="56" y="22" width="22" height="42" rx="5" class="paper" />
             <path d="M52 30l-6-4M52 36h-8M52 42l-6 4" class="accent" />
           </svg>
-          <span class="what">{{ t('adminStep2') }}</span>
+          <span class="what" [attr.data-step]="t('stepWord')">{{ t('adminStep2') }}</span>
         </li>
         <li class="jury">
           <svg viewBox="0 0 96 72" aria-hidden="true" focusable="false">
@@ -112,7 +112,7 @@
             <path d="M40 18l3 3 6-6" class="stroke" />
             <rect x="35" y="48" width="26" height="12" rx="3" class="accent-fill" />
           </svg>
-          <span class="what">{{ t('adminStep3') }}</span>
+          <span class="what" [attr.data-step]="t('stepWord')">{{ t('adminStep3') }}</span>
         </li>
         <li class="admin">
           <svg viewBox="0 0 96 72" aria-hidden="true" focusable="false">
@@ -124,7 +124,7 @@
             <rect x="34" y="36" width="16" height="12" rx="3" class="note" />
             <rect x="54" y="36" width="16" height="12" rx="3" class="open" />
           </svg>
-          <span class="what">{{ t('adminStep4') }}</span>
+          <span class="what" [attr.data-step]="t('stepWord')">{{ t('adminStep4') }}</span>
         </li>
         <li class="admin">
           <svg viewBox="0 0 96 72" aria-hidden="true" focusable="false">
@@ -132,19 +132,7 @@
             <path d="M36 30V22a12 12 0 0 1 24 0v8" class="stroke" />
             <path d="M48 41v10" class="accent" />
           </svg>
-          <span class="what">{{ t('adminStep5') }}</span>
-        </li>
-        <li class="admin">
-          <svg viewBox="0 0 96 72" aria-hidden="true" focusable="false">
-            <rect x="20" y="8" width="44" height="56" rx="4" class="paper" />
-            <path d="M28 22h28M28 32h28M28 42h18" class="stroke" />
-            <path d="M58 50h26M77 43l7 7-7 7" class="accent" />
-          </svg>
-          <span class="what">{{ t('adminStep6') }}</span>
-          <details class="mdsfold">
-            <summary>{{ t('mdsShowImport') }}</summary>
-            <img class="mds" src="/dts-mds-import.png" [alt]="t('mdsImportAlt')" width="1442" height="773" loading="lazy" />
-          </details>
+          <span class="what" [attr.data-step]="t('stepWord')">{{ t('adminStep5') }}</span>
         </li>
         <li class="admin">
           <svg viewBox="0 0 96 72" aria-hidden="true" focusable="false">
@@ -152,11 +140,30 @@
             <path d="M16 62c0-12 9-20 20-20s20 8 20 20" class="stroke" />
             <path d="M68 30v22M57 41h22" class="accent" />
           </svg>
-          <span class="what">{{ t('adminStep7') }}</span>
+          <span class="what" [attr.data-step]="t('stepWord')">{{ t('adminStep6') }}</span>
           <details class="mdsfold">
             <summary>{{ t('mdsShowDeelname') }}</summary>
             <img class="mds" src="/dts-mds-deelname-import.png" [alt]="t('mdsDeelnameAlt')" width="1902" height="218" loading="lazy" />
           </details>
+        </li>
+        <li class="admin">
+          <svg viewBox="0 0 96 72" aria-hidden="true" focusable="false">
+            <rect x="20" y="8" width="44" height="56" rx="4" class="paper" />
+            <path d="M28 22h28M28 32h28M28 42h18" class="stroke" />
+            <path d="M58 50h26M77 43l7 7-7 7" class="accent" />
+          </svg>
+          <span class="what" [attr.data-step]="t('stepWord')">{{ t('adminStep7') }}</span>
+          <details class="mdsfold">
+            <summary>{{ t('mdsShowImport') }}</summary>
+            <img class="mds" src="/dts-mds-import.png" [alt]="t('mdsImportAlt')" width="1442" height="773" loading="lazy" />
+          </details>
+        </li>
+        <li class="admin">
+          <svg viewBox="0 0 96 72" aria-hidden="true" focusable="false">
+            <path d="M28 6h26l14 14v46H28z" class="paper" />
+            <path d="M54 6v14h14M36 34h24M36 44h24M36 54h14" class="stroke" />
+          </svg>
+          <span class="what" [attr.data-step]="t('stepWord')">{{ t('adminStep8') }}</span>
         </li>
         </ol>
       </div>
@@ -168,14 +175,19 @@
       <p class="banner warn">{{ t('createdWarn') }}</p>
       <section class="card">
         <h2>{{ t('createdSign') }}</h2>
-        <div class="linkrow"><p class="url">{{ signLink() }}</p><button type="button" class="copy" (click)="copy('sign')" [attr.aria-label]="copied() === 'sign' ? t('copied') : t('copy')" [title]="t('tipCopy')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">@if (copied() === 'sign') { <path d="M5 13l4 4L19 7" /> } @else { <rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /> }</svg></button></div>
-        @if (qr(); as q) {
-          <svg class="qr" [attr.viewBox]="'0 0 ' + q.size + ' ' + q.size" role="img" [attr.aria-label]="t('qrLabel')" shape-rendering="crispEdges">
-            <rect width="100%" height="100%" fill="#fff" />
-            <path [attr.d]="q.path" fill="#000" />
-          </svg>
-          <p class="muted">{{ t('qrNote') }}</p>
-        }
+        <div class="signlink">
+          <div class="linkrow"><p class="url">{{ signLink() }}</p></div>
+          @if (qr(); as q) {
+            <svg class="qr" [attr.viewBox]="'0 0 ' + q.size + ' ' + q.size" role="img" [attr.aria-label]="t('qrLabel')" shape-rendering="crispEdges">
+              <rect width="100%" height="100%" fill="#fff" />
+              <path [attr.d]="q.path" fill="#000" />
+            </svg>
+          }
+          <div class="linkactions"><button type="button" class="copy" (click)="copy('sign')" [attr.aria-label]="copied() === 'sign' ? t('copied') : t('copy')" [title]="t('tipCopy')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">@if (copied() === 'sign') { <path d="M5 13l4 4L19 7" /> } @else { <rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /> }</svg></button><button type="button" class="copy print" (click)="printQr()" [attr.aria-label]="t('printQr')" [title]="t('printQr')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2" /><rect x="7" y="14" width="10" height="7" /></svg></button></div>
+          @if (qr()) {
+            <p class="banner sharewarn" role="note"><span><strong>{{ t('qrDoNotShare') }}</strong> {{ t('qrNote') }}</span></p>
+          }
+        </div>
         @if (canShare()) {
           <button type="button" class="big" (click)="shareLink()">{{ t('share') }}</button>
         }

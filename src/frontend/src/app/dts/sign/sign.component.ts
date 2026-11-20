@@ -297,6 +297,9 @@ export class DtsSignComponent implements OnInit {
     }
     return this.qrCache;
   };
+  protected printQr(): void {
+    window.print();
+  }
   protected manageLink = (): string => this.engine.manageLink() ?? '';
 
   /** Leaves the created screen for the overview page, whose link is not shown. */
