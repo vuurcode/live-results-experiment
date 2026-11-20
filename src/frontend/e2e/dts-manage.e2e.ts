@@ -6,7 +6,7 @@ test.describe('dts manage page', () => {
   test.use({ locale: 'nl-NL' });
 
   test('refuses a link with a wrong key', async ({ page }) => {
-    await page.goto('/dts/manage#0123456789abcdef0123456789abcdef.wrongkey');
+    await page.goto('/dts-admin/list?s=0123456789abcdef0123456789abcdef');
     await expect(page.getByText('Deze link werkt niet')).toBeVisible();
   });
 
@@ -18,26 +18,6 @@ test.describe('dts manage page', () => {
       data: { race: '3', minutes: 5 },
     });
     expect(answer.status()).toBe(404);
-  });
-
-  test('adds a note on the manage page that the sign page shows, and resolves it', async ({ page, context }) => {
-    const links = await upload(page);
-    const manage = await context.newPage();
-    await manage.goto(local(links.manage));
-    await manage.getByLabel('Beennummer of naam').fill('11');
-    await manage.getByRole('button', { name: /^11 / }).click();
-    await manage.getByRole('button', { name: 'Waarschuwing' }).click();
-    await manage.getByLabel(/^Tekst/).fill('Nog betalen');
-    await manage.getByRole('button', { name: 'Toevoegen' }).click();
-    await expect(manage.locator('.notes li').filter({ hasText: 'Nog betalen' })).toBeVisible();
-
-    await page.bringToFront();
-    await open(page, '11', /11\s+Aardappel/);
-    await expect(page.getByText('Nog betalen').first()).toBeVisible({ timeout: 20000 });
-
-    await manage.bringToFront();
-    await manage.locator('.notes li').filter({ hasText: 'Nog betalen' }).getByRole('button', { name: 'Opgelost' }).click();
-    await expect(manage.locator('.notes li.done').filter({ hasText: 'Nog betalen' })).toBeVisible();
   });
 
   test('downloads one race and the whole file with the signed state', async ({ page, context }) => {
@@ -52,6 +32,10 @@ test.describe('dts manage page', () => {
 
     await expect(manage.getByRole('button', { name: /\(Alles\)/ })).toHaveCount(0);
 
+    // the downloads sit in the next steps, which appear when the race is closed
+    const race = manage.locator('.race', { hasText: 'NO1' });
+    await race.getByRole('button', { name: 'Inschrijving sluiten' }).click();
+    await race.getByRole('button', { name: /^Uitklappen/ }).click();
     const [mds] = await Promise.all([manage.waitForEvent('download'), manage.getByRole('button', { name: /^MDS-tekenlijst .*NO1$/ }).click()]);
     expect(mds.suggestedFilename()).toMatch(/_tekenlijst\.xml$/);
     const tekenlijst = await (await import('node:fs/promises')).readFile(await mds.path(), 'utf8');
@@ -96,12 +80,14 @@ test.describe('dts manage page', () => {
     const colour = (state: string) => race.locator(`.num[data-state="${state}"]`).first().evaluate((el) => getComputedStyle(el).backgroundColor);
     const signed = await colour('signed');
     const changed = await colour('changed');
-    await manage.getByLabel('Beennummer of naam').fill('11');
-    await manage.getByRole('button', { name: /^11 / }).click();
-    await manage.getByRole('button', { name: 'Waarschuwing' }).click();
-    await manage.getByLabel(/^Tekst/).fill('Nog betalen');
-    await manage.getByRole('button', { name: 'Toevoegen' }).click();
-    await expect(race.locator('.num[data-state="note"]')).toHaveText(/11/);
+    const id = new URL(manage.url()).searchParams.get('s')!;
+    const st = await (await manage.request.get(`/dts-api/admin/sessions/${id}`)).json();
+    const entry = st.races.flatMap((r: { entries: { id: string; cap: string }[] }) => r.entries).find((e: { cap: string }) => e.cap === '11').id;
+    const noted = await manage.request.post(`/dts-api/admin/sessions/${id}/notes`, {
+      data: { id: 'aabbccddeeff0011', kind: 'add', entry, level: 'warning', text: 'Nog betalen' },
+    });
+    expect(noted.status()).toBe(200);
+    await expect(race.locator('.num[data-state="note"]')).toHaveText(/11/, { timeout: 20000 });
     // the colour fades to the new state, so it is read until it has settled
     await expect.poll(async () => new Set([signed, changed, await colour('note')]).size).toBe(3);
   });
@@ -154,8 +140,7 @@ test.describe('dts manage page', () => {
   test('lists the created sessions on /dts and deletes one for good', async ({ page }) => {
     await upload(page);
     const id = new URL(page.url()).searchParams.get('s')!;
-    await page.goto('/dts');
-    await expect(page).toHaveURL(/\/dts\/$/);
+    await page.goto('/dts-admin/');
     await expect(page.getByRole('heading', { name: 'Tekenlijsten beheren' })).toBeVisible();
     const row = page.locator('.sessions > li').filter({ hasText: 'NO1' }).first();
     await expect(row).toBeVisible();
@@ -190,7 +175,7 @@ test.describe('dts manage page', () => {
     await upload(page);
     await open(page, '11', /11\s+Aardappel/);
     const admin = await context.newPage();
-    await admin.goto('/dts/');
+    await admin.goto('/dts-admin/');
     await admin.locator('.sessions > li').first().getByRole('button', { name: 'Details' }).click();
     const race = admin.locator('.race', { hasText: 'NO1' });
     await race.getByRole('button', { name: 'Inschrijving sluiten' }).click();
@@ -207,7 +192,7 @@ test.describe('dts manage page', () => {
 
   test('shows the sign link and QR code of a list again on /dts', async ({ page }) => {
     const links = await upload(page);
-    await page.goto('/dts/');
+    await page.goto('/dts-admin/');
     const row = page.locator('.sessions > li').first();
     await row.getByText('Link/QR voor jury-inschrijver(s)', { exact: true }).click();
     await expect(row.locator('.url')).toHaveText(links.sign);
@@ -215,52 +200,57 @@ test.describe('dts manage page', () => {
     await expect(row.getByText('alleen met de inschrijvers')).toBeVisible();
   });
 
-  test('shows the notes inside the race card on the admin list, with their number', async ({ page, context }) => {
-    const links = await upload(page);
-    const manage = await context.newPage();
-    await manage.goto(local(links.manage));
-    await manage.getByLabel('Beennummer of naam').fill('11');
-    await manage.getByRole('button', { name: /^11 / }).click();
-    await manage.getByLabel(/^Tekst/).fill('Nog betalen');
-    await manage.getByRole('button', { name: 'Toevoegen' }).click();
-    await expect(manage.locator('.notes li').filter({ hasText: 'Nog betalen' })).toBeVisible();
-
-    const admin = await context.newPage();
-    await admin.goto('/dts/');
-    await admin.locator('.sessions > li').first().getByRole('button', { name: 'Details' }).click();
-    const fold = admin.locator('.race-notes').first();
-    await expect(fold.locator('.badge-count')).toHaveText('1');
-    await expect(fold.getByText('Nog betalen')).toBeHidden();
-    await fold.locator('summary').click();
-    await expect(fold.getByText('Nog betalen')).toBeVisible();
-  });
-
-  test('lets the admin add a competitor to a race from the list page', async ({ page, context }) => {
+  test('lets the admin add and then change a competitor without any sign key', async ({ page, context }) => {
     await upload(page);
     const admin = await context.newPage();
-    await admin.goto('/dts/');
+    await admin.goto('/dts-admin/');
     await admin.locator('.sessions > li').first().getByRole('button', { name: 'Details' }).click();
     await admin.locator('.addnew a').first().click();
     await admin.getByLabel('Naam', { exact: true }).fill('Esselink, Eva');
     await admin.getByLabel('Beennummer', { exact: true }).fill('x5');
-    await expect(admin.getByLabel('Transponder 1')).toBeVisible();
-    await expect(admin.getByLabel('In welke wedstrijd?')).toHaveCount(0);
+    await admin.getByLabel('Transponder 1').fill('aa-12345');
+    await admin.getByRole('button', { name: 'Opslaan' }).click();
+    await expect(admin).toHaveURL(/\/dts-admin\/list\?s=/);
+    const added = admin.locator('.num').filter({ hasText: 'X5' });
+    await expect(added).toBeVisible();
+
+    const [details] = await Promise.all([admin.context().waitForEvent('page'), added.getByRole('link').click()]);
+    await details.getByRole('link', { name: 'Gegevens aanpassen' }).click();
+    await expect(details).toHaveURL(/\/dts-admin\/edit\?s=/);
+    await details.getByLabel('Beennummer', { exact: true }).fill('x6');
+    await details.getByRole('button', { name: 'Opslaan' }).click();
+    await expect(details).toHaveURL(/\/dts-admin\/list\?s=/);
+    await expect(details.locator('.num').filter({ hasText: 'X6' })).toBeVisible();
   });
 
-  test('lets the admin open the details of a list, read-only, and download the signed file', async ({ page, context }) => {
+  test('does not save a change to a competitor of a closed race and opens the edit form from a trailing slash', async ({ page, context }) => {
+    await upload(page);
+    const admin = await context.newPage();
+    await admin.goto('/dts-admin/');
+    await admin.locator('.sessions > li').first().getByRole('button', { name: 'Details' }).click();
+    const race = admin.locator('.race', { hasText: 'NO1' });
+    const href = await race.locator('a.numlink').first().getAttribute('href');
+    await race.getByRole('button', { name: 'Inschrijving sluiten' }).click();
+    await expect(race.getByRole('button', { name: 'Heropenen' })).toBeVisible();
+
+    await admin.goto(`${href!.replace('/list', '/edit/')}`);
+    await expect(admin.getByRole('heading', { name: 'Deelnemer aanpassen' })).toBeVisible();
+    await expect(admin.getByRole('alert').filter({ hasText: 'gesloten' })).toBeVisible();
+    await expect(admin.getByRole('button', { name: 'Opslaan' })).toBeDisabled();
+  });
+
+  test('lets the admin open the details of a list and download the signed file', async ({ page, context }) => {
     await upload(page);
     await open(page, '11', /11\s+Aardappel/);
     await page.getByRole('button', { name: 'Markeer als getekend' }).click();
     await expect(page.getByText('In sync met server')).toBeVisible();
 
     const admin = await context.newPage();
-    await admin.goto('/dts/');
+    await admin.goto('/dts-admin/');
     await admin.locator('.sessions > li').filter({ hasText: 'NO1' }).first().getByRole('button', { name: 'Details' }).click();
-    await expect(admin).toHaveURL(/\/dts\/list\?s=[0-9a-f]{32}$/);
+    await expect(admin).toHaveURL(/\/dts-admin\/list\?s=[0-9a-f]{32}$/);
     const race = admin.locator('.race', { hasText: 'NO1' });
     await expect(race.locator('.count strong')).toHaveText(/^1 van /);
-    await expect(admin.getByRole('button', { name: 'Toevoegen' })).toHaveCount(0);
-    await expect(admin.getByRole('button', { name: 'Opslaan' })).toHaveCount(0);
     const dts = admin.getByRole('button', { name: /^MDS-tekenlijst .*NO1$/ });
     const pdfButton = admin.getByRole('button', { name: /^PDF .*NO1$/ });
     // the downloads sit in the next steps, which appear when the race is closed
@@ -296,9 +286,7 @@ test.describe('dts manage page', () => {
     expect(details.context().pages()).toHaveLength(opened);
     await expect(details.getByRole('heading', { name: /Aardappel/ })).toBeVisible();
     await expect(details.locator('.badges')).toContainText('Transponder 1');
-    await expect(details.getByRole('link', { name: 'Wijzig in tekenscherm' })).toHaveAttribute('href', /view=rider&rider=/);
-    // the grayed out details are not editable from here
-    await expect(details.locator('.badges a, .badges button, .badges input')).toHaveCount(0);
+    await expect(details.getByRole('link', { name: 'Gegevens aanpassen' })).toHaveAttribute('href', /^\/dts-admin\/edit\?s=[0-9a-f]{32}&c=/);
     await details.getByRole('link', { name: /Terug naar DTS Tekenlijst Overzicht/ }).click();
     await expect(details.locator('.race', { hasText: 'NO1' })).toBeVisible();
     await details.getByRole('button', { name: /Terug naar beheer/ }).click();
@@ -308,12 +296,12 @@ test.describe('dts manage page', () => {
   test('returns the admin from the add screen to the list it came from', async ({ page, context }) => {
     await upload(page);
     const admin = await context.newPage();
-    await admin.goto('/dts/');
+    await admin.goto('/dts-admin/');
     await admin.locator('.sessions > li').filter({ hasText: 'NO1' }).first().getByRole('button', { name: 'Details' }).click();
     const list = admin.url();
     await admin.locator('.race', { hasText: 'NO1' }).getByRole('link', { name: /Nieuwe deelnemer/ }).click();
     await expect(admin.getByRole('heading', { name: 'Nieuwe deelnemer' })).toBeVisible();
-    await admin.getByRole('button', { name: /Terug/ }).click();
+    await admin.getByRole('link', { name: /Terug/ }).click();
     await expect(admin).toHaveURL(list);
     await expect(admin.getByRole('heading', { name: 'Tekenlijsten beheren' }).or(admin.locator('.race', { hasText: 'NO1' }))).toBeVisible();
   });
@@ -323,7 +311,7 @@ test.describe('dts manage page', () => {
     await open(page, '11', /11\s+Aardappel/);
     await page.getByRole('button', { name: 'Markeer als getekend' }).click();
     const admin = await context.newPage();
-    await admin.goto('/dts/');
+    await admin.goto('/dts-admin/');
     await admin.locator('.sessions > li').first().getByRole('button', { name: 'Details' }).click();
     const device = admin.locator('.panels li').filter({ hasText: /gezien (zojuist|\d+ min geleden)/ });
     await expect(device).toBeVisible({ timeout: 20000 });
@@ -338,7 +326,7 @@ test.describe('dts manage page', () => {
 
   test('keeps a session when the delete is cancelled', async ({ page }) => {
     await upload(page);
-    await page.goto('/dts/');
+    await page.goto('/dts-admin/');
     const rows = page.locator('.sessions > li');
     await expect(rows.first()).toBeVisible();
     const before = await rows.count();

@@ -1,28 +1,32 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
-import { installInstantTooltips } from '../dts-tooltip';
-import { DtsText } from '../dts-text';
-import { buildPdf, type PdfLogLine } from '../dts-pdf';
-import { dtsAdminRequest, dtsRequest, fileNameOf, parseFragment, parseJson, randomId, previewBlob, saveBlob } from '../dts-api';
-import { DtsNotices } from '../dts-notices';
-import { qrEncode, qrPath } from '../qr';
-import { byCap, byCapOpenFirst, clock, findRacers, minutesToCutoff, raceProblems, watermarkOf } from '../dts.logic';
-import { warningSentence } from '../dts-warning-text';
-import type { DtsAction, DtsDevice, DtsEntry, DtsNote, DtsRace, DtsState, DtsWarning } from '../dts.models';
-import type { DtsKey } from '../dts.strings';
+import { installInstantTooltips } from '../../dts/dts-tooltip';
+import { DtsText } from '../../dts/dts-text';
+import { buildPdf, type PdfLogLine } from '../../dts/dts-pdf';
+import { dtsAdminRequest, fileNameOf, parseJson, previewBlob, saveBlob } from '../../dts/dts-api';
+import { DtsNotices } from '../../dts/dts-notices';
+import { adminStore } from '../admin-store';
+import { AdminSyncStatus } from '../sync-status';
+import { qrEncode, qrPath } from '../../dts/qr';
+import { byCap, clock, minutesToCutoff, raceProblems, watermarkOf } from '../../dts/dts.logic';
+import { warningSentence } from '../../dts/dts-warning-text';
+import type { DtsAction, DtsDevice, DtsEntry, DtsNote, DtsRace, DtsState, DtsWarning } from '../../dts/dts.models';
+import type { DtsKey } from '../../dts/dts.strings';
 
-/** The manage page: monitoring, notes and the cutoff per race. It cannot sign or change the data. Under /dts/list the admin reads one list, read-only. */
 /** The kinds of log action that are about a note. */
 const NOTE_KINDS = ['note-add', 'racer-note', 'note-resolve'];
 
+/** The admin's page for one list (/dts-admin/list?s=<id>), or one competitor of it (&c=<entry>): monitoring, notes, the cutoff per race, closing, and the way to add or edit a competitor. */
 @Component({
   selector: 'app-dts-manage',
   standalone: true,
+  imports: [AdminSyncStatus],
   templateUrl: './manage.component.html',
   styleUrls: ['./manage.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DtsManageComponent implements OnInit {
   private readonly destroy = inject(DestroyRef);
+  private readonly store = adminStore();
   protected readonly text = new DtsText();
   private readonly tabSync = effect(() => {
     document.title = `${this.text.t('manageTitle')} · ${this.text.t('appName')}`;
@@ -54,10 +58,8 @@ export class DtsManageComponent implements OnInit {
   });
   protected readonly loadedAt = signal<number | null>(null);
   protected readonly denied = signal(false);
-  /** Whether the admin reads the list (/dts/list?s=<id>) instead of a manager with a key. */
-  protected readonly admin = location.pathname.startsWith('/dts/list');
-  /** The competitor whose details page is open (admin only): /dts/list?s=<id>&c=<entry>. */
-  protected readonly competitorId = this.admin ? (new URLSearchParams(location.search).get('c') ?? '') : '';
+  /** The competitor whose details page is open: /dts-admin/list?s=<id>&c=<entry>. */
+  protected readonly competitorId = new URLSearchParams(location.search).get('c') ?? '';
   protected readonly competitor = computed(() => {
     for (const race of this.state()?.races ?? []) {
       const entry = race.entries.find((e) => e.id === this.competitorId);
@@ -72,37 +74,26 @@ export class DtsManageComponent implements OnInit {
   protected readonly message = signal('');
   protected readonly cutoffDraft = signal<Record<string, string>>({});
 
-  protected readonly noteQuery = signal('');
-  protected readonly noteTarget = signal('');
-  protected readonly noteLevel = signal<'note' | 'warning'>('note');
-  protected readonly noteText = signal('');
-
-  protected readonly candidates = computed(() => findRacers(this.state()?.races ?? [], this.noteQuery(), 5));
   /** Every note, open and resolved, about a competitor of the race. */
   protected notesOf(r: DtsRace): DtsNote[] {
     const ids = new Set(r.entries.map((e) => e.id));
     return (this.state()?.notes ?? []).filter((n) => ids.has(n.entry));
   }
 
-  protected readonly openNotes = computed(() => (this.state()?.notes ?? []).filter((n) => !n.resolved));
-  protected readonly doneNotes = computed(() => (this.state()?.notes ?? []).filter((n) => n.resolved));
-
   private id = '';
-  private key = '';
   private failures = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
 
   ngOnInit(): void {
     installInstantTooltips();
-    const link = this.admin ? this.adminLink() : parseFragment(location.hash);
-    if (!link) {
+    const id = new URLSearchParams(location.search).get('s') ?? '';
+    if (!/^[0-9a-f]{32}$/.test(id)) {
       this.denied.set(true);
       return;
     }
-    this.id = link.id;
-    this.dismissed.set(new DtsNotices(`manage:${link.id}`));
-    this.key = link.key;
-    if (this.admin) void this.loadSignKey();
+    this.id = id;
+    this.dismissed.set(new DtsNotices(`manage:${id}`));
+    void this.loadSignKey();
     const tick = setInterval(() => this.nowMs.set(Date.now()), 15000);
     const visible = () => {
       if (document.visibilityState === 'visible') void this.refresh();
@@ -117,18 +108,18 @@ export class DtsManageComponent implements OnInit {
   }
 
   protected back(): void {
-    location.assign('/dts/');
+    location.assign('/dts-admin/');
   }
 
   /** The address of the list, or of one competitor of it (admin). */
   protected competitorHref(id = ''): string {
-    return `/dts/list?s=${this.id}${id ? `&c=${encodeURIComponent(id)}` : ''}`;
+    return `/dts-admin/list?s=${this.id}${id ? `&c=${encodeURIComponent(id)}` : ''}`;
   }
 
-  /** The hover text of a number: its details (admin) or state, then the open notes about it. */
+  /** The hover text of a number: its details, then the open notes about it. */
   protected tipOf(e: DtsEntry): string {
     const notes = (this.state()?.notes ?? []).filter((n) => n.entry === e.id && !n.resolved).map((n) => `! ${n.text}`);
-    return [this.admin ? this.detailLines(e) : this.stateLabel(e), ...notes].join('\n');
+    return [this.detailLines(e), ...notes].join('\n');
   }
 
   /** The race title cut around its start time ("17.30 uur") and the category after it, so that both can be emphasised. */
@@ -163,48 +154,40 @@ export class DtsManageComponent implements OnInit {
   private readonly signKey = signal('');
 
   private async loadSignKey(): Promise<void> {
-    try {
-      const res = await fetch('/dts-api/admin/sessions', { cache: 'no-store' });
-      const list = ((await res.json()) as { sessions: { id: string; signKey?: string }[] | null }).sessions ?? [];
-      this.signKey.set(list.find((x) => x.id === this.id)?.signKey ?? '');
-    } catch {
-      // no add links without the key
-    }
+    // no add links without the key
+    this.signKey.set(await this.store.signKey(this.id));
   }
 
-  /** The sign page add flow for a race, or nothing while the key is unknown. */
+  /** The add-a-competitor page for a race. */
   protected addHref(r: DtsRace): string {
-    const key = this.signKey();
-    return key ? `/dts/sign?s=${this.id}&view=add&race=${encodeURIComponent(r.id)}&from=list#${this.id}.${key}` : '';
+    return `/dts-admin/add?s=${this.id}&race=${encodeURIComponent(r.id)}`;
   }
 
-  private adminLink(): { id: string; key: string } | null {
-    const id = new URLSearchParams(location.search).get('s') ?? '';
-    return /^[0-9a-f]{32}$/.test(id) ? { id, key: '' } : null;
+  /** The edit page of a competitor. */
+  protected editHref(entry: string): string {
+    return `/dts-admin/edit?s=${this.id}&c=${encodeURIComponent(entry)}`;
   }
 
   private read(path: string, timeoutMs?: number) {
-    return this.admin ? dtsAdminRequest(path, timeoutMs) : dtsRequest(path, { key: this.key, timeoutMs });
+    return dtsAdminRequest(path, timeoutMs);
   }
 
   private async refresh(): Promise<void> {
     if (this.timer) clearTimeout(this.timer);
-    try {
-      const res = await this.read(`/${this.id}`);
-      if (res.status === 404) {
-        this.denied.set(true);
-        return;
-      }
-      if (res.status !== 200) throw new Error('status');
-      const st = parseJson<DtsState>(res);
-      this.state.set(st);
+    const got = await this.store.state(this.id);
+    if (got === 'gone') {
+      this.denied.set(true);
+      return;
+    }
+    if (got) {
+      this.state.set(got.state);
       this.loadedAt.set(Date.now());
-      this.stale.set(false);
-      this.failures = 0;
+      this.stale.set(got.stale);
+      this.failures = got.stale ? this.failures + 1 : 0;
       const drafts = { ...this.cutoffDraft() };
-      for (const r of st.races) if (!(r.id in drafts)) drafts[r.id] = String(r.cutoffMinutes);
+      for (const r of got.state.races) if (!(r.id in drafts)) drafts[r.id] = String(r.cutoffMinutes);
       this.cutoffDraft.set(drafts);
-    } catch {
+    } else {
       this.failures++;
       this.stale.set(true);
     }
@@ -302,8 +285,7 @@ export class DtsManageComponent implements OnInit {
   protected shown(r: DtsRace): DtsEntry[] {
     const f = this.filter();
     const list = f.size === 0 ? r.entries : r.entries.filter((e) => f.has(this.stateOf(e)));
-    // the admin overview keeps the numbers in place; the signers' view puts the ones still to sign first
-    return this.admin ? byCap(list) : byCapOpenFirst(list);
+    return byCap(list);
   }
 
   protected total(r: DtsRace): number {
@@ -355,19 +337,13 @@ export class DtsManageComponent implements OnInit {
     const choice = new Map(this.foldChoice());
     choice.delete(r.id);
     this.foldChoice.set(choice);
-    const res = await fetch(`/dts-api/admin/sessions/${encodeURIComponent(this.id)}/races/${encodeURIComponent(r.id)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ closed: !r.closed }),
-    }).catch(() => null);
-    if (!res?.ok) this.message.set(this.t('adminCloseFailed'));
+    await this.store.queue({ kind: 'closed', session: this.id, race: r.id, closed: !r.closed });
     await this.refresh();
   }
 
   protected async saveCutoff(r: DtsRace, reset = false): Promise<void> {
-    const body = reset ? { race: r.id, minutes: null } : { race: r.id, minutes: Number(this.cutoffDraft()[r.id]) };
-    const res = await dtsRequest(`/${this.id}/cutoff`, { method: 'PUT', key: this.key, json: body }).catch(() => null);
-    this.message.set(res?.status === 204 ? this.t('cutoffSaved') : this.t('manageStale', { time: clock(new Date().toISOString()) }));
+    await this.store.queue({ kind: 'cutoff', session: this.id, race: r.id, minutes: reset ? null : Number(this.cutoffDraft()[r.id]) });
+    this.message.set(this.t('cutoffSaved'));
     if (reset) this.cutoffDraft.update((d) => ({ ...d, [r.id]: '' }));
     await this.refresh();
   }
@@ -393,41 +369,6 @@ export class DtsManageComponent implements OnInit {
   }
 
   // ---- notes ----
-
-  protected setQuery(event: Event): void {
-    this.noteQuery.set((event.target as HTMLInputElement).value);
-    this.noteTarget.set('');
-  }
-  protected setNoteText(event: Event): void {
-    this.noteText.set((event.target as HTMLInputElement).value);
-  }
-
-  protected pickTarget(e: DtsEntry & { raceId: string }): void {
-    this.noteTarget.set(e.id);
-    this.noteQuery.set(e.cap);
-  }
-
-  protected async addNote(): Promise<void> {
-    await this.postNote(this.noteTarget(), this.noteText().trim(), this.noteLevel());
-  }
-
-  private async postNote(entry: string, text: string, level: 'note' | 'warning'): Promise<void> {
-    if (!entry || !text) return;
-    const res = await dtsRequest(`/${this.id}/notes`, {
-      method: 'POST', key: this.key, json: { id: randomId(), kind: 'add', entry, level, text: text.slice(0, 200) },
-    }).catch(() => null);
-    if (res?.status === 200) {
-      this.noteText.set('');
-      this.noteQuery.set('');
-      this.noteTarget.set('');
-      await this.refresh();
-    }
-  }
-
-  protected async resolve(n: DtsNote): Promise<void> {
-    await dtsRequest(`/${this.id}/notes`, { method: 'POST', key: this.key, json: { id: randomId(), kind: 'resolve', noteId: n.id, entry: n.entry } }).catch(() => null);
-    await this.refresh();
-  }
 
   protected entryOf(id: string): string {
     for (const r of this.state()?.races ?? []) {
@@ -533,20 +474,10 @@ export class DtsManageComponent implements OnInit {
     }
   }
 
-  /** The sign page for a competitor of this list: its screen, or the edit screen of one field. Nothing until the key is known. */
-  protected signHref(view: 'rider' | 'edit', rider: string, field = ''): string {
-    const key = this.signKey();
-    if (!key) return '';
-    const q = new URLSearchParams({ s: this.id, view, rider });
-    if (field) q.set('field', field);
-    return `/dts/sign?${q.toString()}#${this.id}.${key}`;
-  }
-
   protected async removeDevice(d: DtsDevice): Promise<void> {
     if (!confirm(this.t('deviceRemoveConfirm', { name: d.name }))) return;
-    const res = await fetch(`/dts-api/admin/sessions/${this.id}/devices/${encodeURIComponent(d.id)}`, { method: 'DELETE' }).catch(() => null);
-    if (res && (res.ok || res.status === 404)) await this.refresh();
-    else this.message.set(this.t('deviceRemoveFailed'));
+    await this.store.queue({ kind: 'device-remove', session: this.id, device: d.id });
+    await this.refresh();
   }
 
   protected changedTitle(): string {

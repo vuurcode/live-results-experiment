@@ -1,19 +1,14 @@
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
-import { installInstantTooltips } from '../dts-tooltip';
-import { DtsText } from '../dts-text';
-import { qrEncode, qrPath } from '../qr';
+import { installInstantTooltips } from '../../dts/dts-tooltip';
+import { DtsText } from '../../dts/dts-text';
+import { qrEncode, qrPath } from '../../dts/qr';
+import { adminStore, type AdminSession } from '../admin-store';
+import { AdminSyncStatus } from '../sync-status';
 
-interface AdminSession {
-  id: string;
-  created: string;
-  races: { id: string; title: string; closed?: boolean; entries: number; signed: number }[];
-  /** Absent for a list made before the server kept it, until a device syncs it. */
-  signKey?: string;
-}
-
-/** /dts: how the sign-in works, plus every list on the server with a way to delete it. The page and its API sit behind the proxy's login. */
+/** /dts-admin/: how the sign-in works, plus every list on the server with a way to delete it. The page and its API sit behind the proxy's login. */
 @Component({
   selector: 'app-dts-home',
+  imports: [AdminSyncStatus],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="dts">
@@ -24,8 +19,9 @@ interface AdminSession {
         </button>
       </header>
       <h1>{{ t('adminHeading') }}</h1>
+      <app-admin-sync [t]="t" />
 
-      <button type="button" class="new" (click)="go('/dts/sign?new=1')" [title]="t('tipNewSession')">{{ t('startHeading') }}</button>
+      <button type="button" class="new" (click)="go('/dts-admin/new')" [title]="t('tipNewSession')">{{ t('startHeading') }}</button>
 
       <h2>{{ t('adminListHeading') }}</h2>
       @if (failed()) {
@@ -39,7 +35,7 @@ interface AdminSession {
       <ul class="sessions">
         @for (s of items(); track s.id) {
           <li [class.printing]="printing() === s.id">
-            <button type="button" [title]="t('tipAdminDetails')" (click)="go('/dts/list?s=' + s.id)">{{ t('adminDetails') }}</button>
+            <button type="button" [title]="t('tipAdminDetails')" (click)="go('/dts-admin/list?s=' + s.id)">{{ t('adminDetails') }}</button>
             <button type="button" class="danger" [title]="t('tipAdminDelete')" (click)="remove(s)">{{ t('adminDelete') }}</button>
             @if (signLink(s); as link) {
               <button type="button" class="signbtn" [attr.aria-expanded]="linkOpen() === s.id" [attr.aria-controls]="'signlink-' + s.id" [title]="t('tipAdminSignLink')" (click)="linkOpen.set(linkOpen() === s.id ? '' : s.id)">{{ t('createdSign') }}</button>
@@ -148,6 +144,7 @@ interface AdminSession {
 export class DtsHomeComponent implements OnInit {
   protected readonly text = new DtsText();
   protected readonly t = this.text.t;
+  private readonly store = adminStore();
   protected readonly items = signal<AdminSession[]>([]);
   protected readonly loaded = signal(false);
   protected readonly failed = signal(false);
@@ -203,26 +200,16 @@ export class DtsHomeComponent implements OnInit {
 
   protected async load(): Promise<void> {
     this.failed.set(false);
-    try {
-      const res = await fetch('/dts-api/admin/sessions', { cache: 'no-store' });
-      if (!res.ok) throw new Error(String(res.status));
-      this.items.set(((await res.json()) as { sessions: AdminSession[] | null }).sessions ?? []);
-    } catch {
-      this.failed.set(true);
-    }
+    const got = await this.store.sessions();
+    if (got) this.items.set(got.items);
+    else this.failed.set(true);
     this.loaded.set(true);
   }
 
   protected async remove(s: AdminSession): Promise<void> {
     if (!confirm(this.t('adminDeleteConfirm'))) return;
     this.message.set('');
-    try {
-      const res = await fetch(`/dts-api/admin/sessions/${encodeURIComponent(s.id)}`, { method: 'DELETE' });
-      if (!res.ok && res.status !== 404) throw new Error(String(res.status));
-    } catch {
-      this.message.set(this.t('adminDeleteFailed'));
-      return;
-    }
+    await this.store.queue({ kind: 'session-remove', session: s.id });
     await this.load();
   }
 }
