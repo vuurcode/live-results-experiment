@@ -14,24 +14,14 @@ envsubst '${FRONTEND_LISTEN_PORT} ${FRONTEND_BACKEND_UPSTREAM} ${FRONTEND_CLIENT
 envsubst '${FRONTEND_CSP_CONNECT_SRC} ${FRONTEND_CSP_FRAME_ANCESTORS}' < /etc/nginx/security-headers.conf.template > /etc/nginx/security-headers.conf
 envsubst '${FRONTEND_BACKEND_URL}' < /etc/nginx/env-inject.js.template > /usr/share/nginx/html/env-inject.js
 # The DTS passwords guard personal data and are only rate limited, not locked out: a short one is refused at start.
-for name in DTS_MANAGE_PASSWORD DTS_ADMIN_PASSWORD DTS_ADMIN_SECRET; do
+for name in DTS_ADMIN_PASSWORD DTS_ADMIN_SECRET; do
     eval "value=\${$name:-}"
     if [ -n "$value" ] && [ "${#value}" -lt 8 ]; then
         echo "$name must be at least 8 characters" >&2
         exit 1
     fi
 done
-# basic auth for the DTS manage page only; without a password the page is open
-if [ -n "${DTS_MANAGE_PASSWORD:-}" ]; then
-    printf '%s:{PLAIN}%s\n' "${DTS_MANAGE_USERNAME:-manage}" "$DTS_MANAGE_PASSWORD" > /etc/nginx/dts-manage.htpasswd
-    chown nginx /etc/nginx/dts-manage.htpasswd
-    chmod 600 /etc/nginx/dts-manage.htpasswd
-    printf 'auth_basic "DTS manage";\nauth_basic_user_file /etc/nginx/dts-manage.htpasswd;\n' > /etc/nginx/dts-manage-auth.conf
-else
-    : > /etc/nginx/dts-manage-auth.conf
-fi
-
-# The DTS admin page and its API: basic auth (user DTS_ADMIN_USERNAME, default admin) and the secret nginx adds to the API calls.
+# The DTS admin, manage and list pages and the admin API share one login: basic auth (user DTS_ADMIN_USERNAME, default admin) and the secret nginx adds to the API calls.
 # Without a password nobody gets in; without a secret the service has the admin API off.
 if [ -n "${DTS_ADMIN_PASSWORD:-}" ]; then
     printf '%s:{PLAIN}%s\n' "${DTS_ADMIN_USERNAME:-admin}" "$DTS_ADMIN_PASSWORD" > /etc/nginx/dts-admin.htpasswd

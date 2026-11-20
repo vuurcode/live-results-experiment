@@ -41,7 +41,7 @@ server {
     location = /dts {
         return 302 /dts/;
     }
-    # The admin page asks for a username and password; without DTS_ADMIN_PASSWORD the include denies everyone.
+    # The admin page asks for the one DTS login; without DTS_ADMIN_PASSWORD the include denies everyone.
     location = /dts/ {
         include /etc/nginx/dts-admin-auth.conf;
         limit_req zone=dts_auth burst=60 nodelay;
@@ -68,10 +68,10 @@ server {
         try_files $uri =404;
     }
     # The DTS pages are their own application with their own index; its files are served by the rules above.
-    # The manage page asks for a username and password against abuse (the include is empty unless DTS_MANAGE_PASSWORD is set).
+    # The manage and list pages use the same login as the admin page.
     # The sign page and /dts-api are not behind it: the sessions are protected by their keys.
     location ~ ^/dts/(manage|list)(/|$) {
-        include /etc/nginx/dts-manage-auth.conf;
+        include /etc/nginx/dts-admin-auth.conf;
         limit_req zone=dts_auth burst=60 nodelay;
         add_header Cache-Control "no-cache" always;
         include /etc/nginx/security-headers.conf;
