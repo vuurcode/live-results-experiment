@@ -98,7 +98,7 @@ export class AdminStore {
 
   // ---- reads ----
 
-  /** Every list on the server; the copy from this device when the server cannot be reached. */
+  /** Every list on the server; the copy from this device when the server cannot be reached (not when it refuses the login). */
   async sessions(): Promise<{ items: AdminSession[]; stale: boolean } | null> {
     const kv = await this.kv();
     // read before the request: a change that is sent while the answer is on its way is still applied to it
@@ -110,6 +110,9 @@ export class AdminStore {
         items = parseJson<{ sessions: AdminSession[] | null }>(res).sessions ?? [];
         this.online.set(true);
         await kv.set(SESSIONS, items);
+      } else if (res.status === 401 || res.status === 403) {
+        // a login that lapsed or is not allowed: the copy on this device is not shown to it
+        return null;
       }
     } catch (e) {
       if (e instanceof DtsNetworkError) this.online.set(false);
@@ -143,6 +146,8 @@ export class AdminStore {
       if (res.status === 200) {
         fresh = parseJson<DtsState>(res);
         await kv.set(stateKey(id), fresh);
+      } else if (res.status === 401 || res.status === 403) {
+        return null;
       }
     } catch (e) {
       if (e instanceof DtsNetworkError) this.online.set(false);
