@@ -58,7 +58,10 @@ func New(cfg Config) *Server {
 	s.mux.HandleFunc("DELETE /dts-api/admin/sessions/{id}", s.adminDelete)
 	s.mux.HandleFunc("DELETE /dts-api/admin/sessions/{id}/devices/{device}", s.adminRemoveDevice)
 	s.mux.HandleFunc("PUT /dts-api/admin/sessions/{id}/races/{race}", s.adminClose)
-	s.mux.HandleFunc("POST /dts-api/sessions", s.create)
+	s.mux.HandleFunc("POST /dts-api/admin/sessions", s.adminCreate)
+	s.mux.HandleFunc("POST /dts-api/admin/sessions/{id}/operations", s.adminOperations)
+	s.mux.HandleFunc("POST /dts-api/admin/sessions/{id}/notes", s.adminNotes)
+	s.mux.HandleFunc("PUT /dts-api/admin/sessions/{id}/cutoff", s.adminCutoff)
 	s.mux.HandleFunc("GET /dts-api/sessions/{id}", s.state)
 	s.mux.HandleFunc("PUT /dts-api/sessions/{id}", s.restore)
 	s.mux.HandleFunc("DELETE /dts-api/sessions/{id}", s.remove)
@@ -67,7 +70,6 @@ func New(cfg Config) *Server {
 	s.mux.HandleFunc("POST /dts-api/sessions/{id}/actions", s.postActions)
 	s.mux.HandleFunc("GET /dts-api/sessions/{id}/actions", s.getActions)
 	s.mux.HandleFunc("POST /dts-api/sessions/{id}/notes", s.notes)
-	s.mux.HandleFunc("PUT /dts-api/sessions/{id}/cutoff", s.cutoff)
 	s.mux.HandleFunc("GET /dts-api/sessions/{id}/export", s.export)
 	s.mux.HandleFunc("GET /dts-api/sessions/{id}/source", s.source)
 	s.mux.HandleFunc("POST /dts-api/sessions/{id}/sync", s.syncPost)
@@ -121,7 +123,7 @@ func (s *Server) guessBlocked(w http.ResponseWriter, r *http.Request) bool {
 	return false
 }
 
-// refused books an upload or restore the service turned away as wrong. A full service, a deleted list or a server fault is not the client's doing.
+// refused books a restore the service turned away as wrong. A full service, a deleted list or a server fault is not the client's doing.
 func (s *Server) refused(r *http.Request, err error) {
 	for _, bad := range []error{store.ErrNotFound, store.ErrConflict, store.ErrTooBig, dts.ErrInvalid} {
 		if errors.Is(err, bad) {
@@ -238,32 +240,31 @@ func decode[T any](w http.ResponseWriter, r *http.Request, limit int64) (T, bool
 }
 
 type created struct {
-	ID        string   `json:"id"`
-	SignKey   string   `json:"signKey"`
-	ManageKey string   `json:"manageKey"`
-	Warnings  []string `json:"warnings"`
+	ID       string   `json:"id"`
+	SignKey  string   `json:"signKey"`
+	Warnings []string `json:"warnings"`
 }
 
-func (s *Server) create(w http.ResponseWriter, r *http.Request) {
-	if s.guessBlocked(w, r) {
+// adminCreate makes a list from an uploaded export. Only the admin creates lists; the manage key it generates is kept
+// for the device restore and handed to nobody.
+func (s *Server) adminCreate(w http.ResponseWriter, r *http.Request) {
+	if !s.admin(w, r) {
 		return
 	}
 	body, ok := readBody(w, r, int64(s.cfg.MaxUpload))
 	if !ok {
-		s.wrongGuess(r)
 		return
 	}
 	if s.createBlocked(w, r) {
 		return
 	}
-	id, sign, manage, err := s.cfg.Store.Create(body)
+	id, sign, _, err := s.cfg.Store.Create(body)
 	if err != nil {
-		s.refused(r, err)
 		fail(w, err)
 		return
 	}
 	warnings, _ := validate(body)
-	writeJSON(w, http.StatusCreated, created{ID: id, SignKey: sign, ManageKey: manage, Warnings: warnings})
+	writeJSON(w, http.StatusCreated, created{ID: id, SignKey: sign, Warnings: warnings})
 }
 
 // validate runs the checks of a fresh export that are worth telling the person about. They never refuse the file.
@@ -289,7 +290,7 @@ func (s *Server) load(w http.ResponseWriter, id string) (*store.Session, bool) {
 }
 
 func (s *Server) state(w http.ResponseWriter, r *http.Request) {
-	id, _, ok := s.auth(w, r, store.Sign, store.Manage)
+	id, _, ok := s.auth(w, r, store.Sign)
 	if !ok {
 		return
 	}
@@ -375,7 +376,7 @@ func (s *Server) postActions(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getActions(w http.ResponseWriter, r *http.Request) {
-	id, _, ok := s.auth(w, r, store.Sign, store.Manage)
+	id, _, ok := s.auth(w, r, store.Sign)
 	if !ok {
 		return
 	}
@@ -397,18 +398,27 @@ func randomID() string {
 }
 
 func (s *Server) notes(w http.ResponseWriter, r *http.Request) {
-	id, role, ok := s.auth(w, r, store.Sign, store.Manage)
+	id, _, ok := s.auth(w, r, store.Sign)
 	if !ok {
 		return
 	}
+	s.addNote(w, r, id, "sign")
+}
+
+// adminNotes adds or resolves a note as the admin.
+func (s *Server) adminNotes(w http.ResponseWriter, r *http.Request) {
+	if !s.admin(w, r) {
+		return
+	}
+	s.addNote(w, r, r.PathValue("id"), SysAdmin)
+}
+
+func (s *Server) addNote(w http.ResponseWriter, r *http.Request, id, by string) {
 	ev, ok := decode[store.NoteEvent](w, r, 16<<10)
 	if !ok {
 		return
 	}
-	ev.By = "sign"
-	if role == store.Manage {
-		ev.By = "manage"
-	}
+	ev.By = by
 	if ev.ID == "" {
 		ev.ID = randomID()
 	}
@@ -419,16 +429,15 @@ func (s *Server) notes(w http.ResponseWriter, r *http.Request) {
 		fail(w, err)
 		return
 	}
-	if role == store.Manage {
-		s.logManageNote(id, ev)
+	if by == SysAdmin {
+		s.logAdminNote(id, ev)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"id": ev.ID})
 }
 
-// logManageNote puts a note added or solved on the manage page in the action log, with the note's text. Signing
-// devices log their own notes.
-func (s *Server) logManageNote(id string, ev store.NoteEvent) {
-	act := store.Action{ID: randomID(), At: ev.At, Kind: "note-add", By: "manage", Entry: ev.Entry, Text: ev.Text}
+// logAdminNote puts a note added or solved by the admin in the action log, with the note's text. Signing devices log their own notes.
+func (s *Server) logAdminNote(id string, ev store.NoteEvent) {
+	act := store.Action{ID: randomID(), At: ev.At, Kind: "note-add", By: SysAdmin, Entry: ev.Entry, Text: ev.Text}
 	if ev.Kind == "resolve" {
 		act.Kind, act.Text = "note-resolve", ""
 		if sess, err := s.cfg.Store.Load(id); err == nil {
@@ -446,11 +455,12 @@ func (s *Server) logManageNote(id string, ev store.NoteEvent) {
 	_, _ = s.cfg.Store.AppendActions(id, []store.Action{act})
 }
 
-func (s *Server) cutoff(w http.ResponseWriter, r *http.Request) {
-	id, _, ok := s.auth(w, r, store.Manage)
-	if !ok {
+// adminCutoff sets the sign-off time of a race, or puts it back to the default.
+func (s *Server) adminCutoff(w http.ResponseWriter, r *http.Request) {
+	if !s.admin(w, r) {
 		return
 	}
+	id := r.PathValue("id")
 	req, ok := decode[struct {
 		Race    string `json:"race"`
 		Minutes *int   `json:"minutes"` // absent or null: back to the default
@@ -470,15 +480,65 @@ func (s *Server) cutoff(w http.ResponseWriter, r *http.Request) {
 		fail(w, err)
 		return
 	}
-	// The change is part of the action log, with who set it.
 	_, _ = s.cfg.Store.AppendActions(id, []store.Action{{
-		ID: randomID(), At: s.Now().UTC(), Kind: "cutoff", By: "manage", Entry: "race " + req.Race, New: strconv.Itoa(minutes),
+		ID: randomID(), At: s.Now().UTC(), Kind: "cutoff", By: SysAdmin, Entry: "race " + req.Race, New: strconv.Itoa(minutes),
 	}})
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// adminOperations stores changes the admin made to the list: add a competitor, change a number, transponder or race.
+// Each is also put in the action log as the admin's.
+func (s *Server) adminOperations(w http.ResponseWriter, r *http.Request) {
+	if !s.admin(w, r) {
+		return
+	}
+	id := r.PathValue("id")
+	req, ok := decode[struct {
+		Ops []dts.Op `json:"ops"`
+	}](w, r, maxBatchBytes)
+	if !ok {
+		return
+	}
+	// The admin's clock is not trusted: the operations take the server's time, so they order against the signers' by one clock.
+	now := s.Now().UTC()
+	var actions []store.Action
+	for i := range req.Ops {
+		op := &req.Ops[i]
+		op.Device = SysAdmin
+		op.At, op.DeviceAt = now, now
+		if act, ok := adminAction(*op, now); ok {
+			actions = append(actions, act)
+		}
+	}
+	n, err := s.cfg.Store.AppendOps(id, req.Ops)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	if n > 0 {
+		_, _ = s.cfg.Store.AppendActions(id, actions)
+	}
+	writeJSON(w, http.StatusOK, map[string]int{"stored": n})
+}
+
+// adminAction is the action log line of an operation the admin made.
+func adminAction(op dts.Op, at time.Time) (store.Action, bool) {
+	act := store.Action{ID: randomID(), At: at, By: SysAdmin, Device: SysAdmin}
+	switch op.Kind {
+	case dts.OpAddRacer:
+		act.Kind, act.Entry, act.New = "add-racer", op.ID, op.Cap
+	case dts.OpSign:
+		act.Kind, act.Entry, act.New = "sign", op.Entry, op.Value
+	case dts.OpCap, dts.OpT1, dts.OpT2, dts.OpRace:
+		act.Kind, act.Entry, act.New = op.Kind, op.Entry, op.Value
+	default:
+		return act, false
+	}
+	return act, true
+}
+
 func (s *Server) export(w http.ResponseWriter, r *http.Request) {
-	id, _, ok := s.auth(w, r, store.Sign, store.Manage)
+	id, _, ok := s.auth(w, r, store.Sign)
 	if !ok {
 		return
 	}
@@ -618,7 +678,7 @@ func (s *Server) syncPost(w http.ResponseWriter, r *http.Request) {
 
 // syncGet reads what came after the cursor in the query (ops, actions, notes) and registers nothing.
 func (s *Server) syncGet(w http.ResponseWriter, r *http.Request) {
-	id, _, ok := s.auth(w, r, store.Sign, store.Manage)
+	id, _, ok := s.auth(w, r, store.Sign)
 	if !ok {
 		return
 	}

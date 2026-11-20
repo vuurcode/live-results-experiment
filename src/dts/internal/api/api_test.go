@@ -46,16 +46,10 @@ func newEnv(t *testing.T) *env {
 	}
 	st.Now = func() time.Time { return base }
 	loc, _ := time.LoadLocation("Europe/Amsterdam")
-	srv := New(Config{Store: st, MaxUpload: 1 << 20, Location: loc})
+	srv := New(Config{Store: st, MaxUpload: 1 << 20, Location: loc, AdminSecret: "s3cret"})
 	srv.Now = func() time.Time { return base }
 	e := &env{t: t, srv: srv}
-	res := e.do("POST", "/dts-api/sessions", "", sample)
-	if res.Code != http.StatusCreated {
-		t.Fatalf("create: %d %s", res.Code, res.Body)
-	}
-	var c created
-	json.Unmarshal(res.Body.Bytes(), &c)
-	e.id, e.sk, e.mk = c.ID, c.SignKey, c.ManageKey
+	e.id, e.sk, e.mk = mustCreate(t, st)
 	return e
 }
 
@@ -104,19 +98,22 @@ func TestRolesAndHeaders(t *testing.T) {
 		t.Errorf("wrong key: %d", res.Code)
 	}
 	res := e.do("GET", e.url(""), e.mk, "")
+	if res.Code != 404 {
+		t.Errorf("the manage key reads: %d", res.Code)
+	}
 	for h, want := range map[string]string{"Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow"} {
 		if res.Header().Get(h) != want {
 			t.Errorf("%s = %q", h, res.Header().Get(h))
 		}
 	}
-	// the manage key may not write operations, actions or restore; the sign key may not set a cutoff
+	// the manage key is no role of the public API; the sign key may not use the admin API
 	if res := e.do("POST", e.url("/operations"), e.mk, ops(t, op("a", 1, "cap", "1001@3", "5"))); res.Code != 404 {
 		t.Errorf("manage writes ops: %d", res.Code)
 	}
 	if res := e.do("POST", e.url("/actions"), e.mk, `{"actions":[]}`); res.Code != 404 {
 		t.Errorf("manage writes actions: %d", res.Code)
 	}
-	if res := e.do("PUT", e.url("/cutoff"), e.sk, `{"race":"3","minutes":10}`); res.Code != 404 {
+	if res := e.do("PUT", "/dts-api/admin/sessions/"+e.id+"/cutoff", e.sk, `{"race":"3","minutes":10}`); res.Code != 404 {
 		t.Errorf("sign sets cutoff: %d", res.Code)
 	}
 	if res := e.do("GET", e.url("/log"), e.mk, ""); res.Code != 404 {
@@ -136,7 +133,7 @@ func TestSignStateAndLate(t *testing.T) {
 	if res := e.do("POST", e.url("/operations"), e.sk, body); res.Code != 200 || !strings.Contains(res.Body.String(), `"stored":2`) {
 		t.Fatalf("%d %s", res.Code, res.Body)
 	}
-	st := e.state(e.mk)
+	st := e.state(e.sk)
 	r2 := st.Races[1]
 	if r2.CutoffMinutes != 30 || !r2.CutoffAt.Equal(time.Date(2026, 1, 10, 16, 0, 0, 0, time.UTC)) || r2.Signed != 1 || r2.Late != 0 {
 		t.Errorf("%+v", r2)
@@ -153,12 +150,12 @@ func TestSignStateAndLate(t *testing.T) {
 	// signed 12 minutes after the 16:00 cutoff
 	late := ops(t, map[string]any{"id": "c", "at": time.Date(2026, 1, 10, 16, 12, 0, 0, time.UTC), "kind": "sign", "entry": "1001@3", "value": "1"})
 	e.do("POST", e.url("/operations"), e.sk, late)
-	e.do("PUT", e.url("/cutoff"), e.mk, `{"race":"3","minutes":60}`)
+	e.do("PUT", "/dts-api/admin/sessions/"+e.id+"/cutoff", "s3cret", `{"race":"3","minutes":60}`)
 	st = e.state(e.sk)
 	if got := st.Races[0].Entries[0]; got.MinutesLate != 0 || st.Races[0].CutoffMinutes != 60 || !st.Races[0].CutoffCustom {
 		t.Errorf("race 1 starts 18:10 UTC, cutoff 17:10: signing at 16:12 is on time: %+v %+v", got, st.Races[0])
 	}
-	e.do("PUT", e.url("/cutoff"), e.mk, `{"race":"13","minutes":90}`) // cutoff 15:00 UTC, signed 15:45
+	e.do("PUT", "/dts-api/admin/sessions/"+e.id+"/cutoff", "s3cret", `{"race":"13","minutes":90}`) // cutoff 15:00 UTC, signed 15:45
 	st = e.state(e.sk)
 	if got := st.Races[1].Entries[0]; got.MinutesLate != 45 || st.Races[1].Late != 1 {
 		t.Errorf("%+v", got)
@@ -166,8 +163,8 @@ func TestSignStateAndLate(t *testing.T) {
 	if len(st.Actions) == 0 || st.Actions[0].Kind != "cutoff" {
 		t.Errorf("a cutoff change must be in the action log: %+v", st.Actions)
 	}
-	e.do("PUT", e.url("/cutoff"), e.mk, `{"race":"13"}`)
-	if e.state(e.mk).Races[1].CutoffCustom {
+	e.do("PUT", "/dts-api/admin/sessions/"+e.id+"/cutoff", "s3cret", `{"race":"13"}`)
+	if e.state(e.sk).Races[1].CutoffCustom {
 		t.Error("no minutes restores the default")
 	}
 }
@@ -194,18 +191,18 @@ func TestWarningsAndInvalid(t *testing.T) {
 
 func TestNotes(t *testing.T) {
 	e := newEnv(t)
-	res := e.do("POST", e.url("/notes"), e.mk, `{"kind":"add","entry":"1001@3","level":"warning","text":"payment due"}`)
+	res := e.do("POST", "/dts-api/admin/sessions/"+e.id+"/notes", "s3cret", `{"kind":"add","entry":"1001@3","level":"warning","text":"payment due"}`)
 	if res.Code != 200 {
 		t.Fatalf("%d %s", res.Code, res.Body)
 	}
 	var out map[string]string
 	json.Unmarshal(res.Body.Bytes(), &out)
 	notes := e.state(e.sk).Notes
-	if len(notes) != 1 || notes[0].By != "manage" || notes[0].Resolved {
+	if len(notes) != 1 || notes[0].By != SysAdmin || notes[0].Resolved {
 		t.Fatalf("%+v", notes)
 	}
 	e.do("POST", e.url("/notes"), e.sk, `{"kind":"resolve","noteId":"`+out["id"]+`"}`)
-	if n := e.state(e.mk).Notes[0]; !n.Resolved || n.ResolvedBy != "sign" {
+	if n := e.state(e.sk).Notes[0]; !n.Resolved || n.ResolvedBy != "sign" {
 		t.Errorf("%+v", n)
 	}
 	if res := e.do("POST", e.url("/notes"), e.sk, `{"kind":"add","entry":"1001@3","level":"loud","text":"x"}`); res.Code != 422 {
@@ -216,7 +213,7 @@ func TestNotes(t *testing.T) {
 func TestExportBothKeysAndPerRace(t *testing.T) {
 	e := newEnv(t)
 	e.do("POST", e.url("/operations"), e.sk, ops(t, op("a", 1, "sign", "1001@3", "1")))
-	for _, key := range []string{e.sk, e.mk} {
+	for _, key := range []string{e.sk} {
 		res := e.do("GET", e.url("/export"), key, "")
 		if res.Code != 200 || !strings.Contains(res.Header().Get("Content-Disposition"), "DTS_2026-01-10_updated.xml") ||
 			!strings.Contains(res.Body.String(), "<Getekend>1</Getekend>") {
@@ -253,7 +250,7 @@ func TestRestoreAfterHostLostTheSession(t *testing.T) {
 	if after := e.do("GET", e.url("/export"), e.sk, "").Body.String(); after != before {
 		t.Errorf("the export after a restore must equal the one before")
 	}
-	if e.state(e.mk).Races[0].Entries[0].Cap != "X7" {
+	if e.state(e.sk).Races[0].Entries[0].Cap != "X7" {
 		t.Error("the manage link must show the restored state")
 	}
 	if res := e.do("PUT", e.url(""), "another", string(body)); res.Code != 409 {
@@ -278,29 +275,10 @@ func TestWrongKeysAreRateLimited(t *testing.T) {
 	}
 }
 
-func TestOnlyFailedAttemptsAreRateLimited(t *testing.T) {
-	e := newEnv(t)
-	e.srv.cfg.Failures = limit.New(1, 3)
-	for i := range 4 {
-		if res := e.do("POST", "/dts-api/sessions", "", sample); res.Code == 429 {
-			t.Fatalf("upload %d was limited", i)
-		}
-		e.srv.cfg.Store.Now = func() time.Time { return base }
-	}
-	for i := range 3 {
-		if res := e.do("POST", "/dts-api/sessions", "", "not xml"); res.Code != 422 {
-			t.Fatalf("refused upload %d: %d", i, res.Code)
-		}
-	}
-	if res := e.do("POST", "/dts-api/sessions", "", sample); res.Code != 429 || res.Header().Get("Retry-After") == "" {
-		t.Errorf("after the failures: %d %v", res.Code, res.Header())
-	}
-}
-
 func TestUploadTooBig(t *testing.T) {
 	e := newEnv(t)
 	big := bytes.Repeat([]byte("x"), 2<<20)
-	if res := e.do("POST", "/dts-api/sessions", "", string(big)); res.Code != 413 {
+	if res := e.do("POST", "/dts-api/admin/sessions", "s3cret", string(big)); res.Code != 413 {
 		t.Errorf("%d", res.Code)
 	}
 	_ = io.Discard
@@ -369,7 +347,7 @@ func TestSyncTwoDevicesConverge(t *testing.T) {
 	}
 	// resending changes nothing
 	e.sync(e.sk, a)
-	st := e.state(e.mk)
+	st := e.state(e.sk)
 	r := st.Races[0].Entries[0]
 	if r.Cap != "22" || !r.Signed || r.SignedBy != "Desk 1" {
 		t.Errorf("later cap wins, first signer is kept: %+v", r)
@@ -379,9 +357,9 @@ func TestSyncTwoDevicesConverge(t *testing.T) {
 	}
 	act, _ := json.Marshal(map[string]any{"device": "dev-a", "name": "Desk 1", "clientTime": base, "since": map[string]int{}, "actions": []map[string]any{{"id": "x1", "at": base, "kind": "cap", "entry": "1001@3", "old": "1", "new": "21", "device": "dev-a"}}})
 	e.sync(e.sk, string(act))
-	st = e.state(e.mk)
+	st = e.state(e.sk)
 	var full State
-	if res := e.do("GET", e.url("?log=all"), e.mk, ""); res.Code != 200 || json.Unmarshal(res.Body.Bytes(), &full) != nil || len(full.Actions) < len(st.Actions) || len(full.Actions) == 0 {
+	if res := e.do("GET", "/dts-api/admin/sessions/"+e.id+"?log=all", "s3cret", ""); res.Code != 200 || json.Unmarshal(res.Body.Bytes(), &full) != nil || len(full.Actions) < len(st.Actions) || len(full.Actions) == 0 {
 		t.Errorf("log=all carries every action: %+v", full.Actions)
 	}
 }
@@ -391,8 +369,8 @@ func TestSyncPermissionsLimitsAndSource(t *testing.T) {
 	if code, _ := e.sync(e.mk, syncBody("m", "x", [3]int{}, base)); code != 404 {
 		t.Errorf("manage may not post a sync: %d", code)
 	}
-	if res := e.do("GET", e.url("/sync?ops=0"), e.mk, ""); res.Code != 200 {
-		t.Errorf("manage may read: %d", res.Code)
+	if res := e.do("GET", e.url("/sync?ops=0"), e.mk, ""); res.Code != 404 {
+		t.Errorf("manage may not read: %d", res.Code)
 	}
 	if res := e.do("GET", e.url("/source"), e.mk, ""); res.Code != 404 {
 		t.Errorf("manage reads the source: %d", res.Code)
@@ -485,7 +463,7 @@ func TestSyncThreeDevicesConvergeWithLostAnswers(t *testing.T) {
 			t.Fatalf("%s holds %d of 6 operations", d.id, len(d.seen))
 		}
 	}
-	st := e.state(e.mk)
+	st := e.state(e.sk)
 	if a := st.Races[0].Entries[0]; a.Cap != "31" || !a.Signed || a.SignedBy != "d1" {
 		t.Errorf("the cap set at minute 5 beats the one at minute 2: %+v", a)
 	}
@@ -576,7 +554,7 @@ func TestAdminClosesARace(t *testing.T) {
 	if !strings.Contains(state, `"closed":true`) {
 		t.Errorf("state does not say closed: %s", state)
 	}
-	if log := e.do("GET", e.url(""), e.mk, "").Body.String(); !strings.Contains(log, `"kind":"close"`) || !strings.Contains(log, `"by":"sysadmin"`) {
+	if log := e.do("GET", "/dts-api/admin/sessions/"+e.id, "s3cret", "").Body.String(); !strings.Contains(log, `"kind":"close"`) || !strings.Contains(log, `"by":"sysadmin"`) {
 		t.Errorf("the log does not say the sysadmin closed the race: %s", log)
 	}
 	export := e.do("GET", e.url("/export"), e.sk, "").Body.String()
@@ -618,7 +596,7 @@ func TestSessionsPerClientAddressAreLimited(t *testing.T) {
 	e.srv.cfg.Creates = limit.New(1, 2)
 	codes := []int{}
 	for range 3 {
-		codes = append(codes, e.do("POST", "/dts-api/sessions", "", sample).Code)
+		codes = append(codes, e.do("POST", "/dts-api/admin/sessions", "s3cret", sample).Code)
 	}
 	if codes[0] != http.StatusCreated || codes[1] != http.StatusCreated || codes[2] != http.StatusTooManyRequests {
 		t.Errorf("%v", codes)
@@ -640,5 +618,38 @@ func TestExportOfTheAddedRacersForMDS(t *testing.T) {
 	if res.Code != 200 || !strings.HasPrefix(res.Body.String(), `"X9";"ZZ00001";"";"HH-88888"`) || !strings.Contains(res.Body.String(), "HH-88888") ||
 		!strings.HasSuffix(res.Body.String(), `;"Typed Person"`+"\r\n") || !strings.HasPrefix(res.Header().Get("Content-Type"), "text/plain") {
 		t.Errorf("%d %v %q", res.Code, res.Header(), res.Body)
+	}
+}
+
+func TestAdminCreatesAndEdits(t *testing.T) {
+	e := newEnv(t)
+	for _, key := range []string{"", "wrong", e.sk, e.mk} {
+		if res := e.do("POST", "/dts-api/admin/sessions", key, sample); res.Code != 404 {
+			t.Errorf("create with key %q: %d", key, res.Code)
+		}
+		if res := e.do("POST", "/dts-api/admin/sessions/"+e.id+"/operations", key, ops(t, op("a", 1, "cap", "1001@3", "5"))); res.Code != 404 {
+			t.Errorf("operations with key %q: %d", key, res.Code)
+		}
+	}
+	if res := e.do("POST", "/dts-api/sessions", "", sample); res.Code == http.StatusCreated {
+		t.Error("the public API must not create sessions")
+	}
+	res := e.do("POST", "/dts-api/admin/sessions", "s3cret", sample)
+	var c created
+	if res.Code != http.StatusCreated || json.Unmarshal(res.Body.Bytes(), &c) != nil || len(c.ID) != 32 || c.SignKey == "" || strings.Contains(res.Body.String(), "anage") {
+		t.Fatalf("admin create: %d %s", res.Code, res.Body)
+	}
+	if res := e.do("POST", "/dts-api/admin/sessions/"+e.id+"/operations", "s3cret", ops(t, op("a", 1, "cap", "1001@3", "5"))); res.Code != 200 {
+		t.Fatalf("admin operations: %d %s", res.Code, res.Body)
+	}
+	if got := e.state(e.sk).Races[0].Entries[0].Cap; got != "5" {
+		t.Errorf("the admin's change is in the state: %q", got)
+	}
+	var found bool
+	for _, a := range e.state(e.sk).Actions {
+		found = found || (a.By == SysAdmin && a.Kind == "cap" && a.New == "5")
+	}
+	if !found {
+		t.Error("the admin's change is in the action log")
 	}
 }
