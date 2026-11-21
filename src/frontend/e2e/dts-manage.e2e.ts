@@ -58,7 +58,7 @@ test.describe('dts manage page', () => {
     expect((a?.y ?? 0) + (a?.height ?? 0)).toBeLessThanOrEqual(b?.y ?? 0);
   });
 
-  test('shows numbers without names, green when signed, purple when changed and yellow with a note', async ({ page, context }) => {
+  test('shows numbers with names, green when signed, purple when changed and yellow with a note', async ({ page, context }) => {
     const links = await upload(page);
     await open(page, '11', /11\s+Aardappel/);
     await page.getByRole('button', { name: 'Markeer als getekend' }).click();
@@ -76,7 +76,8 @@ test.describe('dts manage page', () => {
     const race = manage.locator('.race', { hasText: 'NO1' });
     await expect(race.locator('.num[data-state="signed"]')).toHaveText(/11/);
     await expect(race.locator('.num[data-state="changed"]')).toHaveText(/12/);
-    await expect(manage.locator('.races')).not.toContainText(/Aardappel|Bakker/);
+    await expect(race.locator('.num[data-state="signed"] .who')).toHaveText(/Aardappel/);
+    await expect(race.locator('.num[data-state="changed"] .who')).toHaveText(/Bakker/);
     const colour = (state: string) => race.locator(`.num[data-state="${state}"]`).first().evaluate((el) => getComputedStyle(el).backgroundColor);
     const signed = await colour('signed');
     const changed = await colour('changed');

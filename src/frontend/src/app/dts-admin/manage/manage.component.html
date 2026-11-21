@@ -36,6 +36,9 @@
           <path [attr.d]="q.path" fill="#000" />
         </svg>
       }
+      @if (state()?.races?.length) {
+        <div class="qrraces"><p class="qrraces-head">{{ t('qrRaces') }}</p><ul>@for (r of byStart(state()!.races); track r.id) { <li>{{ r.title }}</li> }</ul></div>
+      }
       <div class="linkactions"><button type="button" class="copy" (click)="copy(link)" [attr.aria-label]="copied() === link ? t('copied') : t('copy')" [title]="t('tipCopy')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">@if (copied() === link) { <path d="M5 13l4 4L19 7" /> } @else { <rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /> }</svg></button><button type="button" class="copy print" (click)="printQr()" [attr.aria-label]="t('printQr')" [title]="t('printQr')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2" /><rect x="7" y="14" width="10" height="7" /></svg></button></div>
       <p class="banner sharewarn" role="note"><span><strong>{{ t('qrDoNotShare') }}</strong> {{ t('qrNote') }}</span></p>
     </div>
@@ -225,7 +228,7 @@
             }
             @for (e of shown(r); track e.id) {
               <li class="num" [attr.data-state]="stateOf(e)" [class.fresh]="fresh().has(e.id)" [class.late]="e.signed && (e.minutesLate ?? 0) > 0" [title]="tipOf(e)" [attr.aria-label]="stateLabel(e)">
-                <a class="numlink" [href]="competitorHref(e.id)" [attr.target]="competitorId ? null : '_blank'" [attr.rel]="competitorId ? null : 'noopener'" [attr.aria-label]="t('tipCompetitor', { cap: e.cap }) + ', ' + stateLabel(e) + (competitorId ? '' : ', ' + t('newTab'))"><span aria-hidden="true" class="mark">{{ markOf(e) }}</span>{{ e.cap }}</a>
+                <a class="numlink" [href]="competitorHref(e.id)" [attr.target]="competitorId ? null : '_blank'" [attr.rel]="competitorId ? null : 'noopener'" [attr.aria-label]="t('tipCompetitor', { cap: e.cap }) + (e.name ? ' ' + e.name : '') + ', ' + stateLabel(e) + (competitorId ? '' : ', ' + t('newTab'))"><span aria-hidden="true" class="mark">{{ markOf(e) }}</span><span class="cap">{{ e.cap }}</span>@if (e.name) { <span class="who" aria-hidden="true">{{ ' ' + e.name }}</span> }</a>
               </li>
             }
           </ul>
@@ -236,7 +239,7 @@
                 @for (n of notesOf(r); track n.id) {
                   <li [class.warning]="n.level === 'warning' && !n.resolved" [class.done]="n.resolved">
                     <strong>{{ entryOf(n.entry) }}</strong> {{ n.text }}
-                    <small>{{ n.resolved ? t('noteResolved', { who: n.resolvedBy ?? '' }) : '(' + by(n) + ', ' + clockOf(n.at) + ')' }}</small>
+                    @if (n.resolved) { <small>{{ t('noteResolved', { who: n.resolvedBy ?? '' }) }}</small> }
                   </li>
                 }
               </ul>

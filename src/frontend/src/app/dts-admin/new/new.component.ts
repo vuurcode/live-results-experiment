@@ -37,6 +37,7 @@ function startError(status: number): DtsKey {
             </svg>
             <p class="banner sharewarn" role="note"><strong>{{ t('qrDoNotShare') }}</strong> {{ t('qrNote') }}</p>
           }
+          <p class="hint" role="note">{{ t('createdAgain') }}</p>
           <button type="button" (click)="copy()">{{ copied() ? t('copied') : t('copy') }}</button>
         </section>
         <a class="big primary" [href]="'/dts-admin/list?s=' + c.id">{{ t('continue') }}</a>

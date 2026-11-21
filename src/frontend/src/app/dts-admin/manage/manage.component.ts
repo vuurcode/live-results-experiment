@@ -373,7 +373,7 @@ export class DtsManageComponent implements OnInit {
   protected entryOf(id: string): string {
     for (const r of this.state()?.races ?? []) {
       const e = r.entries.find((x) => x.id === id);
-      if (e) return `${e.cap} (${r.title})`;
+      if (e) return e.name ? `${e.cap} ${e.name}` : e.cap;
     }
     return '';
   }
