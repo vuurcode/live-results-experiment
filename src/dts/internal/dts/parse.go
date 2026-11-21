@@ -16,7 +16,7 @@ const startLayout = "2006-01-02T15:04:05"
 // A file without a single race, or that is not XML, is refused.
 func Parse(data []byte) (*Doc, error) {
 	dec := xml.NewDecoder(bytes.NewReader(data))
-	doc := &Doc{Riders: map[string]Rider{}}
+	doc := &Doc{Riders: map[string]Rider{}, Notices: map[string][]Notice{}}
 	seenRoot := false
 	for {
 		tok, err := dec.Token()
@@ -38,7 +38,7 @@ func Parse(data []byte) (*Doc, error) {
 			continue
 		}
 		switch start.Name.Local {
-		case "DTS_Wedstrijd", "DTS_Licentiehouder", "DTS_Deelname":
+		case "DTS_Wedstrijd", "DTS_Licentiehouder", "DTS_Deelname", "DTS_Melding":
 			fields, err := readFields(dec)
 			if err != nil {
 				return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
@@ -95,6 +95,10 @@ func (d *Doc) add(kind string, f map[string]string) error {
 			Sponsor: f["Sponsornaam"], Class: f["CategorieCode"], ValidTo: f["ValidTo"],
 			Melding: f["Melding"], Jury: yes(f["InschrijvenBijJury"]),
 		}
+	case "DTS_Melding":
+		if text := f["Melding"]; f["Wedstrijdnummer"] != "" && text != "" {
+			d.Notices[f["Wedstrijdnummer"]] = append(d.Notices[f["Wedstrijdnummer"]], Notice{Text: text, Block: yes(f["Blokkeer"])})
+		}
 	case "DTS_Deelname":
 		e := Entry{
 			ID: f["Wedstrijdnummer"] + "@" + f["WedstrijdID"], Licence: f["Wedstrijdnummer"], RaceID: f["WedstrijdID"],
@@ -109,6 +113,12 @@ func (d *Doc) add(kind string, f map[string]string) error {
 // yes reads an Access yes/no value: 1 or -1 (or true) is yes.
 func yes(s string) bool { return s == "1" || s == "-1" || strings.EqualFold(s, "true") }
 
+// Notice is a separate DTS_Melding record: a notice about a licence holder, which may block the holder from starting.
+type Notice struct {
+	Text  string
+	Block bool
+}
+
 // ImportedNote is a notice (melding) that came with the file, as a note about an entry.
 type ImportedNote struct {
 	ID, Entry, Text string
@@ -121,7 +131,7 @@ type ImportedNote struct {
 const MaxNoteSize = 200
 
 // ImportedNotes turns the notices of the file into notes: one per entry, from the entry's own notice or else that of
-// its licence holder. A notice asking to register at the jury becomes a warning. The id is fixed by the entry so that
+// its licence holder, followed by the separate notices of the licence holder. A notice asking to register at the jury, or one that blocks, becomes a warning. The id is fixed by the entry so that
 // resolving the note stays attached to it.
 func (d *Doc) ImportedNotes() []ImportedNote {
 	var out []ImportedNote
@@ -130,6 +140,13 @@ func (d *Doc) ImportedNotes() []ImportedNote {
 		if text == "" {
 			r := d.Riders[e.Licence]
 			text, jury = r.Melding, r.Jury
+		}
+		for _, n := range d.Notices[e.Licence] {
+			if !strings.Contains(text, n.Text) {
+				text = strings.TrimSpace(text + "; " + n.Text)
+				text = strings.TrimPrefix(text, "; ")
+			}
+			jury = jury || n.Block
 		}
 		text = strings.Join(strings.Fields(text), " ")
 		if text == "" {

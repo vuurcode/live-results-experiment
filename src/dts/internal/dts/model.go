@@ -73,8 +73,10 @@ type Entry struct {
 
 // Doc is a parsed export: the read-only races and riders, and the entries the operations change.
 type Doc struct {
-	Races   []Race
-	Riders  map[string]Rider
+	Races  []Race
+	Riders map[string]Rider
+	// Notices are the separate DTS_Melding records, by licence.
+	Notices map[string][]Notice
 	Entries []Entry
 }
 

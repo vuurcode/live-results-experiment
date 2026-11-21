@@ -69,3 +69,23 @@ func TestImportedNotesFromMeldingen(t *testing.T) {
 		t.Errorf("%+v", got)
 	}
 }
+
+func TestImportedNotesFromMeldingRecords(t *testing.T) {
+	src := `<dataroot>
+<DTS_Wedstrijd><WedstrijdID>3</WedstrijdID><Start>2026-01-10T17:30:00</Start></DTS_Wedstrijd>
+<DTS_Melding><Wedstrijdnummer>1001</Wedstrijdnummer><Melding>Moet nog beennummer krijgen</Melding><Blokkeer>0</Blokkeer></DTS_Melding>
+<DTS_Melding><Wedstrijdnummer>1002</Wedstrijdnummer><Melding>Defecte transponder</Melding><Blokkeer>1</Blokkeer></DTS_Melding>
+<DTS_Melding><Wedstrijdnummer>9999</Wedstrijdnummer><Melding>Zonder deelname</Melding><Blokkeer>0</Blokkeer></DTS_Melding>
+<DTS_Deelname><Wedstrijdnummer>1001</Wedstrijdnummer><WedstrijdID>3</WedstrijdID><ShowNr>1</ShowNr></DTS_Deelname>
+<DTS_Deelname><Wedstrijdnummer>1002</Wedstrijdnummer><WedstrijdID>3</WedstrijdID><ShowNr>2</ShowNr><Melding>Eigen</Melding></DTS_Deelname>
+</dataroot>`
+	d, err := Parse([]byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := d.ImportedNotes()
+	if len(got) != 2 || got[0].Text != "Moet nog beennummer krijgen" || got[0].Warning ||
+		got[1].Text != "Eigen; Defecte transponder" || !got[1].Warning {
+		t.Errorf("%+v", got)
+	}
+}
