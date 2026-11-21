@@ -96,7 +96,7 @@ func (d *Doc) add(kind string, f map[string]string) error {
 			Melding: f["Melding"], Jury: yes(f["InschrijvenBijJury"]),
 		}
 	case "DTS_Melding":
-		if text := f["Melding"]; f["Wedstrijdnummer"] != "" && text != "" {
+		if text := f["Melding"]; f["Wedstrijdnummer"] != "" && text != "" && len(d.Notices[f["Wedstrijdnummer"]]) < MaxNoticesPerLicence {
 			d.Notices[f["Wedstrijdnummer"]] = append(d.Notices[f["Wedstrijdnummer"]], Notice{Text: text, Block: yes(f["Blokkeer"])})
 		}
 	case "DTS_Deelname":
@@ -127,6 +127,9 @@ type ImportedNote struct {
 	At time.Time
 }
 
+// MaxNoticesPerLicence is how many separate notices of one licence holder are kept; the rest are dropped.
+const MaxNoticesPerLicence = 10
+
 // MaxNoteSize is the longest text of a note; a longer notice from the file is cut to it.
 const MaxNoteSize = 200
 
@@ -142,7 +145,7 @@ func (d *Doc) ImportedNotes() []ImportedNote {
 			text, jury = r.Melding, r.Jury
 		}
 		for _, n := range d.Notices[e.Licence] {
-			if !strings.Contains(text, n.Text) {
+			if len(text) < MaxNoteSize && !strings.Contains(text, n.Text) {
 				text = strings.TrimSpace(text + "; " + n.Text)
 				text = strings.TrimPrefix(text, "; ")
 			}
