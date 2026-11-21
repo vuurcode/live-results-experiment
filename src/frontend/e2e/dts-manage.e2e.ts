@@ -206,7 +206,7 @@ test.describe('dts manage page', () => {
     await row.getByText('Link/QR voor jury-inschrijver(s)', { exact: true }).click();
     await expect(row.locator('.url')).toHaveText(links.sign);
     await expect(row.getByRole('img', { name: /QR-code/ })).toBeVisible();
-    await expect(row.getByText('alleen met de inschrijvers')).toBeVisible();
+    await expect(row.getByText('alleen met de jury-inschrijvers')).toBeVisible();
     await expect(row.locator('.qrraces')).toBeHidden();
     await page.emulateMedia({ media: 'print' });
     await expect(row.locator('.qrraces li')).toHaveCount(2);
