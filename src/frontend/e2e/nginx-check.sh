@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2016 # the single quotes keep $ for envsubst and nginx
 # Runs the production nginx config (config/nginx.conf.template, filled in the way prod/.../prepare.sh does) in front of the built
 # frontend (npm run build) and a stub for the DTS service, and checks what the config promises: the login on /dts-admin/ and
 # /dts-api/admin/, the secret nginx adds, the old addresses, the file rules and the upload size. Needs nginx and envsubst.
@@ -19,7 +20,6 @@ cleanup() {
   rm -rf "$work"
 }
 trap cleanup EXIT
-chmod 755 "$work" # the workers run as another user
 
 for d in dashboard dts dts-admin; do
   [ -d "dist/$d/browser" ] || { echo "dist/$d/browser is missing: run npm run build" >&2; exit 2; }
@@ -48,6 +48,7 @@ render() { # $1 = password ('' for none)
   printf 'proxy_set_header Authorization "Bearer %s";\n' "$SECRET" > /etc/nginx/dts-admin-secret.conf
   cat > "$work/nginx.conf" <<EOF
 pid $work/nginx.pid;
+user root; # the files sit under a home directory the default worker user may not enter
 error_log $work/logs/error.log;
 events {}
 http {
@@ -113,8 +114,8 @@ check() {
   fi
 }
 
-admin_js="$(cd "$work/html/dts-admin" && ls | grep -E -- '-[A-Z0-9]{8}\.js$' | head -1)"
-sign_js="$(cd "$work/html/dts" && ls | grep -E -- '-[A-Z0-9]{8}\.js$' | head -1)"
+admin_js="$(find "$work/html/dts-admin" -maxdepth 1 -name '*-[A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9].js' -printf '%f\n' | head -1)"
+sign_js="$(find "$work/html/dts" -maxdepth 1 -name '*-[A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9].js' -printf '%f\n' | head -1)"
 
 check "admin path gets a trailing slash"            302 'location: /dts-admin/' -- "$base/dts-admin"
 check "admin page asks for the login"               401 'www-authenticate' -- "$base/dts-admin/"
