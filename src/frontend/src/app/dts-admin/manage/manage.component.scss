@@ -256,7 +256,8 @@ button.copy { flex: none; display: inline-flex; align-items: center; justify-con
 .race-notes { interpolate-size: allow-keywords; }
 .race-notes::details-content { block-size: 0; overflow: clip; transition: block-size 0.25s ease, content-visibility 0.25s allow-discrete; }
 .race-notes[open]::details-content { block-size: auto; }
-.qrraces { align-self: stretch; text-align: left; }
+.qrraces { display: none; align-self: stretch; text-align: left; }
+@media print { .qrraces { display: block; } }
 .qrraces-head { margin: 0 0 0.25rem; font-weight: 600; }
 .qrraces ul { margin: 0; padding-left: 1.25rem; }
 .signlink { animation: unfold 0.25s ease; }

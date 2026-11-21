@@ -88,3 +88,9 @@ form { display: flex; flex-direction: column; gap: 0.75rem; }
 .steps { list-style: none; margin: 0; padding: 0; display: grid; column-gap: 0.75rem; }
 .steps li .new { flex: none; width: auto; min-width: min(20rem, 100%); max-width: 100%; box-sizing: border-box; text-align: center; min-height: 56px; font-size: 1.25rem; }
 .hint { margin: 0; font-size: 1rem; }
+.qrraces { display: none; align-self: stretch; text-align: left; }
+@media print { .qrraces { display: block; } }
+.qrraces-head { margin: 0 0 0.25rem; font-weight: 600; }
+.qrraces ul { margin: 0; padding-left: 1.25rem; }
+.card .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
+@media print { .page.print-card > :not(.card) { display: none; } .card .actions, .card .hint { display: none; } .print-card .qr { width: 18rem; height: 18rem; } .print-card .banner.sharewarn { background: none; color: #9b1111; border: 3px solid #c62828; font-size: 1.2rem; } }

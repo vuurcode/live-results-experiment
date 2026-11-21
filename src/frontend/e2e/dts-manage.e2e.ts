@@ -191,6 +191,14 @@ test.describe('dts manage page', () => {
     await expect(race.getByRole('button', { name: 'Inschrijving sluiten' })).toBeVisible();
   });
 
+  test('offers to print the QR code right after creating a list', async ({ page }) => {
+    await page.goto('/dts-admin/new');
+    await page.setInputFiles('input[type=file]', { name: 'DTS_test.xml', mimeType: 'text/xml', buffer: Buffer.from(sampleXml()) });
+    await expect(page.getByRole('heading', { name: /Klaar/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Print de QR-code' })).toBeVisible();
+    await expect(page.locator('.qrraces')).toBeHidden();
+  });
+
   test('shows the sign link and QR code of a list again on /dts', async ({ page }) => {
     const links = await upload(page);
     await page.goto('/dts-admin/');
@@ -199,6 +207,10 @@ test.describe('dts manage page', () => {
     await expect(row.locator('.url')).toHaveText(links.sign);
     await expect(row.getByRole('img', { name: /QR-code/ })).toBeVisible();
     await expect(row.getByText('alleen met de inschrijvers')).toBeVisible();
+    await expect(row.locator('.qrraces')).toBeHidden();
+    await page.emulateMedia({ media: 'print' });
+    await expect(row.locator('.qrraces li')).toHaveCount(2);
+    await expect(row.locator('.qrraces')).toContainText(/NO1[\s\S]*NO2|NO2[\s\S]*NO1/);
   });
 
   test('lets the admin add and then change a competitor without any sign key', async ({ page, context }) => {

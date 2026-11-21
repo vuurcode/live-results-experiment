@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, signal } from '@angular/core';
 import { DtsText } from '../../dts/dts-text';
-import { dtsAdminSend, parseJson } from '../../dts/dts-api';
+import { dtsAdminRequest, dtsAdminSend, parseJson } from '../../dts/dts-api';
 import { qrEncode, qrPath } from '../../dts/qr';
-import type { DtsCreated } from '../../dts/dts.models';
+import type { DtsCreated, DtsState } from '../../dts/dts.models';
 import type { DtsKey } from '../../dts/dts.strings';
 
 /** The message for a refused upload: only an unprocessable file is the file's fault. */
@@ -19,7 +19,7 @@ function startError(status: number): DtsKey {
   selector: 'app-dts-admin-new',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="page" [class.wide]="!created()">
+    <main class="page" [class.wide]="!created()" [class.print-card]="!!created()">
       <header class="bar">
         <a class="back" href="/dts-admin/">← {{ t('adminBack') }}</a>
         <button type="button" class="lang" (click)="text.toggle()" [attr.lang]="text.lang() === 'nl' ? 'en' : 'nl'">NL / EN</button>
@@ -37,8 +37,14 @@ function startError(status: number): DtsKey {
             </svg>
             <p class="banner sharewarn" role="note"><strong>{{ t('qrDoNotShare') }}</strong> {{ t('qrNote') }}</p>
           }
+          @if (raceTitles().length) {
+            <div class="qrraces"><p class="qrraces-head">{{ t('qrRaces') }}</p><ul>@for (title of raceTitles(); track $index) { <li>{{ title }}</li> }</ul></div>
+          }
           <p class="hint" role="note">{{ t('createdAgain') }}</p>
-          <button type="button" (click)="copy()">{{ copied() ? t('copied') : t('copy') }}</button>
+          <div class="actions">
+            <button type="button" (click)="copy()">{{ copied() ? t('copied') : t('copy') }}</button>
+            <button type="button" (click)="printQr()">{{ t('printQr') }}</button>
+          </div>
         </section>
         <a class="big primary" [href]="'/dts-admin/list?s=' + c.id">{{ t('continue') }}</a>
       } @else {
@@ -156,6 +162,20 @@ export class DtsAdminNewComponent implements OnInit {
   protected readonly busy = signal(false);
   protected readonly error = signal<DtsKey | ''>('');
   protected readonly created = signal<DtsCreated | null>(null);
+  /** The titles of the races of the new list, shown with the QR code. */
+  protected readonly raceTitles = signal<string[]>([]);
+
+  private async loadRaces(id: string): Promise<void> {
+    try {
+      const res = await dtsAdminRequest(`/${id}`);
+      if (res.status === 200) {
+        const races = [...parseJson<DtsState>(res).races].sort((a, b) => Date.parse(a.start) - Date.parse(b.start) || 0);
+        this.raceTitles.set(races.map((r) => r.title));
+      }
+    } catch {
+      // the list is only a help next to the QR code
+    }
+  }
   protected readonly copied = signal(false);
 
   ngOnInit(): void {
@@ -171,6 +191,10 @@ export class DtsAdminNewComponent implements OnInit {
     const code = qrEncode(this.signLink());
     return code ? { size: code.size + 8, path: qrPath(code) } : null;
   });
+
+  protected printQr(): void {
+    window.print();
+  }
 
   protected async copy(): Promise<void> {
     try {
@@ -190,7 +214,11 @@ export class DtsAdminNewComponent implements OnInit {
     this.error.set('');
     try {
       const res = await dtsAdminSend('', { method: 'POST', body: await file.arrayBuffer(), timeoutMs: 60000 });
-      if (res.status === 201 || res.status === 200) this.created.set(parseJson<DtsCreated>(res));
+      if (res.status === 201 || res.status === 200) {
+        const made = parseJson<DtsCreated>(res);
+        this.created.set(made);
+        void this.loadRaces(made.id);
+      }
       else this.error.set(startError(res.status));
     } catch {
       this.error.set('startOffline');

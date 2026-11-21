@@ -50,6 +50,9 @@ import { AdminSyncStatus } from '../sync-status';
                       <path [attr.d]="q.path" fill="#000" />
                     </svg>
                   }
+                  @if (s.races.length) {
+                    <div class="qrraces"><p class="qrraces-head">{{ t('qrRaces') }}</p><ul>@for (r of s.races; track r.id) { <li>{{ r.title }}</li> }</ul></div>
+                  }
                   <div class="linkactions"><button type="button" class="copy" (click)="copy(link)" [attr.aria-label]="copied() === link ? t('copied') : t('copy')" [title]="t('tipCopy')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">@if (copied() === link) { <path d="M5 13l4 4L19 7" /> } @else { <rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /> }</svg></button><button type="button" class="copy print" (click)="printQr(s.id)" [attr.aria-label]="t('printQr')" [title]="t('printQr')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2" /><rect x="7" y="14" width="10" height="7" /></svg></button></div>
                   <p class="banner sharewarn" role="note"><span><strong>{{ t('qrDoNotShare') }}</strong> {{ t('qrNote') }}</span></p>
                 </div>
@@ -95,6 +98,10 @@ import { AdminSyncStatus } from '../sync-status';
     .signlink-fold { flex: 1 1 100%; }
     .signlink { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.75rem; margin: 0.5rem auto; max-width: 40rem; flex: 1 1 100%; }
     .signlink .linkrow { justify-content: center; align-self: stretch; }
+    .qrraces { display: none; align-self: stretch; text-align: left; }
+    @media print { .qrraces { display: block; } }
+    .qrraces-head { margin: 0 0 0.25rem; font-weight: 600; }
+    .qrraces ul { margin: 0; padding-left: 1.25rem; }
     .signlink .linkrow .url { flex: 0 1 auto; }
     .linkactions { display: flex; justify-content: center; gap: 0.5rem; }
     .banner.sharewarn { background: #fbdcdc; color: #9b1111; border-color: #c62828; justify-content: center; }
