@@ -13,6 +13,7 @@
 - Never commit files you did not touch or expect: stage explicit paths (never `git add -A` or `.`), check `git diff --cached --stat` before every commit, and leave stray or user-added files (screenshots, scratch files) unstaged. Verify an unstage actually worked instead of silencing its errors.
 - Don't commit after each task. Commit only when asked, and make all the separate commits in one go.
 - Run e2e specs in batches (a few spec files per run), not as one long run over the whole suite.
+- Before every commit that touches `src/frontend`, run `npm run build` there and fix what it reports. Lint and tsc do not check the bundle and component style budgets in `angular.json`, and CI and the deploy build fail on them.
 - Don't run the full suite when committing. It runs in CI, and manually only when the user asks for it; if you think a full run is warranted, ask first.
 
 # Dev services
