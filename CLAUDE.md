@@ -15,6 +15,10 @@
 - Run e2e specs in batches (a few spec files per run), not as one long run over the whole suite.
 - Don't run the full suite when committing. It runs in CI, and manually only when the user asks for it; if you think a full run is warranted, ask first.
 
+# Dev services
+
+- The image copies `dev-services.sh` at build time, so `/usr/local/bin/dev-services` can be an outdated copy. To (re)start the dev services run `/app/dev-services.sh` (detached), never the installed copy, and check that the admin app (4202) and the DTS admin API answer afterwards.
+
 # CI
 
 - CI only runs checks, linters and builds, never measurements. Performance, Lighthouse and soak runs happen locally, on demand.
