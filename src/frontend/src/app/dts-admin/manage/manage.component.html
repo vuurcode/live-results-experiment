@@ -29,18 +29,18 @@
 
   @if (!competitorId && linkOpen() && signLink(); as link) {
     <div class="signlink" id="signlink">
-      <div class="linkrow"><p class="url">{{ link }}</p></div>
+      <p class="banner sharewarn" role="note"><span><strong>{{ t('qrDoNotShare') }}</strong><br />{{ t('qrNote') }}</span></p>
       @if (qr(link); as q) {
         <svg class="qr" [attr.viewBox]="'0 0 ' + q.size + ' ' + q.size" role="img" [attr.aria-label]="t('qrLabel')" shape-rendering="crispEdges">
           <rect width="100%" height="100%" fill="#fff" />
           <path [attr.d]="q.path" fill="#000" />
         </svg>
       }
+      <div class="linkrow"><p class="url">{{ link }}</p></div>
       @if (state()?.races?.length) {
         <div class="qrraces"><p class="qrraces-head">{{ t('qrRaces') }}</p><ul>@for (r of byStart(state()!.races); track r.id) { <li>{{ r.title }}</li> }</ul></div>
       }
       <div class="linkactions"><button type="button" class="copy" (click)="copy(link)" [attr.aria-label]="copied() === link ? t('copied') : t('copy')" [title]="t('tipCopy')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">@if (copied() === link) { <path d="M5 13l4 4L19 7" /> } @else { <rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /> }</svg></button><button type="button" class="copy print" (click)="printQr()" [attr.aria-label]="t('printQr')" [title]="t('printQr')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2" /><rect x="7" y="14" width="10" height="7" /></svg></button></div>
-      <p class="banner sharewarn" role="note"><span><strong>{{ t('qrDoNotShare') }}</strong> {{ t('qrNote') }}</span></p>
     </div>
   }
 
@@ -100,17 +100,6 @@
           <p class="banner" role="status">{{ message() }}</p>
         }
       </section>
-
-      <div class="legend" role="group" [attr.aria-label]="t('filterLabel')">
-        <span class="legendlabel" aria-hidden="true">{{ t('filterShow') }}</span>
-        <button type="button" class="num" data-state="open" [attr.aria-pressed]="filter().has('open')" [title]="t('tipFilter')" (click)="toggleFilter('open')">{{ t('legendOpen') }}</button>
-        <button type="button" class="num" data-state="signed" [attr.aria-pressed]="filter().has('signed')" [title]="t('tipFilter')" (click)="toggleFilter('signed')"><span aria-hidden="true" class="mark">✓</span>{{ t('legendSigned') }}</button>
-        <button type="button" class="num" data-state="changed" [attr.aria-pressed]="filter().has('changed')" [title]="t('tipFilter')" (click)="toggleFilter('changed')"><span aria-hidden="true" class="mark">✎</span>{{ t('legendChanged') }}</button>
-        <button type="button" class="num" data-state="note" [attr.aria-pressed]="filter().has('note')" [title]="t('tipFilter')" (click)="toggleFilter('note')"><span aria-hidden="true" class="mark">!</span>{{ t('legendNote') }}</button>
-      @if (filter().size) {
-          <span class="filterhint" role="status">{{ t('filterActive') }} <button type="button" class="link" (click)="filter.set(emptyFilter)">{{ t('filterClear') }}</button></span>
-        }
-      </div>
 
       <div class="races">
       @for (r of byStart(st.races); track r.id) {
@@ -220,20 +209,48 @@
           </details>
 
 
+          <ng-template #badge let-e>
+            <li class="num" [attr.data-state]="stateOf(e)" [attr.data-also]="alsoOf(e)" [class.fresh]="fresh().has(e.id)" (mouseenter)="seen(e.id)" (focusin)="seen(e.id)" [class.late]="e.signed && (e.minutesLate ?? 0) > 0" [title]="tipOf(e)" [attr.aria-label]="stateLabel(e)">
+                <a class="numlink" [attr.href]="r.closed ? null : competitorHref(e.id)" [attr.role]="r.closed ? 'link' : null" [attr.aria-disabled]="r.closed ? 'true' : null" [attr.target]="competitorId ? null : '_blank'" [attr.rel]="competitorId ? null : 'noopener'" [attr.aria-label]="t('tipCompetitor', { cap: e.cap }) + (e.name ? ' ' + e.name : '') + ', ' + stateLabel(e) + (competitorId ? '' : ', ' + t('newTab'))"><span aria-hidden="true" class="mark">{{ markOf(e) }}</span>@if (alsoOf(e)) { <span aria-hidden="true" class="mark also">{{ alsoMarkOf(e) }}</span> }<span class="cap">{{ e.cap }}</span>@if (tpsOf(e).length) { <span class="tps" aria-hidden="true">@for (t of tpsOf(e); track $index) { @if (t.was) { <s>{{ t.was }}</s> } <b>{{ t.now }}</b> }</span> }@if (e.name) { <span class="who" aria-hidden="true">{{ ' ' + e.name }}</span> }</a>
+            </li>
+          </ng-template>
+          @let g = groupsOf(r);
+          @if (g.added.length || g.renumbered.length) {
+          <div class="groups">
+          @if (g.added.length) {
+            <div class="groupcol">
+            <h3 class="group" data-group="added">{{ t('groupAdded') }}</h3>
+            <ul class="numbers" [attr.aria-label]="t('groupAdded')">
+              @for (e of g.added; track e.id) {
+                <ng-container [ngTemplateOutlet]="badge" [ngTemplateOutletContext]="{ $implicit: e }" />
+              }
+            </ul>
+            </div>
+          }
+          @if (g.renumbered.length) {
+            <div class="groupcol">
+            <h3 class="group" data-group="renumbered">{{ t('groupRenumbered') }}</h3>
+            <ul class="numbers" [attr.aria-label]="t('groupRenumbered')">
+              @for (e of g.renumbered; track e.id) {
+                <ng-container [ngTemplateOutlet]="badge" [ngTemplateOutletContext]="{ $implicit: e }" />
+              }
+            </ul>
+            </div>
+          }
+          </div>
+          }
           <ul class="numbers" [attr.aria-label]="t('numbersLabel')">
             @if (!competitorId && addHref(r); as href) {
               <li class="addnew">
                 <a [attr.href]="r.closed ? null : href" [attr.role]="r.closed ? 'link' : null" [attr.aria-disabled]="r.closed ? 'true' : null" [title]="t('tipAdd')"><span class="plus" aria-hidden="true">+</span><span class="label">{{ t('addNew') }}</span><span class="visually-hidden"> {{ t('addRacer') }}, {{ r.title }}</span></a>
               </li>
             }
-            @for (e of shown(r); track e.id) {
-              <li class="num" [attr.data-state]="stateOf(e)" [class.fresh]="fresh().has(e.id)" [class.late]="e.signed && (e.minutesLate ?? 0) > 0" [title]="tipOf(e)" [attr.aria-label]="stateLabel(e)">
-                <a class="numlink" [href]="competitorHref(e.id)" [attr.target]="competitorId ? null : '_blank'" [attr.rel]="competitorId ? null : 'noopener'" [attr.aria-label]="t('tipCompetitor', { cap: e.cap }) + (e.name ? ' ' + e.name : '') + ', ' + stateLabel(e) + (competitorId ? '' : ', ' + t('newTab'))"><span aria-hidden="true" class="mark">{{ markOf(e) }}</span><span class="cap">{{ e.cap }}</span>@if (e.name) { <span class="who" aria-hidden="true">{{ ' ' + e.name }}</span> }</a>
-              </li>
+            @for (e of g.existing; track e.id) {
+              <ng-container [ngTemplateOutlet]="badge" [ngTemplateOutletContext]="{ $implicit: e }" />
             }
           </ul>
           @if (notesOf(r).length) {
-            <details class="race-notes">
+            <details class="race-notes" open>
               <summary><svg class="chev" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6" /></svg>{{ t('notesHeading') }} <span class="badge-count">{{ notesOf(r).length }}</span></summary>
               <ul class="notes">
                 @for (n of notesOf(r); track n.id) {
@@ -270,6 +287,18 @@
           }
         </ul>
       </section>
+
+      @if (numberChanges().length) {
+      <section class="log numberchanges">
+        <h2>{{ t('numberChangesHeading') }}</h2>
+        <p class="detail">{{ t('numberChangesNote') }}</p>
+        <ul>
+          @for (c of numberChanges(); track c.id) {
+            <li><s>{{ c.was }}</s> → <strong>{{ c.cap }}</strong> {{ c.name }} <small class="detail">{{ c.race }}</small></li>
+          }
+        </ul>
+      </section>
+      }
 
       @if (st.latestActions.length) {
       <section class="log">

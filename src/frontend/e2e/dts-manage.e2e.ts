@@ -35,7 +35,6 @@ test.describe('dts manage page', () => {
     // the downloads sit in the next steps, which appear when the race is closed
     const race = manage.locator('.race', { hasText: 'NO1' });
     await race.getByRole('button', { name: 'Inschrijving sluiten' }).click();
-    await race.getByRole('button', { name: /^Uitklappen/ }).click();
     const [mds] = await Promise.all([manage.waitForEvent('download'), manage.getByRole('button', { name: /^MDS-tekenlijst .*NO1$/ }).click()]);
     expect(mds.suggestedFilename()).toMatch(/_tekenlijst\.xml$/);
     const tekenlijst = await (await import('node:fs/promises')).readFile(await mds.path(), 'utf8');
@@ -43,6 +42,21 @@ test.describe('dts manage page', () => {
     expect(tekenlijst).toContain('<Getekend>1</Getekend>');
     expect(tekenlijst).toContain('<Transponder1LowBat>0</Transponder1LowBat>');
     expect(tekenlijst).not.toContain('<ShowNr>');
+  });
+
+  test('animates the border of a number that changed until it is pointed at', async ({ page, context }) => {
+    const links = await upload(page);
+    const manage = await context.newPage();
+    await manage.goto(local(links.manage));
+    const number = manage.locator('.race', { hasText: 'NO1' }).locator('.num').filter({ hasText: '11' });
+    await expect(number).toBeVisible();
+    await expect(number).not.toHaveClass(/fresh/);
+    await open(page, '11', /11\s+Aardappel/);
+    await page.getByRole('button', { name: 'Markeer als getekend' }).click();
+    await expect(page.getByText('In sync met server')).toBeVisible();
+    await expect(number).toHaveClass(/fresh/, { timeout: 20000 });
+    await number.hover();
+    await expect(number).not.toHaveClass(/fresh/);
   });
 
   test('lists the signing device and stacks the races, each across the full width', async ({ page, context }) => {
@@ -91,24 +105,6 @@ test.describe('dts manage page', () => {
     await expect(race.locator('.num[data-state="note"]')).toHaveText(/11/, { timeout: 20000 });
     // the colour fades to the new state, so it is read until it has settled
     await expect.poll(async () => new Set([signed, changed, await colour('note')]).size).toBe(3);
-  });
-
-  test('filters the numbers by status with the legend buttons', async ({ page, context }) => {
-    const links = await upload(page);
-    await open(page, '11', /11\s+Aardappel/);
-    await page.getByRole('button', { name: 'Markeer als getekend' }).click();
-    await expect(page.getByText('In sync met server')).toBeVisible();
-    const manage = await context.newPage();
-    await manage.goto(local(links.manage));
-    const nums = manage.locator('.numbers .num');
-    const all = await nums.count();
-    await manage.getByRole('button', { name: 'Getekend', exact: true }).click();
-    await expect(manage.getByRole('button', { name: 'Getekend', exact: true })).toHaveAttribute('aria-pressed', 'true');
-    await expect(nums).toHaveCount(1);
-    await manage.getByRole('button', { name: 'Getekend', exact: true }).click();
-    await expect(nums).toHaveCount(all);
-    await manage.getByRole('button', { name: 'Ongetekend' }).click();
-    await expect(nums).toHaveCount(all - 1);
   });
 
   test('shows a tooltip at once on hover', async ({ page, context }) => {
@@ -234,6 +230,27 @@ test.describe('dts manage page', () => {
     await details.getByRole('button', { name: 'Opslaan' }).click();
     await expect(details).toHaveURL(/\/dts-admin\/list\?s=/);
     await expect(details.locator('.num').filter({ hasText: 'X6' })).toBeVisible();
+    await expect(details.locator('[data-group="added"] + ul .num').filter({ hasText: 'X6' })).toBeVisible();
+    await expect(details.locator('[data-group="renumbered"]')).toHaveCount(0);
+  });
+
+  test('groups a renumbered competitor apart, with the changed transponder on the badge and a note', async ({ page, context }) => {
+    await upload(page);
+    const admin = await context.newPage();
+    await admin.goto('/dts-admin/');
+    await admin.locator('.sessions > li').first().getByRole('button', { name: 'Details' }).click();
+    const first = admin.locator('.race', { hasText: 'NO1' }).locator('.numbers .num').first();
+    const [details] = await Promise.all([admin.context().waitForEvent('page'), first.getByRole('link').click()]);
+    await details.getByRole('link', { name: 'Gegevens aanpassen' }).click();
+    await details.getByLabel('Beennummer', { exact: true }).fill('77');
+    await details.getByLabel('Transponder 1').fill('zz-99999');
+    await details.getByRole('button', { name: 'Opslaan' }).click();
+    await expect(details).toHaveURL(/\/dts-admin\/list\?s=/);
+    const grouped = details.locator('[data-group="renumbered"] + ul .num').filter({ hasText: '77' });
+    await expect(grouped).toBeVisible();
+    await expect(grouped.locator('.tps b')).toHaveText('ZZ-99999');
+    await expect(details.locator('.race-notes').first()).toContainText('Beennummer gewijzigd');
+    await expect(details.locator('.numberchanges')).toContainText('77');
   });
 
   test('does not save a change to a competitor of a closed race and opens the edit form from a trailing slash', async ({ page, context }) => {
@@ -271,7 +288,6 @@ test.describe('dts manage page', () => {
     await expect(pdfButton).toHaveCount(0);
     await race.getByRole('button', { name: 'Inschrijving sluiten' }).click();
     await expect(race.locator('.nextsteps').getByRole('button', { name: /^MDS-tekenlijst/ })).toBeVisible();
-    await race.getByRole('button', { name: /^Uitklappen/ }).click();
     const [one] = await Promise.all([admin.waitForEvent('download'), dts.click()]);
     expect(await (await import('node:fs/promises')).readFile(await one.path(), 'utf8')).toContain('<Getekend>1</Getekend>');
     const [src] = await Promise.all([admin.waitForEvent('download'), admin.getByRole('button', { name: 'Origineel DTS-bestand (zonder handtekeningen)' }).click()]);
@@ -291,6 +307,10 @@ test.describe('dts manage page', () => {
     expect(tip.split('\n')).toHaveLength(5);
     expect(tip.split('\n')[0]).toMatch(/^Getekend ✓/);
     expect(tip).toContain('Aardappel');
+    // a closed race keeps its numbers readable, but they open nothing
+    await expect(number.locator('.numlink')).not.toHaveAttribute('href', /.+/);
+    await expect(number.locator('.numlink')).toHaveAttribute('aria-disabled', 'true');
+    await race.getByRole('button', { name: 'Heropenen' }).click();
     const [details] = await Promise.all([admin.context().waitForEvent('page'), number.getByRole('link').click()]);
     await details.waitForLoadState();
     await expect(details).toHaveURL(/&c=/);

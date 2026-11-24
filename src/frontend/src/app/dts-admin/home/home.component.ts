@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { installInstantTooltips } from '../../dts/dts-tooltip';
 import { DtsText } from '../../dts/dts-text';
 import { qrEncode, qrPath } from '../../dts/qr';
@@ -43,18 +43,18 @@ import { AdminSyncStatus } from '../sync-status';
             @if (linkOpen() === s.id && signLink(s); as link) {
               <div class="signlink-fold">
                 <div class="signlink" [id]="'signlink-' + s.id">
-                  <div class="linkrow"><p class="url">{{ link }}</p></div>
+                  <p class="banner sharewarn" role="note"><span><strong>{{ t('qrDoNotShare') }}</strong><br />{{ t('qrNote') }}</span></p>
                   @if (qr(link); as q) {
                     <svg class="qr" [attr.viewBox]="'0 0 ' + q.size + ' ' + q.size" role="img" [attr.aria-label]="t('qrLabel')" shape-rendering="crispEdges">
                       <rect width="100%" height="100%" fill="#fff" />
                       <path [attr.d]="q.path" fill="#000" />
                     </svg>
                   }
+                  <div class="linkrow"><p class="url">{{ link }}</p></div>
                   @if (s.races.length) {
                     <div class="qrraces"><p class="qrraces-head">{{ t('qrRaces') }}</p><ul>@for (r of s.races; track r.id) { <li>{{ r.title }}</li> }</ul></div>
                   }
                   <div class="linkactions"><button type="button" class="copy" (click)="copy(link)" [attr.aria-label]="copied() === link ? t('copied') : t('copy')" [title]="t('tipCopy')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">@if (copied() === link) { <path d="M5 13l4 4L19 7" /> } @else { <rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /> }</svg></button><button type="button" class="copy print" (click)="printQr(s.id)" [attr.aria-label]="t('printQr')" [title]="t('printQr')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2" /><rect x="7" y="14" width="10" height="7" /></svg></button></div>
-                  <p class="banner sharewarn" role="note"><span><strong>{{ t('qrDoNotShare') }}</strong> {{ t('qrNote') }}</span></p>
                 </div>
               </div>
             }
@@ -152,6 +152,7 @@ export class DtsHomeComponent implements OnInit {
   protected readonly text = new DtsText();
   protected readonly t = this.text.t;
   private readonly store = adminStore();
+  private readonly destroy = inject(DestroyRef);
   protected readonly items = signal<AdminSession[]>([]);
   protected readonly loaded = signal(false);
   protected readonly failed = signal(false);
@@ -172,6 +173,18 @@ export class DtsHomeComponent implements OnInit {
     installInstantTooltips();
     this.tab();
     void this.load();
+    // the overview follows the server: a quiet refresh every 10 seconds while the page is visible, and one when it returns
+    const quiet = async () => {
+      if (document.visibilityState !== 'visible') return;
+      const got = await this.store.sessions();
+      if (got) this.items.set(got.items);
+    };
+    const poll = setInterval(() => void quiet(), 10000);
+    document.addEventListener('visibilitychange', quiet);
+    this.destroy.onDestroy(() => {
+      clearInterval(poll);
+      document.removeEventListener('visibilitychange', quiet);
+    });
   }
 
   /** The link a signer opens, or nothing for a list whose key the server does not have yet. */

@@ -99,29 +99,49 @@ ul { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap
   .lang:hover { background: color-mix(in srgb, var(--primary) 14%, var(--button)); }
 }
 
-.numbers, .legend { list-style: none; align-items: center; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.4rem; flex-direction: row; }
-.numbers, .legend { --numw: 4.5rem; }
+.numbers { list-style: none; align-items: center; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.4rem; flex-direction: row; }
+.numbers { --numw: 4.5rem; }
 .num { display: inline-flex; align-items: center; gap: 0.3rem; box-sizing: border-box; width: var(--numw); aspect-ratio: 1; justify-content: center; padding: 0.2rem 0.3rem; border-radius: 10px; border: 2px solid var(--line); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.3rem; background: var(--bg, var(--open-bg)); color: var(--fg); transition: background-color 0.5s ease, border-color 0.5s ease, color 0.5s ease;
   &[data-state='signed'] { --bg: var(--signed-bg); color: var(--on-state); }
   &[data-state='changed'] { --bg: var(--changed-bg); color: var(--on-state); }
   &[data-state='note'] { --bg: var(--note-bg); color: var(--on-state); }
+  /* a signed number that shows a change or a note is split along the diagonal: the signature top left, the other state bottom right */
+  &[data-also='signed'] { --also-bg: var(--signed-bg); background: linear-gradient(135deg, var(--also-bg) 50%, var(--bg) 50%); }
   &.late { border-style: dashed; }
   /* a number that opens its details lifts a little toward the accent colour when hovered */
-  @media (hover: hover) { &:has(.numlink):hover { background: color-mix(in srgb, var(--bg, var(--open-bg)) 80%, var(--primary)); } }
+  @media (hover: hover) { &:has(.numlink):not([data-also]):hover { background: color-mix(in srgb, var(--bg, var(--open-bg)) 80%, var(--primary)); } }
   position: relative;
   /* the state mark is a faint watermark behind the number */
   .mark { position: absolute; inset: auto 0 0.1rem 0; display: flex; align-items: flex-end; justify-content: center; font-size: 1.1rem; line-height: 1; font-weight: 800; opacity: 0.28; pointer-events: none; transition: opacity 0.5s ease; }
-  &.fresh { animation: pulse 1.4s ease-out; }
+  /* a number that changed pulses its border and sweeps a light gradient over its background until it is pointed at */
+  &.fresh { animation: changed-border 1.1s ease-in-out infinite; }
+  &.fresh::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(110deg, transparent 20%, color-mix(in srgb, var(--primary) 55%, transparent) 50%, transparent 80%) 0 0 / 250% 100%;
+    animation: changed-sweep 1.8s linear infinite;
+  }
+  &.fresh .numlink { position: relative; }
 }
 .numbers { display: grid; grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr)); }
-@media (min-width: 40rem) { .numbers { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 40rem) { .numbers { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.groups { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem 0.4rem; align-items: start; }
+.groups .numbers { grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr)); }
+/* from six columns up the groups split the card 50/50 with three badges per row each, which is the width of a badge in the six column list below; more badges wrap to the next rows */
+@media (min-width: 40rem) {
+  .groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .groups .numbers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.groups { margin-bottom: 1rem; }
 .numbers .num { width: auto; aspect-ratio: auto; min-height: var(--numw); padding: 0.3rem; }
 .numbers .numlink { flex-direction: column; gap: 0.1rem; min-width: 0; }
 .numbers .mark { inset: 0.1rem 0.3rem auto auto; justify-content: flex-end; align-items: flex-start; font-size: 0.9rem; }
+.numbers .num[data-also] .mark { inset: auto 0.3rem 0.1rem auto; justify-content: flex-end; align-items: flex-end; }
+.numbers .num .mark.also { inset: 0.1rem auto auto 0.3rem; justify-content: flex-start; align-items: flex-start; }
 .who { max-width: 100%; font-size: 0.75rem; font-weight: 500; line-height: 1.15; text-align: center; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
-.legend .num { width: auto; aspect-ratio: auto; padding: 0.2rem 0.9rem; height: var(--numw); cursor: pointer; font: inherit; font-weight: 600; }
-.legend .num[aria-pressed='true'] { box-shadow: 0 0 0 3px var(--primary); }
-.legend .num:focus-visible { outline: 4px solid var(--primary); outline-offset: 2px; }
 
 li.warning { background: var(--warn-bg); color: var(--warn-fg); border: 2px solid var(--warn-fg); border-radius: 8px; padding: 0.4rem 0.6rem; }
 li.warning.severe { border-width: 4px; font-weight: 600; }
@@ -152,7 +172,8 @@ button.close { background: #fbdcdc; color: #9b1111; border-color: #c62828; }
 .progress { height: 1.5rem; border-radius: 999px; background: var(--open-bg); border: 2px solid var(--line); overflow: hidden; }
 .progress .fill { display: block; height: 100%; background: var(--signed-bg); transition: width 0.8s ease; }
 .count .pct { margin-left: 0.5rem; font-size: 1.1rem; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
-@keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 var(--primary); } 25% { transform: scale(1.18); box-shadow: 0 0 0 6px var(--primary); } 100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; } }
+@keyframes changed-border { 0%, 100% { border-color: var(--line); box-shadow: 0 0 0 0 transparent; } 50% { border-color: var(--primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 60%, transparent), 0 0 14px 2px color-mix(in srgb, var(--primary) 50%, transparent); } }
+@keyframes changed-sweep { from { background-position: 150% 0; } to { background-position: -100% 0; } }
 .count { margin: 0; strong { font-size: 1.4rem; } }
 .starttime { font-weight: 800; color: #c62828; text-decoration: underline; }
 @media (prefers-color-scheme: dark) { .starttime { color: #ff8a8a; } }
@@ -214,14 +235,15 @@ button.small.danger { color: var(--alert); border-color: var(--alert); }
 .fold { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; min-height: 0; padding: 0; .icon { width: 1.4rem; height: 1.4rem; } }
 .race-head h2 { flex: 1 1 12rem; }
 .bar { margin-bottom: 1.75rem; }
-.legend { margin-bottom: 1.75rem; }
 .races { margin-top: 0; }
 
 .lockpill { display: inline-flex; align-items: center; gap: 0.3rem; vertical-align: middle; margin-left: 0.4rem; padding: 0.1rem 0.6rem; border-radius: 999px; border: 2px solid #c62828; background: #fbdcdc; color: #9b1111; font-size: 0.9rem; font-weight: 700; .icon { width: 1rem; height: 1rem; } }
 @media (prefers-color-scheme: dark) { .lockpill { background: #4a2024; color: #ffc4c4; border-color: #e57373; } }
-.race:not(.locked) { border-left: 8px solid #2e7d32; }
-.race.locked { border-left: 8px solid #c62828; background: color-mix(in srgb, #c62828 7%, var(--card)); }
-.race.locked .num { opacity: 0.65; filter: grayscale(0.5); }
+.race:not(.locked) { border-bottom: 8px solid #2e7d32; }
+.race.locked { border-bottom: 8px solid #c62828; background: color-mix(in srgb, #c62828 7%, var(--card)); }
+.race.locked .num { opacity: 0.7; }
+/* a closed race stays readable and its numbers show their tooltip on hover, but they open nothing */
+.race.locked .num .numlink { pointer-events: none; cursor: default; }
 
 .bar .side { display: flex; align-items: center; gap: 0.5rem; flex-wrap: nowrap; }
 .signbtn { display: inline-flex; align-items: center; box-sizing: border-box; white-space: nowrap; font-weight: 600; min-height: 44px; padding: 0 1rem; border: 2px solid var(--line); border-radius: 10px; }
@@ -262,9 +284,7 @@ button.copy { flex: none; display: inline-flex; align-items: center; justify-con
 .qrraces ul { margin: 0; padding-left: 1.25rem; }
 .signlink { animation: unfold 0.25s ease; }
 @keyframes unfold { from { opacity: 0; transform: translateY(-0.5rem); } }
-@media (prefers-reduced-motion: reduce) { .foldwrap, .race-notes::details-content, .num, .num .mark, .progress .fill { transition: none; } .num.fresh { animation: none; } .signlink { animation: none; } }
-.filterhint { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); }
-.filterhint .link { min-height: 44px; padding: 0 0.4rem; background: none; border: 0; color: var(--primary); text-decoration: underline; font: inherit; font-weight: 600; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .foldwrap, .race-notes::details-content, .num, .num .mark, .progress .fill { transition: none; } .num.fresh { animation: none; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 50%, transparent); } .num.fresh::before { animation: none; background: color-mix(in srgb, var(--primary) 20%, transparent); } .signlink { animation: none; } }
 .source { margin-top: 1.5rem; }
 
 .devices li { padding: 0.35rem 0; }
@@ -276,14 +296,12 @@ button.copy { flex: none; display: inline-flex; align-items: center; justify-con
 .race { scroll-margin-top: 1rem; }
 .addnew a:not([aria-disabled='true']):hover { background: color-mix(in srgb, var(--open-bg) 80%, var(--primary)); }
 
-.legendlabel { align-self: center; font-weight: 600; }
 .nonew { margin: 0.25rem 0; color: var(--muted); font-size: 0.9rem; }
 .cutoffwrap summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--primary); }
 .cutoff button:not(.link):not(:disabled) { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 700; }
 .devices button.small { min-height: 32px; padding: 0 0.6rem; margin-left: 0; font-size: 0.85rem; }
 .race-head h2 .title-rest { font-size: 0.85rem; font-weight: 400; color: var(--muted); }
 .race-head h2 .title-rest .starttime { font-weight: 700; }
-.legend .num { height: 2.5rem; padding: 0 0.7rem; font-size: 0.9rem; }
 
 .steps { list-style: none; margin: 0.5rem 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); gap: 0.75rem; }
 .steps li { position: relative; isolation: isolate; counter-increment: step; background: var(--card); border-radius: 12px; padding: 0.75rem 0.75rem 0.75rem 4.5rem; align-content: flex-start; min-height: 7.5rem; display: flex; flex-wrap: wrap; flex-direction: row; align-items: flex-start; gap: 1rem; text-align: left; font-weight: 600; font-size: 1.1rem; min-width: 0; }
@@ -302,3 +320,16 @@ button.copy { flex: none; display: inline-flex; align-items: center; justify-con
 .steps .stepbtn { margin: 0 auto; flex: none; }
 .steps .break { flex: 1 1 100%; height: 0; margin: -0.5rem 0; }
 .steps li .what { min-height: 6.5rem; display: flex; align-items: center; }
+
+/* the start number a little larger; a lone state mark sits top left, the second mark of a mixed badge bottom right; the top right is for the changed transponders */
+.numbers .cap { font-size: 1.4rem; font-weight: 700; line-height: 1.1; }
+.numbers .mark { inset: 0.1rem auto auto 0.3rem; justify-content: flex-start; align-items: flex-start; }
+.numbers .num[data-also] .mark { inset: auto 0.3rem 0.1rem auto; justify-content: flex-end; align-items: flex-end; }
+.numbers .num .mark.also { inset: 0.1rem auto auto 0.3rem; justify-content: flex-start; align-items: flex-start; }
+.numbers .tps { position: absolute; top: 0.2rem; right: 0.3rem; display: flex; flex-direction: column; align-items: flex-end; font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 0.6rem; line-height: 1.15; letter-spacing: 0.05em; color: var(--on-state); pointer-events: none; }
+.numbers .tps b { font-weight: 800; }
+.numbers .tps s { color: #b00d0d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .numbers .tps s { color: #ff9a9a; } }
+:root[data-theme='dark'] .numbers .tps s { color: #ff9a9a; }
+
+.group { margin: 0.9rem 0 0.4rem; font-size: 1rem; font-weight: 700; color: var(--muted); }

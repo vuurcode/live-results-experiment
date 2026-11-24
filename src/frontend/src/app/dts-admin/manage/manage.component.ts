@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { installInstantTooltips } from '../../dts/dts-tooltip';
 import { DtsText } from '../../dts/dts-text';
@@ -7,7 +8,8 @@ import { DtsNotices } from '../../dts/dts-notices';
 import { adminStore } from '../admin-store';
 import { AdminSyncStatus } from '../sync-status';
 import { qrEncode, qrPath } from '../../dts/qr';
-import { byCap, clock, minutesToCutoff, raceProblems, watermarkOf } from '../../dts/dts.logic';
+import { copyText } from '../../dts/dts-clipboard';
+import { byCap, groupEntries, clock, minutesToCutoff, raceProblems } from '../../dts/dts.logic';
 import { warningSentence } from '../../dts/dts-warning-text';
 import type { DtsAction, DtsDevice, DtsEntry, DtsNote, DtsRace, DtsState, DtsWarning } from '../../dts/dts.models';
 import type { DtsKey } from '../../dts/dts.strings';
@@ -19,7 +21,7 @@ const NOTE_KINDS = ['note-add', 'racer-note', 'note-resolve'];
 @Component({
   selector: 'app-dts-manage',
   standalone: true,
-  imports: [AdminSyncStatus],
+  imports: [AdminSyncStatus, NgTemplateOutlet],
   templateUrl: './manage.component.html',
   styleUrls: ['./manage.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,10 +36,15 @@ export class DtsManageComponent implements OnInit {
   protected readonly t = this.text.t;
 
   protected readonly state = signal<DtsState | null>(null);
-  /** Ids of the numbers whose state a signer just changed; they pulse for a moment so the change catches the eye. */
+  /** Ids of the numbers whose state a signer changed and that were not pointed at since; their border keeps animating until then. */
   protected readonly fresh = signal<ReadonlySet<string>>(new Set());
+
+  protected seen(id: string): void {
+    if (!this.fresh().has(id)) return;
+    this.fresh.update((was) => new Set([...was].filter((x) => x !== id)));
+  }
+
   private seenStates: Map<string, string> | null = null;
-  private freshTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly flashChanges = effect(() => {
     const st = this.state();
     if (!st) return;
@@ -52,9 +59,7 @@ export class DtsManageComponent implements OnInit {
     }
     this.seenStates = now;
     if (!changed.size) return;
-    this.fresh.set(changed);
-    if (this.freshTimer) clearTimeout(this.freshTimer);
-    this.freshTimer = setTimeout(() => this.fresh.set(new Set()), 1600);
+    this.fresh.update((was) => new Set([...was, ...changed]));
   });
   protected readonly loadedAt = signal<number | null>(null);
   protected readonly denied = signal(false);
@@ -241,6 +246,8 @@ export class DtsManageComponent implements OnInit {
           changed: e.orig ? { cap: e.orig.cap !== e.cap, t1: (e.orig.t1 ?? '') !== (e.t1 ?? ''), t2: (e.orig.t2 ?? '') !== (e.t2 ?? '') } : undefined,
         })),
       })),
+      numberChanges: races.flatMap((r) => byCap(r.entries).filter((e) => e.orig && e.orig.cap !== e.cap && !e.added).map((e) => ({ was: e.orig?.cap ?? '', cap: e.cap, name: e.name }))),
+      numberChangesHeading: this.t('pdfNumberChanges'),
       log: [...st.latestActions].filter((a) => a.entry && names.has(a.entry)).reverse().map((a) => ({
         time: clock(a.at),
         cap: names.get(a.entry ?? '')?.cap ?? '',
@@ -269,42 +276,49 @@ export class DtsManageComponent implements OnInit {
   /** The notices dismissed on this device for the session. */
   protected dismissed = signal(new DtsNotices(''));
 
-  /** The states the numbers are filtered on; none selected shows every number. */
-  protected readonly filter = signal<ReadonlySet<'note' | 'changed' | 'signed' | 'open'>>(new Set());
+  protected readonly groupsOf = groupEntries;
 
-  protected readonly emptyFilter: ReadonlySet<'note' | 'changed' | 'signed' | 'open'> = new Set();
-
-  protected toggleFilter(state: 'note' | 'changed' | 'signed' | 'open'): void {
-    this.filter.update((f) => {
-      const next = new Set(f);
-      if (!next.delete(state)) next.add(state);
-      return next;
-    });
-  }
-
-  protected shown(r: DtsRace): DtsEntry[] {
-    const f = this.filter();
-    const list = f.size === 0 ? r.entries : r.entries.filter((e) => f.has(this.stateOf(e)));
-    return byCap(list);
+  /** The transponders that were set or changed since the file, as the badge shows them (the old one struck through). */
+  protected tpsOf(e: DtsEntry): { was?: string; now: string }[] {
+    const out: { was?: string; now: string }[] = [];
+    for (const [now, was] of [[e.t1, e.orig?.t1], [e.t2, e.orig?.t2]] as const) {
+      if (now && (e.added || (e.orig && was !== now))) out.push({ was: was || undefined, now });
+    }
+    return out;
   }
 
   protected total(r: DtsRace): number {
     return r.signed + r.unsigned;
   }
-  /** The look of a number: a note wins over a change, a change over a plain signature. */
+  /** The look of a number: a change wins over a note, a note over a plain signature. */
   protected stateOf(e: DtsEntry): 'note' | 'changed' | 'signed' | 'open' {
+    if (e.signed && e.changed) return 'changed';
     if (this.noted().has(e.id)) return 'note';
-    if (e.signed) return e.changed ? 'changed' : 'signed';
-    return 'open';
+    return e.signed ? 'signed' : 'open';
   }
+  /** The signature of a number that also shows a change or a note: the left half of the badge, the other state the right half. */
+  protected alsoOf(e: DtsEntry): 'signed' | null {
+    return e.signed && this.stateOf(e) !== 'signed' ? 'signed' : null;
+  }
+  private readonly marks = { note: '!', changed: '✎', signed: '✓', open: '' };
   protected markOf(e: DtsEntry): string {
-    return watermarkOf(this.stateOf(e), e.signed);
+    return this.marks[this.stateOf(e)];
+  }
+  protected alsoMarkOf(e: DtsEntry): string {
+    return this.marks[this.alsoOf(e) ?? 'open'];
   }
   protected stateLabel(e: DtsEntry): string {
     const s = this.stateOf(e);
+    const also = this.alsoOf(e) ? `, ${this.t('legendSigned')}` : '';
     const late = e.signed && (e.minutesLate ?? 0) > 0 ? `, ${this.t('signedLate', { min: e.minutesLate ?? 0 })}` : '';
-    return `${e.cap}: ${this.t(s === 'note' ? 'legendNote' : s === 'changed' ? 'legendChanged' : s === 'signed' ? 'legendSigned' : 'legendOpen')}${late}`;
+    return `${e.cap}: ${this.t(s === 'note' ? 'legendNote' : s === 'changed' ? 'legendChanged' : s === 'signed' ? 'legendSigned' : 'legendOpen')}${also}${late}`;
   }
+  /** The entries of the file whose start number was changed, apart from the badges: MDS does not take the new number over. */
+  protected readonly numberChanges = computed(() =>
+    (this.state()?.races ?? []).flatMap((r) =>
+      byCap(r.entries).filter((e) => !e.added && e.orig && e.orig.cap !== e.cap).map((e) => ({ id: e.id, race: r.title, was: e.orig?.cap ?? '', cap: e.cap, name: e.name })),
+    ),
+  );
   protected readonly noted = computed(() => new Set((this.state()?.notes ?? []).filter((n) => !n.resolved).map((n) => n.entry)));
   /** The races in the order they start; races starting at the same time keep their file order. */
   protected byStart(races: DtsRace[]): DtsRace[] {
@@ -334,9 +348,6 @@ export class DtsManageComponent implements OnInit {
   }
 
   protected async setClosed(r: DtsRace): Promise<void> {
-    const choice = new Map(this.foldChoice());
-    choice.delete(r.id);
-    this.foldChoice.set(choice);
     await this.store.queue({ kind: 'closed', session: this.id, race: r.id, closed: !r.closed });
     await this.refresh();
   }
@@ -455,23 +466,18 @@ export class DtsManageComponent implements OnInit {
   /** Whether the panel with the sign link and its QR code is shown. */
   protected readonly linkOpen = signal(false);
 
-  /** What the user chose per race; a race without a choice is folded while it is closed. */
+  /** What the user chose per race; a race without a choice is shown unfolded. */
   private readonly foldChoice = signal<ReadonlyMap<string, boolean>>(new Map());
 
   protected isCollapsed(r: DtsRace): boolean {
-    return this.foldChoice().get(r.id) ?? !!r.closed;
+    return this.foldChoice().get(r.id) ?? false;
   }
 
   protected toggleCollapsed(r: DtsRace): void {
     this.foldChoice.set(new Map(this.foldChoice()).set(r.id, !this.isCollapsed(r)));
   }
   protected async copy(link: string): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(link);
-      this.copied.set(link);
-    } catch {
-      this.copied.set('');
-    }
+    this.copied.set((await copyText(link)) ? link : '');
   }
 
   protected async removeDevice(d: DtsDevice): Promise<void> {

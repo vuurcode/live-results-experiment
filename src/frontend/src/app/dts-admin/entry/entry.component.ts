@@ -1,3 +1,4 @@
+import { clearSiblingField } from '../../dts/dts-field';
 import { ChangeDetectionStrategy, Component, OnInit, computed, signal } from '@angular/core';
 import { DtsText } from '../../dts/dts-text';
 import { randomId } from '../../dts/dts-api';
@@ -61,11 +62,15 @@ interface Draft {
           </label>
           <label class="field">
             <span><img class="chip" src="/dts-transponder-red.webp" alt="" width="66" height="44" /> {{ t('addT1') }}</span>
-            <input type="text" name="t1" autocomplete="off" autocapitalize="characters" [placeholder]="t('transponderHint')" [value]="draft().t1" (input)="set('t1', $event)" [attr.aria-invalid]="!!errors().t1" />
+            <span class="clearable"><input type="text" name="t1" autocomplete="off" autocapitalize="characters" [placeholder]="t('transponderHint')" [value]="draft().t1" (input)="set('t1', $event)" [attr.aria-invalid]="!!errors().t1" />
+              @if (draft().t1) { <button type="button" class="clear" [attr.aria-label]="t('clearField')" [title]="t('clearField')" (click)="clearField($event)">×</button> }
+            </span>
           </label>
           <label class="field">
             <span><img class="chip" src="/dts-transponder-blue.webp" alt="" width="66" height="44" /> {{ t('addT2') }}</span>
-            <input type="text" name="t2" autocomplete="off" autocapitalize="characters" [placeholder]="t('transponderHint')" [value]="draft().t2" (input)="set('t2', $event)" [attr.aria-invalid]="!!errors().t2" />
+            <span class="clearable"><input type="text" name="t2" autocomplete="off" autocapitalize="characters" [placeholder]="t('transponderHint')" [value]="draft().t2" (input)="set('t2', $event)" [attr.aria-invalid]="!!errors().t2" />
+              @if (draft().t2) { <button type="button" class="clear" [attr.aria-label]="t('clearField')" [title]="t('clearField')" (click)="clearField($event)">×</button> }
+            </span>
           </label>
           <label class="check">
             <input type="checkbox" name="signed" [checked]="draft().signed" (change)="setSigned($event)" />
@@ -116,6 +121,8 @@ export class DtsAdminEntryComponent implements OnInit {
     const d = this.draft();
     return !this.errorKeys().length && !!d.cap.trim() && (this.mode === 'edit' || !!d.who.trim()) && !!d.race;
   });
+
+  protected readonly clearField = clearSiblingField;
 
   protected backHref(): string {
     return SESSION_ID.test(this.id) ? `/dts-admin/list?s=${this.id}` : '/dts-admin/';

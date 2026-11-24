@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, signal } from '@a
 import { DtsText } from '../../dts/dts-text';
 import { dtsAdminRequest, dtsAdminSend, parseJson } from '../../dts/dts-api';
 import { qrEncode, qrPath } from '../../dts/qr';
+import { copyText } from '../../dts/dts-clipboard';
 import type { DtsCreated, DtsState } from '../../dts/dts.models';
 import type { DtsKey } from '../../dts/dts.strings';
 
@@ -29,14 +30,14 @@ function startError(status: number): DtsKey {
         <p class="banner warn">{{ t('createdWarn') }}</p>
         <section class="card">
           <h2>{{ t('createdSign') }}</h2>
-          <p class="url">{{ signLink() }}</p>
+          <p class="banner sharewarn" role="note"><strong>{{ t('qrDoNotShare') }}</strong><br />{{ t('qrNote') }}</p>
           @if (qr(); as q) {
             <svg class="qr" [attr.viewBox]="'0 0 ' + q.size + ' ' + q.size" role="img" [attr.aria-label]="t('qrLabel')" shape-rendering="crispEdges">
               <rect width="100%" height="100%" fill="#fff" />
               <path [attr.d]="q.path" fill="#000" />
             </svg>
-            <p class="banner sharewarn" role="note"><strong>{{ t('qrDoNotShare') }}</strong> {{ t('qrNote') }}</p>
           }
+          <p class="url">{{ signLink() }}</p>
           @if (raceTitles().length) {
             <div class="qrraces"><p class="qrraces-head">{{ t('qrRaces') }}</p><ul>@for (title of raceTitles(); track $index) { <li>{{ title }}</li> }</ul></div>
           }
@@ -197,12 +198,7 @@ export class DtsAdminNewComponent implements OnInit {
   }
 
   protected async copy(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(this.signLink());
-      this.copied.set(true);
-    } catch {
-      this.copied.set(false);
-    }
+    this.copied.set(await copyText(this.signLink()));
   }
 
   protected async pick(event: Event): Promise<void> {
