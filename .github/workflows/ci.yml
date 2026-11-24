@@ -155,7 +155,7 @@ jobs:
   # The combined image builds from the repository root.
   combined-image:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     needs: [frontend, backend, lint]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
