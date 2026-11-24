@@ -86,7 +86,7 @@ func (o Op) Validate() error {
 		}
 	case OpAddRacer:
 		who := strings.TrimSpace(o.Who)
-		if who == "" || utf8.RuneCountInString(who) > maxNameSize || o.Race == "" || !ValidCap(o.Cap) || !validNewLicence(o.Licence) || !ValidTransponder(o.T1) || (o.T2 != "" && !ValidTransponder(o.T2)) {
+		if who == "" || utf8.RuneCountInString(who) > maxNameSize || o.Race == "" || !ValidCap(o.Cap) || !validNewLicence(o.Licence) || (o.T1 != "" && !ValidTransponder(o.T1)) || (o.T2 != "" && !ValidTransponder(o.T2)) {
 			return bad("add-racer fields")
 		}
 	default:

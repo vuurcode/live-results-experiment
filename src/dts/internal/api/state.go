@@ -112,7 +112,7 @@ func BuildState(sess *store.Session, defaultCutoff func(store.Meta, string) int,
 	entries, rejected := doc.Replay(sess.Ops)
 	st := &State{
 		ID: sess.ID, Now: now.UTC(), Changed: sess.Meta.Changed, Synced: sess.Meta.Synced,
-		Warnings: dts.Warnings(entries), Rejected: rejected, Notes: replayNotes(doc.ImportedNotes(), sess.Notes),
+		Warnings: dts.Warnings(entries), Rejected: rejected, Notes: replayNotes(doc.ImportedNotes(), capNotes(doc, entries, sess.Ops), sess.Notes),
 		Totals: map[string]int{},
 	}
 	names := map[string]string{}
@@ -199,8 +199,41 @@ func nameOf(doc *dts.Doc, e dts.Entry) string {
 	return e.Name
 }
 
+// capNotes logs a changed start number of an entry of the file as a note, and a racer added without any transponder. MDS has no field for it in the sign list, so the
+// entry stays signed under its old number and the note tells the jury and the office about the new one.
+func capNotes(doc *dts.Doc, entries []dts.Entry, ops []dts.Op) []Note {
+	original := map[string]dts.Entry{}
+	for _, e := range doc.Entries {
+		original[e.ID] = e
+	}
+	at := map[string]time.Time{}
+	for _, op := range ops {
+		if op.Kind == dts.OpCap && op.At.After(at[op.Entry]) {
+			at[op.Entry] = op.At
+		}
+	}
+	added := map[string]time.Time{}
+	for _, op := range ops {
+		if op.Kind == dts.OpAddRacer {
+			added[op.ID] = op.At
+		}
+	}
+	out := []Note{}
+	for _, e := range entries {
+		if e.Added && e.T1 == "" && e.T2 == "" {
+			out = append(out, Note{ID: "notp:" + e.ID, Entry: e.ID, Level: store.LevelNote, By: "DTS", At: added[e.ID],
+				Text: "Zonder transponder toegevoegd; vul de transponder aan zodra bekend"})
+		}
+		if o, ok := original[e.ID]; ok && !e.Added && o.Cap != e.Cap {
+			out = append(out, Note{ID: "cap:" + e.ID, Entry: e.ID, Level: store.LevelNote, By: "DTS", At: at[e.ID],
+				Text: fmt.Sprintf("Beennummer gewijzigd van %s naar %s; getekend onder het oude nummer %s", o.Cap, e.Cap, o.Cap)})
+		}
+	}
+	return out
+}
+
 // replayNotes is the notes of the file followed by those added during the day, with the resolutions applied to both.
-func replayNotes(imported []dts.ImportedNote, events []store.NoteEvent) []Note {
+func replayNotes(imported []dts.ImportedNote, derived []Note, events []store.NoteEvent) []Note {
 	notes := []Note{}
 	idx := map[string]int{}
 	for _, n := range imported {
@@ -210,6 +243,10 @@ func replayNotes(imported []dts.ImportedNote, events []store.NoteEvent) []Note {
 		}
 		idx[n.ID] = len(notes)
 		notes = append(notes, Note{ID: n.ID, Entry: n.Entry, Level: level, Text: n.Text, By: "MDS", At: n.At})
+	}
+	for _, n := range derived {
+		idx[n.ID] = len(notes)
+		notes = append(notes, n)
 	}
 	for _, ev := range events {
 		switch ev.Kind {

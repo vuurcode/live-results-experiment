@@ -653,3 +653,31 @@ func TestAdminCreatesAndEdits(t *testing.T) {
 		t.Error("the admin's change is in the action log")
 	}
 }
+
+func TestChangedStartNumberBecomesANoteAndStaysSignedUnderTheOldNumber(t *testing.T) {
+	e := newEnv(t)
+	body := ops(t, op("a", 1, "sign", "1001@3", "1"), op("b", 2, "cap", "1001@3", "15"))
+	if res := e.do("POST", e.url("/operations"), e.sk, body); res.Code != 200 {
+		t.Fatalf("%d %s", res.Code, res.Body)
+	}
+	notes := e.state(e.sk).Notes
+	if len(notes) != 1 || notes[0].Entry != "1001@3" || !strings.Contains(notes[0].Text, "11 naar 15") || !strings.Contains(notes[0].Text, "oude nummer 11") {
+		t.Fatalf("%+v", notes)
+	}
+	res := e.do("GET", e.url("/export?format=tekenlijst"), e.sk, "")
+	if res.Code != 200 || !strings.Contains(res.Body.String(), "<Wedstrijdnummer>1001</Wedstrijdnummer>") || strings.Contains(res.Body.String(), "15") {
+		t.Errorf("%d %s", res.Code, res.Body)
+	}
+}
+
+func TestRacerAddedWithoutTransponderGetsANote(t *testing.T) {
+	e := newEnv(t)
+	body := ops(t, map[string]any{"id": "n1", "at": base, "kind": "add-racer", "who": "New Rider", "race": "3", "cap": "55"})
+	if res := e.do("POST", e.url("/operations"), e.sk, body); res.Code != 200 {
+		t.Fatalf("%d %s", res.Code, res.Body)
+	}
+	notes := e.state(e.sk).Notes
+	if len(notes) != 1 || notes[0].Entry != "n1" || !strings.Contains(notes[0].Text, "Zonder transponder") {
+		t.Fatalf("%+v", notes)
+	}
+}

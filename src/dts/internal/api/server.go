@@ -445,7 +445,7 @@ func (s *Server) logAdminNote(id string, ev store.NoteEvent) {
 			if doc, err := dts.Parse(sess.Source); err == nil {
 				imported = doc.ImportedNotes()
 			}
-			for _, n := range replayNotes(imported, sess.Notes) {
+			for _, n := range replayNotes(imported, nil, sess.Notes) {
 				if n.ID == ev.NoteID {
 					act.Text = n.Text
 				}
