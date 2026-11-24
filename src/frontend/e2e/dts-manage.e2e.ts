@@ -59,6 +59,21 @@ test.describe('dts manage page', () => {
     await expect(number).not.toHaveClass(/fresh/);
   });
 
+  test('animates a number whose transponder was changed, not only a signed one', async ({ page, context }) => {
+    const links = await upload(page);
+    const manage = await context.newPage();
+    await manage.goto(local(links.manage));
+    const number = manage.locator('.race', { hasText: 'NO1' }).locator('.num').filter({ hasText: '12' });
+    await expect(number).toBeVisible();
+    await expect(number).not.toHaveClass(/fresh/);
+    await open(page, '12', /12\s+Bakker/);
+    await page.getByRole('button', { name: 'Transponder 2' }).click();
+    await page.getByLabel('Transponder 2').fill('ZZ99999');
+    await page.getByRole('button', { name: 'Opslaan' }).click();
+    await expect(page.locator('.badges')).toContainText('ZZ-99999');
+    await expect(number).toHaveClass(/fresh/, { timeout: 20000 });
+  });
+
   test('lists the signing device and stacks the races, each across the full width', async ({ page, context }) => {
     const links = await upload(page);
     const manage = await context.newPage();
@@ -304,8 +319,11 @@ test.describe('dts manage page', () => {
 
     const number = race.locator('.num').filter({ hasText: '11' });
     const tip = (await number.getAttribute('title')) ?? '';
-    expect(tip.split('\n')).toHaveLength(5);
-    expect(tip.split('\n')[0]).toMatch(/^Getekend ✓/);
+    const lines = tip.split('\n');
+    expect(lines[0]).toMatch(/^Getekend ✓/);
+    // the details, one empty line, then the log of the competitor
+    expect(lines[5]).toBe('');
+    expect(lines[6]).toMatch(/^\d{2}:\d{2} /);
     expect(tip).toContain('Aardappel');
     // a closed race keeps its numbers readable, but they open nothing
     await expect(number.locator('.numlink')).not.toHaveAttribute('href', /.+/);

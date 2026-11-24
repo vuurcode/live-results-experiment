@@ -44,6 +44,11 @@ export class DtsManageComponent implements OnInit {
     this.fresh.update((was) => new Set([...was].filter((x) => x !== id)));
   }
 
+  /** Everything a badge shows or lists about a number: when any of it differs from the last state, the badge flags a change. */
+  private changeKey(e: DtsEntry): string {
+    return JSON.stringify([this.stateOf(e), e.signed, e.cap, e.t1, e.t2, e.name, e.licence ?? e.newLicence, e.added, e.minutesLate, e.signedBy, e.orig?.cap, e.orig?.t1, e.orig?.t2]);
+  }
+
   private seenStates: Map<string, string> | null = null;
   private readonly flashChanges = effect(() => {
     const st = this.state();
@@ -52,7 +57,7 @@ export class DtsManageComponent implements OnInit {
     const changed = new Set<string>();
     for (const r of st.races) {
       for (const e of r.entries) {
-        const key = this.stateOf(e);
+        const key = this.changeKey(e);
         now.set(e.id, key);
         if (this.seenStates && this.seenStates.get(e.id) !== key) changed.add(e.id);
       }
@@ -121,10 +126,20 @@ export class DtsManageComponent implements OnInit {
     return `/dts-admin/list?s=${this.id}${id ? `&c=${encodeURIComponent(id)}` : ''}`;
   }
 
-  /** The hover text of a number: its details, then the open notes about it. */
+  /** The log lines of every competitor, oldest first, as the tooltips show them. */
+  private readonly logLines = computed(() => {
+    const byEntry = new Map<string, string[]>();
+    for (const a of [...(this.state()?.latestActions ?? [])].reverse()) {
+      if (a.entry) byEntry.set(a.entry, [...(byEntry.get(a.entry) ?? []), `${clock(a.at)} ${this.actionText(a)}`]);
+    }
+    return byEntry;
+  });
+
+  /** The hover text of a number: its details, the open notes about it, then after an empty line its log. */
   protected tipOf(e: DtsEntry): string {
     const notes = (this.state()?.notes ?? []).filter((n) => n.entry === e.id && !n.resolved).map((n) => `! ${n.text}`);
-    return [this.detailLines(e), ...notes].join('\n');
+    const log = this.logLines().get(e.id);
+    return [this.detailLines(e), ...notes, ...(log ? ['', ...log] : [])].join('\n');
   }
 
   /** The race title cut around its start time ("17.30 uur") and the category after it, so that both can be emphasised. */
