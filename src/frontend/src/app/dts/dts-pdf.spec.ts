@@ -20,6 +20,17 @@ const contrast = (a: number[], b: number[]) => {
 };
 
 describe('dts pdf', () => {
+  it('lists the changed start numbers above the log, on the same page', () => {
+    const log = [{ time: '10:01', cap: '1', name: 'N', action: 'Getekend', who: 'P' }];
+    const plain = text(buildPdf(doc([cell('1')], log)));
+    const listed = text(buildPdf({ ...doc([cell('1')], log), numberChanges: [{ was: '11', cap: '15', name: 'Rider A' }], numberChangesHeading: 'Gewijzigde beennummers' }));
+    expect(plain).not.toContain('Gewijzigde beennummers');
+    expect(listed).toContain('Gewijzigde beennummers');
+    expect(listed).toContain('Rider A');
+    expect(listed.match(/\/Type \/Page /g)?.length).toBe(plain.match(/\/Type \/Page /g)?.length);
+    expect(listed.indexOf('Gewijzigde beennummers')).toBeLessThan(listed.indexOf('(Getekend)'));
+  });
+
   // Requirement: the list must stay readable and tell its marks apart when printed in grayscale.
   it('reads on a grayscale print: text, borders and marks keep their contrast without colour', () => {
     const c = PDF_COLORS;

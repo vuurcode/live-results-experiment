@@ -13,7 +13,7 @@ export interface PdfCell {
   licence?: string;
   signed: boolean;
   added?: boolean;
-  /** The values that differ from the uploaded file (also a transponder that was set or removed): drawn bold and red. */
+  /** The values that differ from the uploaded file (also a transponder that was set or removed): drawn bold, and a replaced transponder is shown struck through in red above it. */
   changed?: { cap?: boolean; t1?: boolean; t2?: boolean };
 }
 
@@ -57,6 +57,9 @@ export interface PdfDoc {
   /** The bold word at the top left of the cell of a racer added during the day. */
   addedLabel: string;
   races: PdfRace[];
+  /** The start numbers that were changed, listed apart from the grid: MDS does not take them over, the entry stays signed under the old number. */
+  numberChanges?: { was: string; cap: string; name: string }[];
+  numberChangesHeading?: string;
   log: PdfLogLine[];
 }
 
@@ -230,9 +233,10 @@ const OPEN_FILL: [number, number, number] = [0.88, 0.88, 0.88];
 /** The text of a number still to sign is grayed out. */
 const OPEN_TEXT: [number, number, number] = [0.3, 0.3, 0.3];
 /** Changed values stand out in bold red. */
-const CHANGED_TEXT: [number, number, number] = [0.7, 0.05, 0.05];
-/** The dash pattern of the highlighted borders. */
-const DASHED: [number, number] = [6, 3];
+const CHANGED_TEXT: [number, number, number] = [0.6, 0, 0];
+/** The dash patterns of the highlighted borders: long dashes for an added racer, short dots for a change, so that they differ on a grayscale print too. */
+const ADDED_DASH: [number, number] = [6, 3];
+const CHANGED_DASH: [number, number] = [1.5, 2.5];
 /** The border of a racer that was added during the day. */
 const ADDED_BORDER: [number, number, number] = [0.05, 0.45, 0.15];
 /** The gray of the secondary text (log times and signers). */
@@ -256,7 +260,7 @@ function drawCell(p: Page, x: number, top: number, c: PdfCell, addedLabel: strin
   }
   p.rect(x, top, BOX_W, BOX_H);
   const changed = !c.added && (c.capWas || c.t1Was || c.t2Was || c.changed?.cap || c.changed?.t1 || c.changed?.t2);
-  if (c.added || changed) p.outline(x - 1, top - 1, BOX_W + 2, BOX_H + 2, c.added ? ADDED_BORDER : CHANGED_TEXT, 2, DASHED);
+  if (c.added || changed) p.outline(x - 1, top - 1, BOX_W + 2, BOX_H + 2, c.added ? ADDED_BORDER : CHANGED_TEXT, 2, c.added ? ADDED_DASH : CHANGED_DASH);
   if (c.added) {
     // the label sits right of the licence number, which takes the corner
     const after = c.licence ? spacedWidth(latin(c.licence), LICENCE_SIZE, 'F1', TRANSPONDER_SPACING) + 6 : 0;
@@ -267,20 +271,20 @@ function drawCell(p: Page, x: number, top: number, c: PdfCell, addedLabel: strin
   if (c.licence) p.text(c.licence, x + 4, top + 6.5, LICENCE_SIZE, 'F1', 'left', ink, TRANSPONDER_SPACING);
   // the original number is half the size of the new one (20 pt), struck through above it
   if (c.capWas) {
-    p.text(c.capWas, x + 4, top + 14, 10, 'F1', 'left', ink);
-    p.strike(c.capWas, x + 4, top + 14, 10);
+    p.text(c.capWas, x + 4, top + 15.5, 10, 'F1', 'left', CHANGED_TEXT);
+    p.strike(c.capWas, x + 4, top + 15.5, 10);
   }
-  if (c.changed?.cap) p.text(c.cap, x + 4, top + 30, 20, 'F2', 'left', CHANGED_TEXT);
-  else p.text(c.cap, x + 4, top + 30, 20, 'F2', 'left', ink);
+  // under a struck original the number sits lower, so that the two do not touch and the original keeps room above it
+  p.text(c.cap, x + 4, top + (c.capWas ? 33.5 : 30), 20, 'F2', 'left', ink);
   let y = top + 8;
   for (const [was, now, changed] of [[c.t1Was, c.t1, c.changed?.t1], [c.t2Was, c.t2, c.changed?.t2]] as const) {
     if (was) {
-      p.text(was, right, y, TRANSPONDER_SIZE, 'F1', 'right', ink, TRANSPONDER_SPACING);
+      p.text(was, right, y, TRANSPONDER_SIZE, 'F1', 'right', CHANGED_TEXT, TRANSPONDER_SPACING);
       p.strike(was, right, y, TRANSPONDER_SIZE, 'right', TRANSPONDER_SPACING);
       y += TRANSPONDER_SIZE;
     }
     if (now) {
-      p.text(now, right, y, TRANSPONDER_SIZE, changed ? 'F2' : 'F1', 'right', changed ? CHANGED_TEXT : ink, TRANSPONDER_SPACING);
+      p.text(now, right, y, TRANSPONDER_SIZE, changed ? 'F2' : 'F1', 'right', ink, TRANSPONDER_SPACING);
       y += TRANSPONDER_SIZE;
     }
   }
@@ -324,31 +328,71 @@ function listPages(doc: PdfDoc): Page[] {
   return pages;
 }
 
-function logPages(doc: PdfDoc): Page[] {
-  if (!doc.log.length) return [];
-  const pages: Page[] = [];
-  const lineHeight = 10.5;
-  const perPage = Math.floor((H - 60 - 40) / lineHeight);
-  // the columns: time, number, name, action; who at the right edge
+/** The pages after the lists: the changed numbers and the log follow each other under their own headings, without starting a page of their own. */
+function closingPages(doc: PdfDoc): Page[] {
+  const changes = doc.numberChanges ?? [];
+  if (!changes.length && !doc.log.length) return [];
+  const bottom = H - 40;
+  // the columns of the log: time, number, name, action; who at the right edge
   const capX = MARGIN + 36;
   const nameX = capX + 34;
   const actionX = nameX + 130;
   const whoW = 70;
-  const rows: { time: string; cap: string; name: string; action: string; bold?: string; tone?: PdfLogLine['tone']; entry?: string; who?: string }[] = [];
+  const logRows: { time: string; cap: string; name: string; action: string; bold?: string; tone?: PdfLogLine['tone']; entry?: string; who?: string }[] = [];
   for (const l of doc.log) {
     const lines = wrap(l.action, 8, 'F1', W - MARGIN - whoW - actionX);
-    lines.forEach((t, k) => rows.push({ time: k === 0 ? l.time : '', cap: k === 0 ? l.cap : '', name: k === 0 ? fit(l.name, 8, 'F1', actionX - nameX - 8) : '', action: t, bold: l.bold, tone: l.tone, entry: l.entry, who: k === 0 ? l.who : undefined }));
+    lines.forEach((t, k) => logRows.push({ time: k === 0 ? l.time : '', cap: k === 0 ? l.cap : '', name: k === 0 ? fit(l.name, 8, 'F1', actionX - nameX - 8) : '', action: t, bold: l.bold, tone: l.tone, entry: l.entry, who: k === 0 ? l.who : undefined }));
   }
-  for (let i = 0; i < rows.length; i += perPage) {
-    const p = new Page();
-    p.text(doc.logHeading, MARGIN, 36, 14, 'F3');
-    p.line(MARGIN, 44, W - MARGIN, 44, 0.8);
-    rows.slice(i, i + perPage).forEach((r, k) => {
-      const y = 60 + k * lineHeight;
+
+  const pages: Page[] = [];
+  let p = new Page();
+  let top = 36; // the baseline of the next heading
+  let y = 0; // the baseline of the next row
+  let fresh = true; // nothing drawn on the page yet
+  const newPage = () => {
+    pages.push(p);
+    p = new Page();
+    top = 36;
+    fresh = true;
+  };
+  const heading = (text: string, firstRow: number) => {
+    if (!fresh && top + 26 + firstRow > bottom) newPage();
+    p.text(text, MARGIN, top, 14, 'F3');
+    p.line(MARGIN, top + 8, W - MARGIN, top + 8, 0.8);
+    y = top + 26;
+    fresh = false;
+  };
+  /** Makes room for a row; on a new page the heading is repeated. Tells whether the page changed. */
+  const room = (height: number, again: string): boolean => {
+    if (y + height <= bottom) return false;
+    newPage();
+    heading(again, height);
+    return true;
+  };
+
+  if (changes.length) {
+    heading(doc.numberChangesHeading ?? '', 14);
+    for (const r of changes) {
+      room(14, doc.numberChangesHeading ?? '');
+      p.text(r.was, MARGIN, y, 10, 'F1', 'left', CHANGED_TEXT);
+      p.strike(r.was, MARGIN, y, 10);
+      p.text(r.cap, MARGIN + 50, y, 10, 'F2');
+      p.text(fit(r.name, 10, 'F1', W - 2 * MARGIN - 110), MARGIN + 110, y, 10);
+      y += 14;
+    }
+    top = y + 10;
+  }
+
+  if (logRows.length) {
+    heading(doc.logHeading, 10.5);
+    let previous: string | undefined;
+    let first = true;
+    for (const r of logRows) {
+      if (room(10.5, doc.logHeading)) first = true;
       p.grayText(r.time, MARGIN, y, 6.5);
       p.text(r.cap, capX, y, 8, 'F2');
       p.text(r.name, nameX, y, 8);
-      if (k > 0 && r.entry !== undefined && r.entry !== rows[i + k - 1].entry) p.dotted(MARGIN, y - 8, W - MARGIN);
+      if (!first && r.entry !== undefined && r.entry !== previous) p.dotted(MARGIN, y - 8, W - MARGIN);
       const ink = r.tone && LOG_TONES[r.tone];
       if (r.bold === 'all') p.text(r.action, actionX, y, 8, 'F2', 'left', ink);
       else {
@@ -356,23 +400,26 @@ function logPages(doc: PdfDoc): Page[] {
         const at = r.bold ? r.action.lastIndexOf(r.bold) : -1;
         if (at < 0) p.text(r.action, actionX, y, 8, 'F1', 'left', ink);
         else {
-          const before = r.action.slice(0, at);
-          p.text(before, actionX, y, 8, 'F1', 'left', ink);
-          const x = actionX + width(latin(before), 8, 'F1');
+          const lead = r.action.slice(0, at);
+          p.text(lead, actionX, y, 8, 'F1', 'left', ink);
+          const x = actionX + width(latin(lead), 8, 'F1');
           p.text(r.bold ?? '', x, y, 8, 'F2', 'left', ink);
           p.text(r.action.slice(at + (r.bold ?? '').length), x + width(latin(r.bold ?? ''), 8, 'F2'), y, 8, 'F1', 'left', ink);
         }
       }
       if (r.who) p.grayText(fit(r.who, 6, 'F1', whoW), W - MARGIN - width(latin(fit(r.who, 6, 'F1', whoW)), 6, 'F1'), y, 6);
-    });
-    pages.push(p);
+      previous = r.entry;
+      first = false;
+      y += 10.5;
+    }
   }
+  pages.push(p);
   return pages;
 }
 
-/** The PDF file of the signing list followed by the log. */
+/** The PDF file of the signing list followed by the changed numbers and the log. */
 export function buildPdf(doc: PdfDoc): Uint8Array {
-  const pages = [...listPages(doc), ...logPages(doc)];
+  const pages = [...listPages(doc), ...closingPages(doc)];
   if (!pages.length) pages.push(new Page());
   pages.forEach((p, i) => {
     p.text(doc.page(i + 1, pages.length), W - MARGIN, H - 22, 7, 'F1', 'right');
