@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyOp, byCap, byCapOpenFirst, clockOffset, findRacers, minutesLate, minutesToCutoff, normalizeCap, normalizeTransponder, splitName, syncDelay, transponderKeyboard, editTransponder, typeTransponder, validCap, validTransponder, warnings } from './dts.logic';
+import { applyOp, byCap, clockOffset, findRacers, suggestRacers, minutesLate, minutesToCutoff, normalizeCap, normalizeTransponder, splitName, syncDelay, transponderKeyboard, editTransponder, typeTransponder, validCap, validTransponder, warnings } from './dts.logic';
 import type { DtsEntry, DtsRace, DtsState } from './dts.models';
 
 const entry = (id: string, name: string, cap: string, extra: Partial<DtsEntry> = {}): DtsEntry => ({ id, name, cap, signed: false, ...extra });
@@ -74,11 +74,23 @@ describe('applyOp', () => {
 
 describe('finding racers', () => {
   const races = [race('1', [entry('a', 'Jansen, Piet', '5', { licence: '100' }), entry('b', 'Vermeer, Anna', '12'), entry('c', 'Jansen, Kees', '13')])];
-  it('matches a cap number exactly', () => expect(findRacers(races, '12').map((e) => e.id)).toEqual(['b']));
-  it('matches name parts, at most three', () => {
+  it('matches a cap number exactly first, then the numbers that start with it, then those that contain it', () => {
+    const many = [race('1', [entry('a', 'A', '112'), entry('b', 'B', '1'), entry('c', 'C', '12'), entry('d', 'D', '21'), entry('e', 'E', '7')])];
+    expect(findRacers(many, '1').map((e) => e.id)).toEqual(['b', 'a', 'c', 'd']);
+    expect(findRacers(many, '12').map((e) => e.id)).toEqual(['c', 'a']);
+  });
+  it('finds nothing for a number that is not part of any number', () => expect(findRacers(races, '11')).toEqual([]));
+  it('matches name parts, at most the limit', () => {
     expect(findRacers(races, 'jans').map((e) => e.id)).toEqual(['a', 'c']);
     expect(findRacers(races, 'jans kees').map((e) => e.id)).toEqual(['c']);
     expect(findRacers(races, 'e', 1)).toHaveLength(1);
+  });
+  it('suggests near misses: a number one edit away and names with a typo', () => {
+    expect(suggestRacers(races, '11').map((e) => e.id)).toEqual(['b', 'c']);
+    expect(suggestRacers(races, 'jansn').map((e) => e.id)).toEqual(['a', 'c']);
+    expect(suggestRacers(races, 'vermer anna').map((e) => e.id)).toEqual(['b']);
+    expect(suggestRacers(races, 'zzzzz')).toEqual([]);
+    expect(suggestRacers(races, '9')).toEqual([]);
   });
   it('finds nothing for nothing', () => expect(findRacers(races, ' ')).toEqual([]));
 });
@@ -108,10 +120,10 @@ describe('byCap', () => {
   });
 });
 
-describe('byCapOpenFirst', () => {
-  it('lists the open numbers first and the signed ones last, each in natural order', () => {
+describe('byCap', () => {
+  it('lists the numbers in natural order whatever their state', () => {
     const list = [{ cap: '10', signed: true }, { cap: '3', signed: false }, { cap: '2', signed: true }, { cap: '20', signed: false }];
-    expect(byCapOpenFirst(list).map((e) => e.cap)).toEqual(['3', '20', '2', '10']);
+    expect(byCap(list).map((e) => e.cap)).toEqual(['2', '3', '10', '20']);
   });
 
   it('asks for the digit keypad once the caret is behind the hyphen of a transponder', () => {

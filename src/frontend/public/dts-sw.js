@@ -78,7 +78,7 @@ async function asset(request) {
 async function fresh(request) {
   const cache = await caches.open(CACHE);
   try {
-    const res = await fetch(request);
+    const res = await fetch(request, { cache: 'no-cache' });
     if (res.ok) cache.put(request, res.clone());
     return res;
   } catch {

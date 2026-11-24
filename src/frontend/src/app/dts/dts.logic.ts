@@ -190,18 +190,65 @@ export function warningsFor(all: DtsWarning[], entryId: string): DtsWarning[] {
   return all.filter((w) => w.entries.includes(entryId));
 }
 
-/** Finds the racers for what was typed: a cap number matches exactly (all races), anything else matches name parts. At most `limit`. */
-export function findRacers(races: DtsRace[], typed: string, limit = 3): (DtsEntry & { raceId: string })[] {
+/**
+ * Finds the racers for what was typed. A cap number lists the numbers that are it or start with it first, then those
+ * that contain it, over all races; nothing else matches then. Anything else matches name parts and the licence.
+ * At most `limit`.
+ */
+export function findRacers(races: DtsRace[], typed: string, limit = 6): (DtsEntry & { raceId: string })[] {
   const q = typed.trim();
   if (!q) return [];
   const flat = allEntries(races);
   const cap = normalizeCap(q);
   if (/^[A-Z]?[0-9]{1,3}$/.test(cap)) {
-    const exact = flat.filter((e) => e.cap === cap);
-    if (exact.length) return exact.slice(0, limit);
+    const rank = (e: DtsEntry) => (e.cap === cap ? 0 : e.cap.startsWith(cap) ? 1 : e.cap.includes(cap) ? 2 : 3);
+    return flat.filter((e) => rank(e) < 3).sort((x, y) => rank(x) - rank(y)).slice(0, limit);
   }
   const parts = q.toLowerCase().split(/\s+/);
   return flat.filter((e) => parts.every((p) => e.name.toLowerCase().includes(p) || (e.licence ?? '').includes(p))).slice(0, limit);
+}
+
+/** The number of single-character edits (insert, delete, replace) between two texts. */
+function editDistance(a: string, b: string): number {
+  let row = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const next = [i];
+    for (let j = 1; j <= b.length; j++) next[j] = Math.min(row[j] + 1, next[j - 1] + 1, row[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    row = next;
+  }
+  return row[b.length];
+}
+
+/**
+ * The racers that nearly match what was typed, for a "do you mean" list: a cap number one edit away, or name parts
+ * each close to a word of the name (one edit for 3 to 4 letters, two for longer). Best first, at most `limit`.
+ */
+export function suggestRacers(races: DtsRace[], typed: string, limit = 3): (DtsEntry & { raceId: string })[] {
+  const q = typed.trim();
+  if (!q) return [];
+  const flat = allEntries(races);
+  const cap = normalizeCap(q);
+  if (/^[A-Z]?[0-9]{1,3}$/.test(cap)) {
+    if (cap.length < 2) return [];
+    return flat.map((e) => ({ e, d: editDistance(cap, e.cap) })).filter((x) => x.d === 1).slice(0, limit).map((x) => x.e);
+  }
+  const parts = q.toLowerCase().split(/\s+/).filter((p) => p.length >= 3);
+  if (!parts.length) return [];
+  const near = (part: string, words: string[]): number => {
+    const allowed = part.length >= 5 ? 2 : 1;
+    // a word is compared whole and cut to the length of the typed part, so that a partly typed name still counts
+    const best = Math.min(...words.flatMap((w) => [editDistance(part, w), editDistance(part, w.slice(0, part.length))]));
+    return best <= allowed ? best : Infinity;
+  };
+  return flat
+    .map((e) => {
+      const words = e.name.toLowerCase().split(/[\s,]+/).filter(Boolean);
+      return { e, d: parts.reduce((sum, part) => sum + near(part, words), 0) };
+    })
+    .filter((x) => Number.isFinite(x.d))
+    .sort((x, y) => x.d - y.d)
+    .slice(0, limit)
+    .map((x) => x.e);
 }
 
 /** The surname-first name of the DTS file ("Jansen, Piet") split for a large heading. */
@@ -236,14 +283,10 @@ export function byCap<T extends { cap: string }>(entries: readonly T[]): T[] {
   return [...entries].sort((a, b) => capOrder.compare(a.cap, b.cap));
 }
 
-/** The entries in natural order of their number, the ones still to sign first and the signed ones last. */
-export function byCapOpenFirst<T extends { cap: string; signed: boolean }>(entries: readonly T[]): T[] {
-  const sorted = byCap(entries);
-  return [...sorted.filter((e) => !e.signed), ...sorted.filter((e) => e.signed)];
-}
-
-/** The watermark of a number: its state, with the check kept in front when it is signed but shows a note or an edit. */
-export function watermarkOf(state: 'note' | 'changed' | 'signed' | 'open', signed: boolean): string {
-  const own = state === 'note' ? '!' : state === 'changed' ? '✎' : state === 'signed' ? '✓' : '';
-  return signed && (state === 'note' || state === 'changed') ? `✓${own}` : own;
+/** The numbers of a race in three groups: those of the file, racers added during the day, and numbers that were renumbered. */
+export function groupEntries(r: DtsRace): { existing: DtsEntry[]; added: DtsEntry[]; renumbered: DtsEntry[] } {
+  const all = byCap(r.entries);
+  const added = all.filter((e) => e.added);
+  const renumbered = all.filter((e) => !e.added && e.orig && e.orig.cap !== e.cap);
+  return { existing: all.filter((e) => !added.includes(e) && !renumbered.includes(e)), added, renumbered };
 }

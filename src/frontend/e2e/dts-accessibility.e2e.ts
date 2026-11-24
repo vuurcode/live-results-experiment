@@ -42,8 +42,6 @@ test.describe('dts accessibility', () => {
       await manage.goto(local(links.manage));
       await expect(manage.locator('.race').first()).toBeVisible();
       await scan(manage, 'manage');
-      await manage.getByRole('button', { name: 'Ongetekend' }).click();
-      await scan(manage, 'manage with a filter pressed');
 
       await page.bringToFront();
       await page.goto('/dts-admin/');

@@ -5,6 +5,37 @@ import { sampleXml } from './dts-sample';
 test.describe('dts sign page', () => {
   test.use({ locale: 'nl-NL' });
 
+  test('arrow keys move through the search field and its matches like tab', async ({ page }) => {
+    await upload(page);
+    const find = page.getByLabel('Beennummer of naam');
+    await find.fill('1');
+    const matches = page.locator('button.match');
+    expect(await matches.count()).toBeGreaterThan(1);
+    await find.press('ArrowDown');
+    await expect(matches.nth(0)).toBeFocused();
+    await matches.nth(0).press('ArrowDown');
+    await expect(matches.nth(1)).toBeFocused();
+    await matches.nth(1).press('ArrowUp');
+    await matches.nth(0).press('ArrowUp');
+    await expect(find).toBeFocused();
+  });
+
+  test('lists partial numbers, says when nothing matches and suggests near misses', async ({ page }) => {
+    await upload(page);
+    const find = page.getByLabel('Beennummer of naam');
+    const matches = page.locator('button.match');
+    await find.fill('1');
+    expect(await matches.count()).toBeGreaterThan(1);
+    await expect(page.getByText('Bedoel je:')).toHaveCount(0);
+    await find.fill('9999');
+    await expect(matches).toHaveCount(0);
+    await expect(page.getByText('Geen resultaten')).toBeVisible();
+    await find.fill('Bakkr');
+    await expect(page.getByText('Geen resultaten')).toBeVisible();
+    await expect(page.getByText('Bedoel je:')).toBeVisible();
+    await expect(matches.first()).toContainText('Bakker');
+  });
+
   test('the front page offers signing and management', async ({ page }) => {
     await page.goto('/dts/');
     await expect(page.getByRole('heading', { name: 'Wat wil je doen?' })).toBeVisible();
@@ -237,20 +268,31 @@ test.describe('dts sign page', () => {
     await expect(page.getByLabel(/Transponder 2/)).toHaveAttribute('placeholder', 'AA-12345');
     await page.getByLabel('Transponder 1').pressSequentially('zz 99999999');
     await expect(page.getByLabel('Transponder 1')).toHaveValue('ZZ-99999');
-    await expect(page.getByRole('button', { name: 'Toevoegen' })).toBeEnabled();
-    await page.getByLabel('Transponder 1').fill('');
-    await expect(page.getByRole('button', { name: 'Toevoegen' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Alleen toevoegen' })).toBeEnabled();
+    await page.getByRole('button', { name: 'Veld leegmaken' }).first().click();
+    await expect(page.getByLabel('Transponder 1')).toHaveValue('');
+    await expect(page.getByRole('button', { name: 'Alleen toevoegen' })).toBeEnabled();
+    await page.getByLabel('Transponder 1').fill('zz9');
+    await expect(page.getByRole('button', { name: 'Alleen toevoegen' })).toBeDisabled();
+  });
+
+  test('adds a racer without transponders and notes it', async ({ page }) => {
+    await upload(page);
+    await page.getByRole('button', { name: 'Nieuwe deelnemer' }).first().click();
+    await page.getByLabel('Naam', { exact: true }).fill('Esselink, Eva');
+    await page.getByLabel('Beennummer', { exact: true }).fill('x7');
+    await page.getByRole('button', { name: 'Alleen toevoegen' }).click();
+    await expect(page.getByText('Zonder transponder toegevoegd')).toBeVisible();
   });
 
   test('adds a racer with all fields in one form', async ({ page }) => {
     await upload(page);
     await page.getByRole('button', { name: 'Nieuwe deelnemer' }).first().click();
-    await expect(page.getByRole('button', { name: 'Toevoegen' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Alleen toevoegen' })).toBeDisabled();
     await page.getByLabel('Naam', { exact: true }).fill('Esselink, Eva');
     await page.getByLabel('Beennummer', { exact: true }).fill('x5');
     await page.getByLabel('Transponder 1').fill('zz99999');
-    await page.getByLabel('Nu tekenen?').check();
-    await page.getByRole('button', { name: 'Toevoegen' }).click();
+    await page.getByRole('button', { name: 'Toevoegen + tekenen' }).click();
     await expect(page.locator('.badge.cap .v')).toHaveText('X5');
     await expect(page.locator('.tick')).toBeVisible();
   });
@@ -287,6 +329,37 @@ test.describe('dts sign page', () => {
     await expect(page.getByRole('button', { name: 'Alle tekenlijsten' })).toHaveCount(0);
     await upload(page);
     await expect(page.getByRole('button', { name: 'Nieuwe tekenlijst' })).toHaveCount(0);
+  });
+
+  test('focuses the search field, names the competitors on the badges and fits a tablet', async ({ page }) => {
+    await page.setViewportSize({ width: 820, height: 1100 });
+    await upload(page);
+    await expect(page.getByLabel('Beennummer of naam')).toBeFocused();
+    const fold = page.locator('.race-fold', { hasText: 'NO1' });
+    await expect(fold.locator('.numbers .num[data-state="signed"], .numbers .num[data-state="open"]').first().locator('.who')).toContainText(/\S/);
+    await expect(fold.locator('.numbers .num', { hasText: '11' }).first()).toHaveAccessibleName(/^11 .*Aardappel/);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+    const widths = await fold.locator('.numbers .num:not(.new)').evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().width)));
+    expect(new Set(widths).size).toBe(1);
+    const width = (await page.locator('.dts').boundingBox())?.width ?? 0;
+    expect(width).toBeGreaterThan(640);
+  });
+
+  test('splits the badge of a number that is signed and changed over its two states', async ({ page }) => {
+    await upload(page);
+    await open(page, '12', /12\s+Bakker/);
+    await page.getByRole('button', { name: 'Markeer als getekend' }).click();
+    await expect(page.getByText('In sync met server')).toBeVisible();
+    await page.getByRole('button', { name: 'Transponder 2' }).click();
+    await page.getByLabel('Transponder 2').fill('ZZ99999');
+    await page.getByRole('button', { name: 'Opslaan' }).click();
+    await page.getByRole('button', { name: 'Terug' }).click();
+    const badge = page.locator('.race-fold', { hasText: 'NO1' }).locator('.numbers .num', { hasText: '12' }).first();
+    await expect(badge).toHaveAttribute('data-state', 'changed');
+    await expect(badge).toHaveAttribute('data-also', 'signed');
+    await expect(badge).toHaveCSS('background-image', /linear-gradient/);
+    await expect(badge.locator('.mark')).toHaveText(['✎', '✓']);
   });
 
   test('shows a race overview with the numbers as status badges and returns to it from a racer', async ({ page }) => {

@@ -1,13 +1,16 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { DtsNotices } from '../dts-notices';
 import { installInstantTooltips } from '../dts-tooltip';
 import { DtsText } from '../dts-text';
+import { copyText } from '../dts-clipboard';
+import { clearSiblingField } from '../dts-field';
 import type { DtsSessionMeta } from '../dts-storage';
 import { DtsSignEngine } from '../dts-sign-engine';
 import { parseFragment } from '../dts-api';
 import { qrEncode, qrPath } from '../qr';
 import { homeScreenHint, installable } from '../dts-pwa';
-import { applyOp, byCapOpenFirst, clock, findRacers, minutesToCutoff, normalizeCap, raceProblems, normalizeTransponder, splitName, typeCap, editTransponder, transponderKeyboard, validCap, validTransponder, warningsFor, watermarkOf } from '../dts.logic';
+import { applyOp, byCap, groupEntries, clock, findRacers, suggestRacers, minutesToCutoff, normalizeCap, raceProblems, normalizeTransponder, splitName, typeCap, editTransponder, transponderKeyboard, validCap, validTransponder, warningsFor } from '../dts.logic';
 import { warningSentence } from '../dts-warning-text';
 import type { DtsAction, DtsEntry, DtsRace, DtsWarning } from '../dts.models';
 import type { DtsKey } from '../dts.strings';
@@ -21,6 +24,7 @@ type Field = 'cap' | 'transponder1' | 'transponder2' | 'race' | 'note';
 @Component({
   selector: 'app-dts-sign',
   standalone: true,
+  imports: [NgTemplateOutlet],
   templateUrl: './sign.component.html',
   styleUrls: ['./sign.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -33,6 +37,9 @@ export class DtsSignComponent implements OnInit {
     document.title = this.tabTitle();
   });
   protected readonly t = this.text.t;
+  private readonly findInput = viewChild<ElementRef<HTMLInputElement>>('findInput');
+  /** The search field is the first thing a signer needs, so it has the focus whenever the home screen shows. */
+  private readonly focusFind = effect(() => this.findInput()?.nativeElement.focus());
 
   /** Every screen of an open session has its own address (`?s=…&view=…`), so the browser's back button, a reload and a bookmark work. */
   private readonly viewSync = effect(() => {
@@ -108,7 +115,7 @@ export class DtsSignComponent implements OnInit {
   protected readonly message = signal('');
   protected readonly copied = signal('');
   /** Entries by number, with the signed ones after the open ones. */
-  protected readonly byCap = byCapOpenFirst;
+  protected readonly byCap = byCap;
   protected readonly nowMs = signal(Date.now());
   protected readonly nameDraft = signal('');
 
@@ -137,6 +144,8 @@ export class DtsSignComponent implements OnInit {
   protected readonly orderedRaces = computed(() => [...(this.state()?.races ?? [])].sort((a, b) => Number(!!a.closed) - Number(!!b.closed)));
   protected readonly riderRace = computed(() => this.state()?.races.find((r) => r.id === this.rider()?.raceId) ?? null);
   protected readonly matches = computed(() => findRacers(this.state()?.races ?? [], this.typed()));
+  /** What the typed text nearly matches; only offered when nothing matches it. */
+  protected readonly suggestions = computed(() => (this.matches().length ? [] : suggestRacers(this.state()?.races ?? [], this.typed())));
   /** The device clock moved to the host's time, so the cutoff does not depend on a phone's wrong clock. */
   protected readonly corrected = computed(() => this.nowMs() + this.engine.offset());
   protected readonly riderWarnings = computed(() => {
@@ -306,12 +315,7 @@ export class DtsSignComponent implements OnInit {
   }
 
   protected async copy(which: 'sign'): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(this.signLink());
-      this.copied.set(which);
-    } catch {
-      this.copied.set('');
-    }
+    this.copied.set((await copyText(this.signLink())) ? which : '');
   }
 
   protected async shareLink(): Promise<void> {
@@ -361,19 +365,45 @@ export class DtsSignComponent implements OnInit {
 
   protected readonly race = computed(() => (this.state()?.races ?? []).find((r) => r.id === this.raceId()) ?? null);
 
-  /** The look of a number: a note wins over a change, a change over a plain signature. */
+  protected readonly groupsOf = groupEntries;
+
+  /** The look of a number: a change wins over a note, a note over a plain signature. */
   protected stateOf(e: DtsEntry): 'note' | 'changed' | 'signed' | 'open' {
+    if (e.signed && e.changed) return 'changed';
     if (this.notedEntries().has(e.id)) return 'note';
-    if (e.signed) return e.changed ? 'changed' : 'signed';
-    return 'open';
+    return e.signed ? 'signed' : 'open';
   }
 
+  /** The signature of a number that also shows a change or a note: it is the left half of the badge, the other state the right half. */
+  protected alsoOf(e: DtsEntry): 'signed' | null {
+    return e.signed && this.stateOf(e) !== 'signed' ? 'signed' : null;
+  }
+
+  private readonly marks = { note: '!', changed: '✎', signed: '✓', open: '' };
   protected markOf(e: DtsEntry): string {
-    return watermarkOf(this.stateOf(e), e.signed);
+    return this.marks[this.stateOf(e)];
+  }
+  protected alsoMarkOf(e: DtsEntry): string {
+    return this.marks[this.alsoOf(e) ?? 'open'];
+  }
+  private stateName(s: 'note' | 'changed' | 'signed' | 'open'): string {
+    return this.t(s === 'note' ? 'legendNote' : s === 'changed' ? 'legendChanged' : s === 'signed' ? 'legendSigned' : 'legendOpen');
   }
   protected stateLabel(e: DtsEntry): string {
-    const s = this.stateOf(e);
-    return `${e.cap}: ${this.t(s === 'note' ? 'legendNote' : s === 'changed' ? 'legendChanged' : s === 'signed' ? 'legendSigned' : 'legendOpen')}`;
+    const also = this.alsoOf(e);
+    return `${e.cap}: ${this.stateName(this.stateOf(e))}${also ? ', ' + this.stateName(also) : ''}`;
+  }
+
+  /** The number and name as the badge shows them, then its state: the visible text must be part of the accessible name. */
+  protected badgeLabel(e: DtsEntry): string {
+    const state = this.stateLabel(e).slice(e.cap.length + 2);
+    return `${e.cap}${e.name ? ' ' + e.name : ''}: ${state}`;
+  }
+
+  /** The tooltip of a badge: the name, then the open notes of the number. */
+  protected badgeTitle(e: DtsEntry): string {
+    const notes = (this.state()?.notes ?? []).filter((n) => n.entry === e.id && !n.resolved).map((n) => n.text);
+    return [e.name, ...notes].filter(Boolean).join('\n');
   }
 
   private readonly notedEntries = computed(() => new Set((this.state()?.notes ?? []).filter((n) => !n.resolved).map((n) => n.entry)));
@@ -571,6 +601,8 @@ export class DtsSignComponent implements OnInit {
   }
 
   /** Keeps what is typed in the add form within what the field allows, also in the element itself. */
+  protected readonly clearField = clearSiblingField;
+
   protected setDraft(field: 'who' | 'licence' | 'cap' | 't1' | 't2', event: Event): void {
     const el = event.target as HTMLInputElement;
     const v = field === 'cap' ? typeCap(el.value) : field === 'who' ? el.value.trimStart().slice(0, 45) : field === 'licence' ? el.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) : this.fitTransponder(el, this.draft()[field]);
@@ -583,11 +615,6 @@ export class DtsSignComponent implements OnInit {
     this.draft.update((d) => ({ ...d, race }));
   }
 
-  protected setDraftSigned(event: Event): void {
-    const signed = (event.target as HTMLInputElement).checked;
-    this.draft.update((d) => ({ ...d, signed }));
-  }
-
   protected readonly addErrors = computed<{ cap: DtsKey | ''; t1: DtsKey | ''; t2: DtsKey | '' }>(() => {
     const d = this.draft();
     return {
@@ -597,7 +624,7 @@ export class DtsSignComponent implements OnInit {
     };
   });
 
-  /** What still blocks saving: a name, a race, a valid number and a valid first transponder are needed; the second transponder is optional. */
+  /** What still blocks saving: a name, a race, and a valid number are needed; the transponders are optional, but a typed one must be valid. */
   private readonly addProblems = computed<DtsKey[]>(() => {
     const d = this.draft();
     const e = this.addErrors();
@@ -606,8 +633,7 @@ export class DtsSignComponent implements OnInit {
     if (!d.race) problems.push('addNeedRace');
     if (!d.cap) problems.push('addNeedCap');
     else if (e.cap) problems.push(e.cap);
-    if (!d.t1) problems.push('addNeedT1');
-    else if (e.t1) problems.push(e.t1);
+    if (e.t1) problems.push(e.t1);
     if (e.t2) problems.push('addBadT2');
     return problems;
   });
@@ -621,14 +647,14 @@ export class DtsSignComponent implements OnInit {
     const st = this.state();
     const d = this.draft();
     if (!st || !this.addValid()) return [];
-    const next = applyOp(st, { id: 'preview', at: '', kind: 'add-racer', who: d.who.trim(), licence: d.licence, race: d.race, cap: normalizeCap(d.cap), t1: normalizeTransponder(d.t1), t2: d.t2 ? normalizeTransponder(d.t2) : '', signed: d.signed });
+    const next = applyOp(st, { id: 'preview', at: '', kind: 'add-racer', who: d.who.trim(), licence: d.licence, race: d.race, cap: normalizeCap(d.cap), t1: d.t1 ? normalizeTransponder(d.t1) : '', t2: d.t2 ? normalizeTransponder(d.t2) : '', signed: d.signed });
     return warningsFor(next.warnings, 'preview');
   });
 
-  protected async addConfirm(): Promise<void> {
+  protected async addConfirm(signed: boolean): Promise<void> {
     if (!this.addValid()) return;
     const d = this.draft();
-    const id = await this.engine.addRacer({ who: d.who.trim(), licence: d.licence, race: d.race, cap: normalizeCap(d.cap), t1: normalizeTransponder(d.t1), t2: d.t2 ? normalizeTransponder(d.t2) : '', signed: d.signed });
+    const id = await this.engine.addRacer({ who: d.who.trim(), licence: d.licence, race: d.race, cap: normalizeCap(d.cap), t1: d.t1 ? normalizeTransponder(d.t1) : '', t2: d.t2 ? normalizeTransponder(d.t2) : '', signed });
     // a note marks the new racer on the overview and the list so the registrar sees it was added late
     await this.engine.addNote(id, this.t('addedNote'));
     this.openRider(id);
@@ -704,6 +730,18 @@ export class DtsSignComponent implements OnInit {
   protected search(): void {
     const first = this.matches()[0];
     if (first) this.openRider(first.id);
+  }
+
+  /** Arrow down and up move the focus through the search field and its matches, as the tab key does. */
+  protected arrowThroughMatches(event: Event): void {
+    const key = (event as KeyboardEvent).key;
+    if (key !== 'ArrowDown' && key !== 'ArrowUp') return;
+    const stops = Array.from(document.querySelectorAll<HTMLElement>('.dts form.search input, .dts button.match'));
+    const at = stops.indexOf(event.target as HTMLElement);
+    if (at < 0) return;
+    const next = stops[at + (key === 'ArrowDown' ? 1 : -1)];
+    event.preventDefault();
+    next?.focus();
   }
 
   /** The title of the browser tab: the screen, then the application. */

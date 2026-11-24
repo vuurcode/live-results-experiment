@@ -1,4 +1,11 @@
 <main class="dts" [attr.data-screen]="screen()" [attr.data-signed]="screen() === 'rider' ? (rider()?.signed ? 'yes' : 'no') : null">
+  <ng-template #badge let-e let-viaRace="viaRace">
+    <li>
+      <button type="button" class="num" [attr.data-state]="stateOf(e)" [attr.data-also]="alsoOf(e)" [attr.aria-label]="badgeLabel(e)" [title]="badgeTitle(e)" (click)="viaRace ? openRiderOfRace(e.id) : openRider(e.id)">
+        <span aria-hidden="true" class="mark">{{ markOf(e) }}</span>@if (alsoOf(e)) { <span aria-hidden="true" class="mark also">{{ alsoMarkOf(e) }}</span> }{{ e.cap }}<span class="who" aria-hidden="true"> {{ e.name }}</span>
+      </button>
+    </li>
+  </ng-template>
   <header class="bar" [class.has-back]="canGoBack()">
     @if (canGoBack()) {
       <button type="button" class="back" (click)="goBack()">‹ {{ t('back') }}</button>
@@ -44,15 +51,28 @@
           <li class="num" data-state="changed"><span class="mark">✎</span>{{ t('legendChanged') }}</li>
           <li class="num" data-state="note"><span class="mark">!</span>{{ t('legendNote') }}</li>
         </ul>
+        @let g = groupsOf(r);
         <ul class="numbers" [attr.aria-label]="t('numbersLabel')">
-          @for (e of byCap(r.entries); track e.id) {
-            <li>
-              <button type="button" class="num" [attr.data-state]="stateOf(e)" [attr.aria-label]="stateLabel(e) + ', ' + e.name" [title]="e.name" (click)="openRiderOfRace(e.id)">
-                <span aria-hidden="true" class="mark">{{ markOf(e) }}</span>{{ e.cap }}
-              </button>
-            </li>
+          @for (e of g.existing; track e.id) {
+            <ng-container [ngTemplateOutlet]="badge" [ngTemplateOutletContext]="{ $implicit: e, viaRace: true }" />
           }
         </ul>
+        @if (g.added.length) {
+          <h3 class="group" data-group="added">{{ t('groupAdded') }}</h3>
+          <ul class="numbers" [attr.aria-label]="t('groupAdded')">
+            @for (e of g.added; track e.id) {
+              <ng-container [ngTemplateOutlet]="badge" [ngTemplateOutletContext]="{ $implicit: e, viaRace: true }" />
+            }
+          </ul>
+        }
+        @if (g.renumbered.length) {
+          <h3 class="group" data-group="renumbered">{{ t('groupRenumbered') }}</h3>
+          <ul class="numbers" [attr.aria-label]="t('groupRenumbered')">
+            @for (e of g.renumbered; track e.id) {
+              <ng-container [ngTemplateOutlet]="badge" [ngTemplateOutletContext]="{ $implicit: e, viaRace: true }" />
+            }
+          </ul>
+        }
       }
     }
     @case ('landing') {
@@ -84,17 +104,26 @@
       <form class="search" (submit)="$event.preventDefault(); search()">
         <label class="field">
           <span>{{ t('findLabel') }}</span>
-          <input class="huge" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" enterkeyhint="search" [value]="typed()" (input)="setTyped($event)" />
+          <input class="huge" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" enterkeyhint="search" #findInput [value]="typed()" (input)="setTyped($event)" (keydown)="arrowThroughMatches($event)" />
         </label>
       </form>
       @if (typed().trim()) {
         @for (m of matches(); track m.id) {
-          <button type="button" class="big match" (click)="openRider(m.id)">
+          <button type="button" class="big match" (click)="openRider(m.id)" (keydown)="arrowThroughMatches($event)">
             <strong class="cap">{{ m.cap }}</strong>
             <span>{{ nameOf(m).last }} <small>{{ nameOf(m).first }}</small><small>{{ raceCode(m.raceId) }}</small></span>
           </button>
         } @empty {
-          <p class="lead">{{ t('findNone') }}</p>
+          <p class="lead" role="status">{{ t('findNone') }}</p>
+          @if (suggestions().length) {
+            <h3 class="group">{{ t('findDidYouMean') }}</h3>
+            @for (m of suggestions(); track m.id) {
+              <button type="button" class="big match" (click)="openRider(m.id)" (keydown)="arrowThroughMatches($event)">
+                <strong class="cap">{{ m.cap }}</strong>
+                <span>{{ nameOf(m).last }} <small>{{ nameOf(m).first }}</small><small>{{ raceCode(m.raceId) }}</small></span>
+              </button>
+            }
+          }
         }
       } @else {
         <ul class="legend" aria-hidden="true">
@@ -113,14 +142,26 @@
                     <span class="plus" aria-hidden="true">+</span><span class="label">{{ t('addNew') }}</span><span class="visually-hidden"> {{ t('addRacer') }}, {{ r.title }}</span>
                   </button>
                 </li>
-                @for (e of byCap(r.entries); track e.id) {
-                  <li>
-                    <button type="button" class="num" [attr.data-state]="stateOf(e)" [attr.aria-label]="stateLabel(e) + ', ' + e.name" [title]="e.name" (click)="openRider(e.id)">
-                      <span aria-hidden="true" class="mark">{{ markOf(e) }}</span>{{ e.cap }}
-                    </button>
-                  </li>
+                @for (e of groupsOf(r).existing; track e.id) {
+                  <ng-container [ngTemplateOutlet]="badge" [ngTemplateOutletContext]="{ $implicit: e, viaRace: false }" />
                 }
               </ul>
+              @if (groupsOf(r).added.length) {
+                <h3 class="group" data-group="added">{{ t('groupAdded') }}</h3>
+                <ul class="numbers" [attr.aria-label]="t('groupAdded')">
+                  @for (e of groupsOf(r).added; track e.id) {
+                    <ng-container [ngTemplateOutlet]="badge" [ngTemplateOutletContext]="{ $implicit: e, viaRace: false }" />
+                  }
+                </ul>
+              }
+              @if (groupsOf(r).renumbered.length) {
+                <h3 class="group" data-group="renumbered">{{ t('groupRenumbered') }}</h3>
+                <ul class="numbers" [attr.aria-label]="t('groupRenumbered')">
+                  @for (e of groupsOf(r).renumbered; track e.id) {
+                    <ng-container [ngTemplateOutlet]="badge" [ngTemplateOutletContext]="{ $implicit: e, viaRace: false }" />
+                  }
+                </ul>
+              }
             </details>
           }
         </section>
@@ -240,7 +281,9 @@
       } @else {
         <label class="field">
           <span class="label">@if (field() === 'transponder1') { <img class="chip" src="/dts-transponder-red.webp" alt="" width="66" height="44" /> } @else if (field() === 'transponder2') { <img class="chip" src="/dts-transponder-blue.webp" alt="" width="66" height="44" /> }{{ field() === 'note' ? t('noteText') : t(fieldTitle(field())) }}</span>
-          <input class="huge fit" [attr.data-tp]="transponderField ? '' : null" (click)="fitKeyboard($event)" (keyup)="fitKeyboard($event)" (focus)="fitKeyboard($event)" (input)="fitKeyboard($event)" [style.--chars]="inputMax()" type="text" autocomplete="off" [attr.maxlength]="inputMax()" [attr.placeholder]="field() === 'transponder1' || field() === 'transponder2' ? t('transponderHint') : null" [attr.autocapitalize]="field() === 'note' ? 'sentences' : 'characters'" [value]="input()" (input)="setInput($event)" (keydown.enter)="saveEdit()" />
+          <span class="clearable"><input class="huge fit" [attr.data-tp]="transponderField ? '' : null" (click)="fitKeyboard($event)" (keyup)="fitKeyboard($event)" (focus)="fitKeyboard($event)" (input)="fitKeyboard($event)" [style.--chars]="inputMax()" type="text" autocomplete="off" [attr.maxlength]="inputMax()" [attr.placeholder]="field() === 'transponder1' || field() === 'transponder2' ? t('transponderHint') : null" [attr.autocapitalize]="field() === 'note' ? 'sentences' : 'characters'" [value]="input()" (input)="setInput($event)" (keydown.enter)="saveEdit()" />
+            @if (transponderField && input()) { <button type="button" class="clear" [attr.aria-label]="t('clearField')" [title]="t('clearField')" (click)="clearField($event)">×</button> }
+          </span>
         </label>
         @if (transponderField) {
           <p class="muted">{{ t('transponderEmptyHint') }}</p>
@@ -259,7 +302,7 @@
 
     @case ('add') {
       <h1>{{ t('addRacer') }}</h1>
-      <form class="addform" (submit)="$event.preventDefault(); addConfirm()">
+      <form class="addform" (submit)="$event.preventDefault(); addConfirm(false)">
         @if (!raceFixed()) {
           <label class="field">
             <span>{{ t('addRace') }}</span>
@@ -295,11 +338,15 @@
         <div class="pair stack">
         <label class="field">
           <span><img class="chip" src="/dts-transponder-red.webp" alt="" width="66" height="44" /> {{ t('addT1') }}</span>
-          <input class="huge" type="text" name="t1" data-tp="" (click)="fitKeyboard($event)" (keyup)="fitKeyboard($event)" (focus)="fitKeyboard($event)" (input)="fitKeyboard($event)" autocomplete="off" [attr.placeholder]="t('transponderHint')" autocapitalize="characters" maxlength="8" [value]="draft().t1" (input)="setDraft('t1', $event)" [attr.aria-invalid]="!!addErrors().t1" />
+          <span class="clearable"><input class="huge" type="text" name="t1" data-tp="" (click)="fitKeyboard($event)" (keyup)="fitKeyboard($event)" (focus)="fitKeyboard($event)" (input)="fitKeyboard($event)" autocomplete="off" [attr.placeholder]="t('transponderHint')" autocapitalize="characters" maxlength="8" [value]="draft().t1" (input)="setDraft('t1', $event)" [attr.aria-invalid]="!!addErrors().t1" />
+            @if (draft().t1) { <button type="button" class="clear" [attr.aria-label]="t('clearField')" [title]="t('clearField')" (click)="clearField($event)">×</button> }
+          </span>
         </label>
         <label class="field">
           <span><img class="chip" src="/dts-transponder-blue.webp" alt="" width="66" height="44" /> {{ t('addT2') }}</span>
-          <input class="huge" type="text" name="t2" data-tp="" (click)="fitKeyboard($event)" (keyup)="fitKeyboard($event)" (focus)="fitKeyboard($event)" (input)="fitKeyboard($event)" autocomplete="off" [attr.placeholder]="t('transponderHint')" autocapitalize="characters" maxlength="8" [value]="draft().t2" (input)="setDraft('t2', $event)" [attr.aria-invalid]="!!addErrors().t2" />
+          <span class="clearable"><input class="huge" type="text" name="t2" data-tp="" (click)="fitKeyboard($event)" (keyup)="fitKeyboard($event)" (focus)="fitKeyboard($event)" (input)="fitKeyboard($event)" autocomplete="off" [attr.placeholder]="t('transponderHint')" autocapitalize="characters" maxlength="8" [value]="draft().t2" (input)="setDraft('t2', $event)" [attr.aria-invalid]="!!addErrors().t2" />
+            @if (draft().t2) { <button type="button" class="clear" [attr.aria-label]="t('clearField')" [title]="t('clearField')" (click)="clearField($event)">×</button> }
+          </span>
         </label>
         </div>
         @if (addErrors().t1; as err) {
@@ -308,15 +355,12 @@
         @if (addErrors().t2; as err) {
           <p class="banner bad" role="alert">{{ t(err) }}</p>
         }
-        <label class="check">
-          <input type="checkbox" name="signed" [checked]="draft().signed" (change)="setDraftSigned($event)" />
-          <span>{{ t('addSigned') }}</span>
-        </label>
         @for (w of addWarnings(); track $index) {
           <p class="banner" [class.bad]="w.level === 'severe'" [class.warn]="w.level === 'light'" role="alert">{{ warningText(w, 'preview') }}</p>
         }
         <div class="dock static">
-          <button type="submit" class="big primary" [disabled]="!addValid()" [title]="addValid() ? '' : addWhy()">{{ t('addConfirm') }}</button>
+          <button type="button" class="big primary" [disabled]="!addValid()" [title]="addValid() ? '' : addWhy()" (click)="addConfirm(true)">{{ t('addConfirmSign') }}</button>
+          <button type="submit" class="big" [disabled]="!addValid()" [title]="addValid() ? '' : addWhy()">{{ t('addConfirm') }}</button>
           <button type="button" class="big" (click)="home()">{{ t('cancel') }}</button>
         </div>
       </form>
@@ -324,12 +368,12 @@
 
     @case ('share') {
       <h1>{{ t('shareLink') }}</h1>
-      <div class="linkrow"><p class="url">{{ signLink() }}</p><button type="button" class="copy" (click)="copy('sign')" [attr.aria-label]="copied() === 'sign' ? t('copied') : t('copy')" [title]="t('tipCopy')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">@if (copied() === 'sign') { <path d="M5 13l4 4L19 7" /> } @else { <rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /> }</svg></button></div>
       @if (qr(); as q) {
         <svg class="qr" [attr.viewBox]="'0 0 ' + q.size + ' ' + q.size" role="img" [attr.aria-label]="t('qrLabel')" shape-rendering="crispEdges">
           <rect width="100%" height="100%" fill="#fff" />
           <path [attr.d]="q.path" fill="#000" />
         </svg>
+        <div class="linkrow"><p class="url">{{ signLink() }}</p><button type="button" class="copy" (click)="copy('sign')" [attr.aria-label]="copied() === 'sign' ? t('copied') : t('copy')" [title]="t('tipCopy')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">@if (copied() === 'sign') { <path d="M5 13l4 4L19 7" /> } @else { <rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /> }</svg></button></div>
         <p class="muted">{{ t('qrNote') }}</p>
       }
       <div class="dock static">
